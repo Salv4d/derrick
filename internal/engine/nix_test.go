@@ -3,16 +3,16 @@ package engine
 import (
 	"os"
 	"path/filepath"
-	"reflect"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWrapWithNix(t *testing.T) {
 	absPath, err := filepath.Abs(".derrick")
-	if err != nil {
-		t.Fatalf("Failed to resolve absolute path: %v", err)
-	}
+	require.NoError(t, err, "Failed to resolve absolute path")
+
 	expectedFlakePath := "path:" + absPath + "#default"
 
 	tests := []struct {
@@ -41,9 +41,7 @@ func TestWrapWithNix(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := WrapWithNix(tt.command)
 
-			if !reflect.DeepEqual(result, tt.expected) {
-				t.Errorf("\nExpected: %v\nGot:      %v", tt.expected, result)
-			}
+			assert.Equal(t, tt.expected, result, "The generated Nix command should match the expected output")
 		})
 	}
 }
@@ -52,39 +50,29 @@ func TestEnsureNixEnvironment(t *testing.T) {
 	tempDir := t.TempDir()
 
 	originalWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get current working directory: %v", err)
-	}
-
+	require.NoError(t, err, "Failed to get current working directory")
 	defer os.Chdir(originalWD)
 
 	err = os.Chdir(tempDir)
-	if err != nil {
-		t.Fatalf("Failed to change working directory: %v", err)
-	}
+	require.NoError(t, err, "Failed to change working directory")
 
 	mockPackages := []string{"golang", "python3"}
+
 	err = EnsureNixEnvironment(mockPackages)
-	if err != nil {
-		t.Fatalf("EnsureNixEnvironment failed unexpectedly: %v", err)
-	}
+	assert.NoError(t, err, "EnsureNixEnvironment should not return an error")
 
 	derrickDir := ".derrick"
-	if _, err := os.Stat(derrickDir); os.IsNotExist(err) {
-		t.Errorf("Expected directory '%s' to be created, but it was not found", derrickDir)
-	}
+	assert.DirExists(t, derrickDir, "The .derrick hidden directory should be created")
 
 	flakePath := filepath.Join(derrickDir, "flake.nix")
+	assert.FileExists(t, flakePath, "The flake.nix file should be created")
+
 	contentBytes, err := os.ReadFile(flakePath)
-	if err != nil {
-		t.Fatalf("Failed to read generated flake.nix: %v", err)
-	}
+	require.NoError(t, err, "Should be able to read the generated flake.nix")
 
 	contentStr := string(contentBytes)
 
 	for _, pkg := range mockPackages {
-		if !strings.Contains(contentStr, pkg) {
-			t.Errorf("Generated flake.nix is missing the required package: %s", pkg)
-		}
+		assert.Contains(t, contentStr, pkg, "The generated flake should contain the injected package")
 	}
 }
