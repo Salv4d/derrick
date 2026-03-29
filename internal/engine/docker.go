@@ -19,7 +19,7 @@ func StartContainers(composeFile string) error {
 		return nil
 	}
 
-	ui.Infof("Starting Docker containers from [%s]...", composeFile)
+	ui.Taskf("Starting Docker containers from [%s]", composeFile)
 
 	cmd := exec.Command("docker", "compose", "-f", composeFile, "up", "-d")
 
@@ -28,6 +28,7 @@ func StartContainers(composeFile string) error {
 
 	err := cmd.Run()
 	if err != nil {
+		ui.Error("FAILED")
 		errMsg := strings.TrimSpace(stderr.String())
 
 		if strings.Contains(errMsg, "permission denied") && strings.Contains(errMsg, "docker.sock") {
@@ -46,7 +47,7 @@ func StartContainers(composeFile string) error {
 		return fmt.Errorf("Docker Compose failed with error: %v", err)
 	}
 
-	ui.SuccessInline("Containers are up and running")
+	ui.Success("DONE")
 	return nil
 }
 
@@ -55,7 +56,7 @@ func StopContainers(composeFile string) error {
 		return nil
 	}
 
-	ui.Infof("Stopping Docker containers from [%s]...", composeFile)
+	ui.Taskf("Stopping Docker containers from [%s]", composeFile)
 
 	cmd := exec.Command("docker", "compose", "-f", composeFile, "down")
 
@@ -64,6 +65,7 @@ func StopContainers(composeFile string) error {
 
 	err := cmd.Run()
 	if err != nil {
+		ui.Error("FAILED")
 		errMsg := strings.TrimSpace(stderr.String())
 		if errMsg != "" {
 			return fmt.Errorf("Docker Compose teardown failed: %s", errMsg)
@@ -71,6 +73,6 @@ func StopContainers(composeFile string) error {
 		return fmt.Errorf("Docker Compose teardown failed: %v", err)
 	}
 
-	ui.SuccessInline("Containers stopped and removed")
+	ui.Success("DONE")
 	return nil
 }

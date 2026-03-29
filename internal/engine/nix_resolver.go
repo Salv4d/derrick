@@ -37,7 +37,7 @@ func ValidateAndResolve(packages []string) ([]string, error) {
 
 		if len(matches) > 1 {
 			missingPkg := matches[1]
-			ui.Errorf("Nix package '%s' not found in current registry.", missingPkg)
+			ui.Errorf("Nix package '%s' not found.", missingPkg)
 
 			alternatives, searchErr := searchAlternatives(missingPkg)
 			if searchErr != nil {
@@ -58,7 +58,7 @@ func ValidateAndResolve(packages []string) ([]string, error) {
 			form := huh.NewForm(
 				huh.NewGroup(
 					huh.NewSelect[string]().
-						Title(fmt.Sprintf("Did you mean one of these alternatives for '%s'?", missingPkg)).
+						Title(fmt.Sprintf("Select alternative for '%s':", missingPkg)).
 						Options(options...).
 						Value(&selectedPkg),
 				),
@@ -75,7 +75,7 @@ func ValidateAndResolve(packages []string) ([]string, error) {
 				}
 			}
 
-			ui.SuccessInlinef("Resolved '%s' to '%s'. Regenerating Flake...\n", missingPkg, selectedPkg)
+			ui.Successf("Resolved '%s' -> '%s'.", missingPkg, selectedPkg)
 
 			EnsureNixEnvironment(packages)
 			return ValidateAndResolve(packages)
@@ -88,10 +88,11 @@ func ValidateAndResolve(packages []string) ([]string, error) {
 }
 
 func searchAlternatives(pkgName string) ([]NixSearchRecord, error) {
-	ui.Infof("Searching Nix registry for alternatives to '%s'...", pkgName)
+	ui.Taskf("Searching alternatives for '%s'", pkgName)
 
 	results, err := executeNixSearch(pkgName)
 	if err != nil {
+		ui.Error("FAILED")
 		return nil, err
 	}
 
@@ -100,14 +101,17 @@ func searchAlternatives(pkgName string) ([]NixSearchRecord, error) {
 		if match := re.FindStringSubmatch(pkgName); len(match) > 1 {
 			baseName := match[1]
 			if baseName != pkgName {
-				ui.Infof("No exact binaries found. Widening search to '%s'...\n", baseName)
+				ui.Taskf("No exact match. Widening search to '%s'", baseName)
 				results, err = executeNixSearch(baseName)
 				if err != nil {
+					ui.Error("FAILED")
 					return nil, err
 				}
 			}
 		}
 	}
+
+	ui.Successf("Found %d possibilities", len(results))
 
 	sort.Slice(results, func(i, j int) bool {
 		if len(results[i].PName) == len(results[j].PName) {

@@ -8,28 +8,28 @@ import (
 )
 
 func RunAudit(cfg *config.ProjectConfig) {
-	ui.Info("Running Derrick Environment Audit (Doctor)...\n")
+	ui.Section("Environment Audit")
 	issues := 0
 
 	useNix := len(cfg.Dependencies.NixPackages) > 0
 	if useNix {
-		fmt.Printf("  Checking Nix package manager...")
+		ui.Task("Checking Nix package manager")
 		if IsNixInstalled() {
-			ui.SuccessInline("OK")
+			ui.Success("OK")
 		} else {
-			ui.ErrorInline("MISSING")
-			ui.WarningInline("-> Run: curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install")
+			ui.Error("MISSING")
+			ui.Warning("  -> Run: curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install")
 			issues++
 		}
 	}
 
 	if cfg.Dependencies.Dockerfile != "" {
-		fmt.Printf("  Checking Docker daemon... ")
+		ui.Task("Checking Docker daemon")
 		if IsDockerInstalled() {
-			ui.SuccessInline("OK")
+			ui.Success("OK")
 		} else {
-			ui.ErrorInline("MISSING OR PERMISSION DENIED")
-			ui.WarningInline("    -> Ensure Docker is running and your user is in the 'docker' group.")
+			ui.Error("MISSING OR PERMISSION DENIED")
+			ui.Warning("  -> Ensure Docker is running and your user is in the 'docker' group.")
 			issues++
 		}
 	}
@@ -37,18 +37,18 @@ func RunAudit(cfg *config.ProjectConfig) {
 	canUseNixBubble := useNix && IsNixInstalled()
 
 	if len(cfg.Validations) > 0 {
-		fmt.Println("\n  State Validations:")
+		ui.Section("State Validations")
 		for _, check := range cfg.Validations {
-			fmt.Printf("    Checking %s... ", check.Name)
+			ui.SubTaskf("Checking %s", check.Name)
 			err := executeCommand(check.Command, canUseNixBubble)
 			if err == nil {
-				ui.SuccessInline("OK")
+				ui.Success("OK")
 			} else {
-				ui.ErrorInline("FAILED")
-				fmt.Printf("      -> Error: %v\n", err)
+				ui.Error("FAILED")
+				ui.Errorf("     Error: %v", err)
 
 				if check.AutoFix != "" {
-					fmt.Printf("      -> Fix available: The 'start' command will run '%s' to attempt recovery.\n", check.AutoFix)
+					ui.Warningf("     Fix available: The 'start' command will run '%s' to attempt recovery.", check.AutoFix)
 				}
 				issues++
 			}

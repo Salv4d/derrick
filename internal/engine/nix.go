@@ -41,21 +41,19 @@ type NixTemplateData struct {
 }
 
 func BootEnvironment(requestPackages []string) error {
-	ui.Info("Initializing Derrick sandbox...")
+	ui.Section("Derrick Sandbox Initialization")
 
 	err := EnsureNixEnvironment(requestPackages)
 	if err != nil {
 		return err
 	}
 
-	finalPackages, err := ValidateAndResolve(requestPackages)
+	_, err = ValidateAndResolve(requestPackages)
 	if err != nil {
 		return err
 	}
 
-	_ = finalPackages
-
-	ui.SuccessInline("Environment verified and locked. Ready for execution.\n")
+	ui.Success("Environment verified and locked. Ready for execution.")
 	return nil
 }
 
@@ -64,16 +62,18 @@ func EnsureNixEnvironment(packages []string) error {
 		return nil
 	}
 
-	ui.Info("Ensuring Nix environment is strictly isolated...")
+	ui.Task("Ensuring Nix environment isolation")
 
 	dir := ".derrick"
 	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
+		ui.Error("FAILED")
 		return fmt.Errorf("failed to create %s directory: %w", dir, err)
 	}
 
 	tmpl, err := template.New("flake").Parse(nixFlakeTemplate)
 	if err != nil {
+		ui.Error("FAILED")
 		return fmt.Errorf("failed to parse Nix template: %w", err)
 	}
 
@@ -81,16 +81,18 @@ func EnsureNixEnvironment(packages []string) error {
 	data := NixTemplateData{Packages: packages}
 	err = tmpl.Execute(&flakeContent, data)
 	if err != nil {
+		ui.Error("FAILED")
 		return fmt.Errorf("failed to execute Nix template: %w", err)
 	}
 
 	flakePath := filepath.Join(dir, "flake.nix")
 	err = os.WriteFile(flakePath, flakeContent.Bytes(), 0o644)
 	if err != nil {
+		ui.Error("FAILED")
 		return fmt.Errorf("failed to write flake.nix: %w", err)
 	}
 
-	ui.Success("Nix Flake generated successfully.\n")
+	ui.Success("DONE")
 	return nil
 }
 

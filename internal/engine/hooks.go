@@ -13,14 +13,14 @@ func ExecuteHook(stage string, commands []string, useNix bool) {
 		return
 	}
 
-	ui.Infof("Executing hook: [%s] (%d steps)", stage, len(commands))
+	ui.Sectionf("Executing Lifecycle: %s", stage)
 
 	for i, command := range commands {
 		if command == "" {
 			continue
 		}
 
-		fmt.Printf("  -> Step %d/%d\n", i+1, len(commands))
+		ui.SubTaskf("Step %d/%d", i+1, len(commands))
 
 		var cmd *exec.Cmd
 		if useNix {
@@ -29,7 +29,7 @@ func ExecuteHook(stage string, commands []string, useNix bool) {
 			cmd = exec.Command(nixArgs[0], nixArgs[1:]...)
 		} else {
 			ui.Debugf("Executing hook via Bash: bash -c %q", command)
-			cmd = exec.Command("base", "-c", command)
+			cmd = exec.Command("bash", "-c", command)
 		}
 
 		cmd.Stdout = os.Stdout
@@ -37,9 +37,11 @@ func ExecuteHook(stage string, commands []string, useNix bool) {
 
 		err := cmd.Run()
 		if err != nil {
+			ui.Error("FAILED")
 			ui.FailFastf("Lifecycle hook [%s] failed at step %d.\nCommand: %s\nError: %v", stage, i+1, command, err)
 		}
+		ui.Success("DONE")
 	}
 
-	ui.SuccessInline(fmt.Sprintf("[%s] completed successfully.\n", stage))
+	ui.Successf("[%s] completed successfully.", stage)
 }

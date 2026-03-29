@@ -28,16 +28,45 @@ var (
 			Background(lipgloss.Color("#7D56F4")).
 			Padding(0, 2).
 			MarginBottom(1)
+
+	styleSection = lipgloss.NewStyle().Bold(true).MarginTop(1).MarginBottom(1)
+	styleTask    = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
+	styleSubTask = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
 )
 
 func PrintHeader() {
 	fmt.Println(styleHeader.Render("DERRICK CLI"))
 }
 
+func Section(msg string) {
+	fmt.Println(styleSection.Render("━━ " + msg))
+}
+
+func Sectionf(format string, args ...any) {
+	Section(fmt.Sprintf(format, args...))
+}
+
+func Task(msg string) {
+	fmt.Printf("  %-40s ", styleTask.Render(msg+"..."))
+}
+
+func Taskf(format string, args ...any) {
+	Task(fmt.Sprintf(format, args...))
+}
+
+func SubTask(msg string) {
+	fmt.Printf("    %-38s ", styleSubTask.Render(msg+"..."))
+}
+
+func SubTaskf(format string, args ...any) {
+	SubTask(fmt.Sprintf(format, args...))
+}
+
 func Info(msg string)    { fmt.Println(styleInfo.Render("ℹ  " + msg)) }
 func Success(msg string) { fmt.Println(styleSuccess.Render("✓  " + msg)) }
 func Warning(msg string) { fmt.Println(styleWarning.Render("⚠  " + msg)) }
 func Error(msg string)   { fmt.Println(styleError.Render("✖  " + msg)) }
+
 func Debug(msg string) {
 	if DebugMode {
 		fmt.Println(styleDebug.Render("⚙ [DEBUG] " + msg))
@@ -64,15 +93,6 @@ func Debugf(format string, args ...any) {
 	if DebugMode {
 		fmt.Println(styleDebug.Render("⚙ [DEBUG] " + fmt.Sprintf(format, args...)))
 	}
-}
-
-func InfoInline(msg string)    { fmt.Print(styleInfo.Render("ℹ  " + msg)) }
-func SuccessInline(msg string) { fmt.Print(styleSuccess.Render("✓  " + msg)) }
-func WarningInline(msg string) { fmt.Print(styleWarning.Render("⚠  " + msg)) }
-func ErrorInline(msg string)   { fmt.Print(styleError.Render("✖  " + msg)) }
-
-func SuccessInlinef(format string, args ...any) {
-	fmt.Print(styleSuccess.Render("✓ " + fmt.Sprintf(format, args...)))
 }
 
 func SprintSuccess(format string, args ...any) string {
