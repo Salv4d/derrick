@@ -8,14 +8,19 @@ import (
 	"github.com/Salv4d/derrick/internal/ui"
 )
 
-func ExecuteHook(stage string, command string) {
+func ExecuteHook(stage string, command string, useNix bool) {
 	if command == "" {
 		return
 	}
 
 	ui.Info(fmt.Sprintf("Executing hook: [%s]", stage))
 
-	cmd := exec.Command("bash", "-c", command)
+	actualCmd := command
+	if useNix {
+		actualCmd = WrapWithNix(command)
+	}
+
+	cmd := exec.Command("bash", "-c", actualCmd)
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

@@ -10,7 +10,7 @@ import (
 	"github.com/Salv4d/derrick/internal/ui"
 )
 
-func RunValidations(checks []config.ValidationCheck) {
+func RunValidations(checks []config.ValidationCheck, useNix bool) {
 	if len(checks) == 0 {
 		return
 	}
@@ -20,7 +20,7 @@ func RunValidations(checks []config.ValidationCheck) {
 	for _, check := range checks {
 		fmt.Printf("  Checking %s... ", check.Name)
 
-		err := executeCommand(check.Command)
+		err := executeCommand(check.Command, useNix)
 		if err == nil {
 			fmt.Println(ui.SuccessInline("OK"))
 			continue
@@ -33,13 +33,13 @@ func RunValidations(checks []config.ValidationCheck) {
 
 		fmt.Println(ui.WarningInline("FAILED. Attempting auto-fix..."))
 
-		fixErr := executeCommand(check.AutoFix)
+		fixErr := executeCommand(check.AutoFix, useNix)
 		if fixErr != nil {
 			ui.FailFast(fmt.Errorf("Auto-fix for '%s' failed.\nCommand: %s, Error: %v", check.Name, check.AutoFix, fixErr))
 		}
 
 		fmt.Printf("  Re-checking %s... ", check.Name)
-		recheckErr := executeCommand(check.Command)
+		recheckErr := executeCommand(check.Command, useNix)
 		if recheckErr != nil {
 			fmt.Println(ui.ErrorInline("FAILED"))
 			ui.FailFast(fmt.Errorf("Validation '%s' still failing after auto-fix.\nError: %v", check.Name, recheckErr))
@@ -49,8 +49,13 @@ func RunValidations(checks []config.ValidationCheck) {
 	}
 }
 
-func executeCommand(command string) error {
-	cmd := exec.Command("bash", "-c", command)
+func executeCommand(command string, useNix bool) error {
+	actualCmd := command
+	if useNix {
+		actualCmd = WrapWithNix(command)
+	}
+
+	cmd := exec.Command("bash", "-c", actualCmd)
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
