@@ -9,5 +9,8 @@ hooks:
   pre_init: "echo 'Preparing environment...'"
   post_start: "echo 'Environment is ready!'"
 validations:
+  - name: "Check if .env exists"
+    command: "test -f .env"
+    auto_fix: "echo 'APP_MODE=local' > .env"
   - name: "Check Node version"
     command: "node -v | grep v20"
