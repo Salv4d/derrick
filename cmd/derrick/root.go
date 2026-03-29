@@ -1,9 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/Salv4d/derrick/internal/ui"
 	"github.com/spf13/cobra"
 )
