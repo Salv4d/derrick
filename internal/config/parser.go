@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -54,16 +55,16 @@ func enhanceYAMLError(fileData []byte, originalErr error) error {
 	indicator := strings.Repeat(" ", indentLength) + strings.Repeat("^", len(trimmedLine))
 
 	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("Syntax error in derrick.yaml at line %d: \n\n", lineNum))
+	fmt.Fprintf(&builder, "Syntax error in derrick.yaml at line %d: \n\n", lineNum)
 
 	if lineNum > 1 {
-		builder.WriteString(fmt.Sprintf("  %3d | %s\n", lineNum-1, lines[lineNum-2]))
+		fmt.Fprintf(&builder, "  %3d | %s\n", lineNum-1, lines[lineNum-2])
 	}
 
-	builder.WriteString(fmt.Sprintf("  %3d | %s\n", lineNum, errorLine))
-	builder.WriteString(fmt.Sprintf("       %s\n\n", indicator))
+	fmt.Fprintf(&builder, "  %3d | %s\n", lineNum, errorLine)
+	fmt.Fprintf(&builder, "       %s\n\n", indicator)
 
-	builder.WriteString(fmt.Sprintf("Detail: %s", errMsg))
+	fmt.Fprintf(&builder, "Detail: %s", errMsg)
 
-	return fmt.Errorf(builder.String())
+	return errors.New(builder.String())
 }
