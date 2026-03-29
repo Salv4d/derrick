@@ -1,0 +1,13 @@
+name: "my-awesome-project"
+version: "1.0.0"
+dependencies:
+  nix_packages:
+    - "go"
+    - "nodejs_20"
+  docker_file: "docker-compose.yaml"
+hooks:
+  pre_init: "echo 'Preparing environment...'"
+  post_start: "echo 'Environment is ready!'"
+validations:
+  - name: "Check Node version"
+    command: "node -v | grep v20"
