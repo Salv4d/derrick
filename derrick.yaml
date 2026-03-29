@@ -14,6 +14,10 @@ hooks:
       echo "  -> Migrating table $i..."
       sleep 1
     done
+  post_stop: |
+      echo 'Cleaning up temporary files...'
+      rm -rf tmp/cache
+      echo 'Done! Have a great day.'
 validations:
   - name: "Check if .env exists"
     command: "test -f .env"
