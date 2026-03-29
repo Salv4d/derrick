@@ -13,3 +13,7 @@ bin/
 .idea/
 *.swp
 *.swo
+
+
+# Derrick auto-generated files
+.derrick/
