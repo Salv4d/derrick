@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"text/template"
 
 	"github.com/Salv4d/derrick/internal/ui"
@@ -68,12 +67,6 @@ func EnsureNixEnvironment(packages []string) error {
 	return nil
 }
 
-func RunInNix(command string) error {
-	nixWrapper := fmt.Sprintf("nix develop ./.derrick#default -c bash -c %q", command)
-
-	cmd := exec.Command("base", "-c", nixWrapper)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	return cmd.Run()
+func WrapWithNix(command string) string {
+	return fmt.Sprintf("nix develop ./.derrick#default -c bash -c %q", command)
 }
