@@ -26,10 +26,19 @@ var startCmd = &cobra.Command{
 
 		ui.Success(fmt.Sprintf("Successfully loaded configuration for project: %s (v%s)\n", cfg.Name, cfg.Version))
 		ui.Info(fmt.Sprintf("Found %d Nix packages and %d validation checks to run.\n", len(cfg.Dependencies.NixPackages), len(cfg.Validations)))
-		
+
+		engine.ExecuteHook("pre_init", cfg.Hooks.PreInit)
+
 		engine.RunValidations(cfg.Validations)
 
+		engine.ExecuteHook("post_init", cfg.Hooks.PostInit)
+		engine.ExecuteHook("pre_start", cfg.Hooks.PreStart)
+
+		ui.Info("⚙️  [Mock] Starting Nix isolated shell and Docker containers...\n")
+
 		ui.Success("Environment is validated and ready!")
+
+		engine.ExecuteHook("post_start", cfg.Hooks.PostStart)
 	},
 }
 
