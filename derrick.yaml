@@ -6,11 +6,15 @@ dependencies:
     - "nodejs_20"
   docker_file: "docker-compose.yaml"
 hooks:
-  pre_init: "echo 'Preparing environment...'"
-  post_start: "echo 'Environment is ready!'"
+  pre_init: "echo 'Fetching secure credentials...' && sleep 1"
+  post_init: "echo 'Setting up local folders...' && mkdir -p tmp/cache"
+  post_start: |
+    echo 'Running fake database migrations...'
+    for i in {1..3}; do
+      echo "  -> Migrating table $i..."
+      sleep 1
+    done
 validations:
   - name: "Check if .env exists"
     command: "test -f .env"
     auto_fix: "echo 'APP_MODE=local' > .env"
-  - name: "Check Node version"
-    command: "node -v | grep v20"
