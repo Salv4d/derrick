@@ -15,10 +15,10 @@ func RunAudit(cfg *config.ProjectConfig) {
 	if useNix {
 		fmt.Printf("  Checking Nix package manager...")
 		if IsNixInstalled() {
-			fmt.Println(ui.SuccessInline("OK"))
+			ui.SuccessInline("OK")
 		} else {
-			fmt.Println(ui.ErrorInline("MISSING"))
-			fmt.Println(ui.WarningInline("-> Run: curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install"))
+			ui.ErrorInline("MISSING")
+			ui.WarningInline("-> Run: curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install")
 			issues++
 		}
 	}
@@ -26,10 +26,10 @@ func RunAudit(cfg *config.ProjectConfig) {
 	if cfg.Dependencies.Dockerfile != "" {
 		fmt.Printf("  Checking Docker daemon... ")
 		if IsDockerInstalled() {
-			fmt.Println(ui.SuccessInline("OK"))
+			ui.SuccessInline("OK")
 		} else {
-			fmt.Println(ui.ErrorInline("MISSING OR PERMISSION DENIED"))
-			fmt.Println(ui.WarningInline("    -> Ensure Docker is running and your user is in the 'docker' group."))
+			ui.ErrorInline("MISSING OR PERMISSION DENIED")
+			ui.WarningInline("    -> Ensure Docker is running and your user is in the 'docker' group.")
 			issues++
 		}
 	}
@@ -42,9 +42,9 @@ func RunAudit(cfg *config.ProjectConfig) {
 			fmt.Printf("    Checking %s... ", check.Name)
 			err := executeCommand(check.Command, canUseNixBubble)
 			if err == nil {
-				fmt.Println(ui.SuccessInline("OK"))
+				ui.SuccessInline("OK")
 			} else {
-				fmt.Println(ui.ErrorInline("FAILED"))
+				ui.ErrorInline("FAILED")
 				fmt.Printf("      -> Error: %v\n", err)
 				
 				if check.AutoFix != "" {

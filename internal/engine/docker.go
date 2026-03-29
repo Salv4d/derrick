@@ -46,7 +46,7 @@ func StartContainers(composeFile string) error {
 		return fmt.Errorf("Docker Compose failed with error: %v", err)
 	}
 
-	fmt.Println(ui.SuccessInline("Containers are up and running"))
+	ui.SuccessInline("Containers are up and running")
 	return nil
 }
 
@@ -71,6 +71,6 @@ func StopContainers(composeFile string) error {
 		return fmt.Errorf("Docker Compose teardown failed: %v", err)
 	}
 
-	fmt.Println(ui.SuccessInline("Containers stopped and removed"))
+	ui.SuccessInline("Containers stopped and removed")
 	return nil
 }

@@ -24,16 +24,16 @@ func RunValidations(checks []config.ValidationCheck, useNix bool) {
 
 		err := executeCommand(check.Command, useNix)
 		if err == nil {
-			fmt.Println(ui.SuccessInline("OK"))
+			ui.SuccessInline("OK")
 			continue
 		}
 
 		if check.AutoFix == "" {
-			fmt.Println(ui.ErrorInline("FAILED"))
+			ui.ErrorInline("FAILED")
 			ui.FailFastf("Validation '%s' failed.\nCommand: %s\nError: %v", check.Name, check.Command, err)
 		}
 
-		fmt.Println(ui.WarningInline("FAILED. Attempting auto-fix..."))
+		ui.WarningInline("FAILED. Attempting auto-fix...")
 
 		fixErr := executeCommand(check.AutoFix, useNix)
 		if fixErr != nil {
@@ -43,11 +43,11 @@ func RunValidations(checks []config.ValidationCheck, useNix bool) {
 		fmt.Printf("  Re-checking %s... ", check.Name)
 		recheckErr := executeCommand(check.Command, useNix)
 		if recheckErr != nil {
-			fmt.Println(ui.ErrorInline("FAILED"))
+			ui.ErrorInline("FAILED")
 			ui.FailFastf("Validation '%s' still failing after auto-fix.\nError: %v", check.Name, recheckErr)
 		}
 
-		fmt.Println(ui.SuccessInline("OK (Fixed)"))
+		ui.SuccessInline("OK (Fixed)")
 	}
 }
 

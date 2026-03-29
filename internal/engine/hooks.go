@@ -41,5 +41,5 @@ func ExecuteHook(stage string, commands []string, useNix bool) {
 		}
 	}
 
-	fmt.Println(ui.SuccessInline(fmt.Sprintf("[%s] completed successfully.\n", stage)))
+	ui.SuccessInline(fmt.Sprintf("[%s] completed successfully.\n", stage))
 }
