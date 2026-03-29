@@ -59,6 +59,6 @@ func RunAudit(cfg *config.ProjectConfig) {
 	if issues == 0 {
 		ui.Success("Your environment is perfectly healthy! You are ready to run 'derrick start'.")
 	} else {
-		ui.Warning(fmt.Sprintf("Found %d issue(s) in your environment. Please fix them before starting.", issues))
+		ui.Warningf("Found %d issue(s) in your environment. Please fix them before starting.", issues)
 	}
 }

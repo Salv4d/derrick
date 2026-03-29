@@ -13,7 +13,7 @@ func ExecuteHook(stage string, command string, useNix bool) {
 		return
 	}
 
-	ui.Info(fmt.Sprintf("Executing hook: [%s]", stage))
+	ui.Infof("Executing hook: [%s]", stage)
 
 	var cmd *exec.Cmd
 	if useNix {
@@ -28,7 +28,7 @@ func ExecuteHook(stage string, command string, useNix bool) {
 
 	err := cmd.Run()
 	if err != nil {
-		ui.FailFast(fmt.Errorf("Lifecycle hook [%s] failed with exit code: %v", stage, err))
+		ui.FailFastf("Lifecycle hook [%s] failed with exit code: %v", stage, err)
 	}
 
 		fmt.Println(ui.SuccessInline(fmt.Sprintf("[%s] completed successfully.\n", stage)))

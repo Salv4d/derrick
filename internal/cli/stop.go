@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"fmt"
-
 	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/engine"
 	"github.com/Salv4d/derrick/internal/ui"
@@ -27,9 +25,9 @@ any defined post_stop lifecycle hooks to clean up the environment.`,
 
 		if cfg.Dependencies.Dockerfile != "" {
 		if !engine.IsDockerInstalled() {
-			ui.FailFast(fmt.Errorf(
+			ui.FailFastf(
 				"Docker is not running. Cannot stop containers.",
-			))
+			)
 		}
 
 		err := engine.StartContainers(cfg.Dependencies.Dockerfile)

@@ -28,21 +28,21 @@ func RunValidations(checks []config.ValidationCheck, useNix bool) {
 
 		if check.AutoFix == "" {
 			fmt.Println(ui.ErrorInline("FAILED"))
-			ui.FailFast(fmt.Errorf("Validation '%s' failed.\nCommand: %s\nError: %v", check.Name, check.Command, err))
+			ui.FailFastf("Validation '%s' failed.\nCommand: %s\nError: %v", check.Name, check.Command, err)
 		}
 
 		fmt.Println(ui.WarningInline("FAILED. Attempting auto-fix..."))
 
 		fixErr := executeCommand(check.AutoFix, useNix)
 		if fixErr != nil {
-			ui.FailFast(fmt.Errorf("Auto-fix for '%s' failed.\nCommand: %s, Error: %v", check.Name, check.AutoFix, fixErr))
+			ui.FailFastf("Auto-fix for '%s' failed.\nCommand: %s, Error: %v", check.Name, check.AutoFix, fixErr)
 		}
 
 		fmt.Printf("  Re-checking %s... ", check.Name)
 		recheckErr := executeCommand(check.Command, useNix)
 		if recheckErr != nil {
 			fmt.Println(ui.ErrorInline("FAILED"))
-			ui.FailFast(fmt.Errorf("Validation '%s' still failing after auto-fix.\nError: %v", check.Name, recheckErr))
+			ui.FailFastf("Validation '%s' still failing after auto-fix.\nError: %v", check.Name, recheckErr)
 		}
 
 		fmt.Println(ui.SuccessInline("OK (Fixed)"))

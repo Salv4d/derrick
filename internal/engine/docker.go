@@ -19,7 +19,7 @@ func StartContainers(composeFile string) error {
 		return nil
 	}
 
-	ui.Info(fmt.Sprintf("Starting Docker containers from [%s]...", composeFile))
+	ui.Infof("Starting Docker containers from [%s]...", composeFile)
 
 	cmd := exec.Command("docker", "compose", "-f", composeFile, "up", "-d")
 
@@ -55,7 +55,7 @@ func StopContainers(composeFile string) error {
 		return nil
 	}
 
-	ui.Info(fmt.Sprintf("Stopping Docker containers from [%s]...", composeFile))
+	ui.Infof("Stopping Docker containers from [%s]...", composeFile)
 
 	cmd := exec.Command("docker", "compose", "-f", composeFile, "down")
 

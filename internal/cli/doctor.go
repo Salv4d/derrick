@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"fmt"
-
 	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/engine"
 	"github.com/Salv4d/derrick/internal/ui"
@@ -26,7 +24,7 @@ health report.`,
 			ui.FailFast(err)
 		}
 
-		ui.Info(fmt.Sprintf("Loaded contract for project: %s (v%s)\n", cfg.Name, cfg.Version))
+		ui.Infof("Loaded contract for project: %s (v%s)\n", cfg.Name, cfg.Version)
 		
 		engine.RunAudit(cfg)
 	},

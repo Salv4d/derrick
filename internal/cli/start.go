@@ -23,8 +23,8 @@ var startCmd = &cobra.Command{
 			ui.FailFast(err)
 		}
 
-		ui.Success(fmt.Sprintf("Successfully loaded configuration for project: %s (v%s)\n", cfg.Name, cfg.Version))
-		ui.Info(fmt.Sprintf("Found %d Nix packages and %d validation checks to run.\n", len(cfg.Dependencies.NixPackages), len(cfg.Validations)))
+		ui.Successf("Successfully loaded configuration for project: %s (v%s)\n", cfg.Name, cfg.Version)
+		ui.Infof("Found %d Nix packages and %d validation checks to run.\n", len(cfg.Dependencies.NixPackages), len(cfg.Validations))
 
 		useNix := len(cfg.Dependencies.NixPackages) > 0
 		if useNix {

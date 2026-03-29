@@ -45,6 +45,28 @@ func Warning(msg string) {
 	fmt.Println(styleWarning.Render("⚠  " + msg))
 }
 
+func Infof(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	fmt.Println(styleInfo.Render("ℹ  " + msg))
+}
+
+func Successf(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	fmt.Println(styleSuccess.Render("✓  " + msg))
+}
+
+func Warningf(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	fmt.Println(styleWarning.Render("⚠  " + msg))
+}
+
+func FailFastf(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	fmt.Printf("\n%s\n", styleError.Render("✖ CRITICAL ERROR"))
+	fmt.Println(styleError.Render(msg))
+	os.Exit(1)
+}
+
 func FailFast(err error) {
 	fmt.Printf("\n%s\n", styleError.Render("✖ CRITICAL ERROR"))
 	fmt.Println(styleError.Render(err.Error()))
