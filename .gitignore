@@ -1,5 +1,5 @@
 # Ignore the generated binary (we will compile it as 'derrick')
-derrick
+/derrick
 bin/
 *.test
 *.out
