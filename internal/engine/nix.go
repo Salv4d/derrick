@@ -67,7 +67,7 @@ func EnsureNixEnvironment(packages []string) error {
 	ui.Info("Ensuring Nix environment is strictly isolated...")
 
 	dir := ".derrick"
-	err := os.MkdirAll(dir, 0755)
+	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return fmt.Errorf("failed to create %s directory: %w", dir, err)
 	}
@@ -85,7 +85,7 @@ func EnsureNixEnvironment(packages []string) error {
 	}
 
 	flakePath := filepath.Join(dir, "flake.nix")
-	err = os.WriteFile(flakePath, flakeContent.Bytes(), 0644)
+	err = os.WriteFile(flakePath, flakeContent.Bytes(), 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to write flake.nix: %w", err)
 	}

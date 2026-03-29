@@ -31,10 +31,10 @@ func ExecuteHook(stage string, commands []string, useNix bool) {
 			ui.Debugf("Executing hook via Bash: bash -c %q", command)
 			cmd = exec.Command("base", "-c", command)
 		}
-	
+
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-	
+
 		err := cmd.Run()
 		if err != nil {
 			ui.FailFastf("Lifecycle hook [%s] failed at step %d.\nCommand: %s\nError: %v", stage, i+1, command, err)

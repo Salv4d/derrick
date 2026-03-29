@@ -44,10 +44,22 @@ func Debug(msg string) {
 	}
 }
 
-func Infof(format string, args ...any)    { fmt.Println(styleInfo.Render("ℹ  " + fmt.Sprintf(format, args...))) }
-func Successf(format string, args ...any) { fmt.Println(styleSuccess.Render("✓  " + fmt.Sprintf(format, args...))) }
-func Warningf(format string, args ...any) { fmt.Println(styleWarning.Render("⚠  " + fmt.Sprintf(format, args...))) }
-func Errorf(format string, args ...any)   { fmt.Println(styleError.Render("✖  " + fmt.Sprintf(format, args...))) }
+func Infof(format string, args ...any) {
+	fmt.Println(styleInfo.Render("ℹ  " + fmt.Sprintf(format, args...)))
+}
+
+func Successf(format string, args ...any) {
+	fmt.Println(styleSuccess.Render("✓  " + fmt.Sprintf(format, args...)))
+}
+
+func Warningf(format string, args ...any) {
+	fmt.Println(styleWarning.Render("⚠  " + fmt.Sprintf(format, args...)))
+}
+
+func Errorf(format string, args ...any) {
+	fmt.Println(styleError.Render("✖  " + fmt.Sprintf(format, args...)))
+}
+
 func Debugf(format string, args ...any) {
 	if DebugMode {
 		fmt.Println(styleDebug.Render("⚙ [DEBUG] " + fmt.Sprintf(format, args...)))
@@ -59,12 +71,25 @@ func SuccessInline(msg string) { fmt.Print(styleSuccess.Render("✓  " + msg)) }
 func WarningInline(msg string) { fmt.Print(styleWarning.Render("⚠  " + msg)) }
 func ErrorInline(msg string)   { fmt.Print(styleError.Render("✖  " + msg)) }
 
-func SuccessInlinef(format string, args ...any) { fmt.Print(styleSuccess.Render("✓ " + fmt.Sprintf(format, args...))) }
+func SuccessInlinef(format string, args ...any) {
+	fmt.Print(styleSuccess.Render("✓ " + fmt.Sprintf(format, args...)))
+}
 
-func SprintSuccess(format string, args ...any) string { return styleSuccess.Render("✓  " + fmt.Sprintf(format, args...)) }
-func SprintError(format string, args ...any) string   { return styleError.Render("✖  " + fmt.Sprintf(format, args...)) }
-func SprintWarning(format string, args ...any) string { return styleWarning.Render("⚠  " + fmt.Sprintf(format, args...)) }
-func SprintInfo(format string, args ...any) string    { return styleInfo.Render("ℹ  " + fmt.Sprintf(format, args...)) }
+func SprintSuccess(format string, args ...any) string {
+	return styleSuccess.Render("✓  " + fmt.Sprintf(format, args...))
+}
+
+func SprintError(format string, args ...any) string {
+	return styleError.Render("✖  " + fmt.Sprintf(format, args...))
+}
+
+func SprintWarning(format string, args ...any) string {
+	return styleWarning.Render("⚠  " + fmt.Sprintf(format, args...))
+}
+
+func SprintInfo(format string, args ...any) string {
+	return styleInfo.Render("ℹ  " + fmt.Sprintf(format, args...))
+}
 
 func FailFast(err error) {
 	fmt.Printf("\n%s\n", styleError.Render("✖ CRITICAL ERROR"))

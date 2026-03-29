@@ -1,2 +1,7 @@
 [tools]
 go = "latest"
+gofumpt = "latest"
+
+[tasks."fmt"]
+description = "Format all Go files using gofumpt"
+run = "gofumpt -w ."

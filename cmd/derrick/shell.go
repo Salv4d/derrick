@@ -9,7 +9,7 @@ import (
 )
 
 var shellCmd = &cobra.Command{
-	Use: "shell",
+	Use:   "shell",
 	Short: "Drop into the isoled Nix development sandbox",
 	Run: func(cmd *cobra.Command, args []string) {
 		cwd, _ := os.Getwd()

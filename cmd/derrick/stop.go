@@ -8,8 +8,8 @@ import (
 )
 
 var stopCmd = &cobra.Command{
-	Use: "stop",
-	Short:	"Stops the local development environment",
+	Use:   "stop",
+	Short: "Stops the local development environment",
 	Long: `Stops all running containers, closes Nix shells, and executes 
 any defined post_stop lifecycle hooks to clean up the environment.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -24,17 +24,17 @@ any defined post_stop lifecycle hooks to clean up the environment.`,
 		}
 
 		if cfg.Dependencies.Dockerfile != "" {
-		if !engine.IsDockerInstalled() {
-			ui.FailFastf(
-				"Docker is not running. Cannot stop containers.",
-			)
-		}
+			if !engine.IsDockerInstalled() {
+				ui.FailFastf(
+					"Docker is not running. Cannot stop containers.",
+				)
+			}
 
-		err := engine.StartContainers(cfg.Dependencies.Dockerfile)
-		if err != nil {
-			ui.FailFast(err)
+			err := engine.StartContainers(cfg.Dependencies.Dockerfile)
+			if err != nil {
+				ui.FailFast(err)
+			}
 		}
-	}
 
 		useNix := len(cfg.Dependencies.NixPackages) > 0
 

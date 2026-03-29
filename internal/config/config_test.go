@@ -28,7 +28,7 @@ validations:
     command: "test -f .env"
 `)
 	validFilePath := filepath.Join(tempDir, "valid.yaml")
-	err := os.WriteFile(validFilePath, validYAML, 0644)
+	err := os.WriteFile(validFilePath, validYAML, 0o644)
 
 	require.NoError(t, err, "Failed to write valid YAML test file")
 
@@ -41,10 +41,10 @@ validations:
 
 		assert.Len(t, cfg.Dependencies.NixPackages, 2, "Should parse exactly 2 nix packages")
 		assert.Equal(t, "go", cfg.Dependencies.NixPackages[0], "First nix package should be 'go'")
-		
+
 		assert.Len(t, cfg.Hooks.PreInit, 1, "Should parse exactly 1 pre_init hook")
 		assert.Equal(t, "echo 'Starting'", cfg.Hooks.PreInit[0], "The hook command should match")
-		
+
 		assert.Len(t, cfg.Validations, 1, "Should parse exactly 1 validation")
 		assert.Equal(t, "Check Env", cfg.Validations[0].Name, "Validation name should match")
 	})
@@ -59,7 +59,7 @@ dependencies:
 `)
 
 	invalidFilePath := filepath.Join(tempDir, "invalid.yaml")
-	err = os.WriteFile(invalidFilePath, invalidYAML, 0644)
+	err = os.WriteFile(invalidFilePath, invalidYAML, 0o644)
 	require.NoError(t, err, "Failed to write invalid yaml test file")
 
 	t.Run("Malformed Config", func(t *testing.T) {

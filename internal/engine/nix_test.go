@@ -16,23 +16,23 @@ func TestWrapWithNix(t *testing.T) {
 	expectedFlakePath := "path:" + absPath + "#default"
 
 	tests := []struct {
-		name string
-		command string
+		name     string
+		command  string
 		expected []string
 	}{
 		{
-			name: "Simple single word command",
-			command: "node -v",
+			name:     "Simple single word command",
+			command:  "node -v",
 			expected: []string{"nix", "develop", expectedFlakePath, "-c", "bash", "-c", "node -v"},
 		},
 		{
-			name: "Complex command with single quotes",
-			command: "echo 'Hello World'",
+			name:     "Complex command with single quotes",
+			command:  "echo 'Hello World'",
 			expected: []string{"nix", "develop", expectedFlakePath, "-c", "bash", "-c", "echo 'Hello World'"},
 		},
 		{
-			name: "Command with pipes and logical operators",
-			command: "test -f .env || echo 'Missing'",
+			name:     "Command with pipes and logical operators",
+			command:  "test -f .env || echo 'Missing'",
 			expected: []string{"nix", "develop", expectedFlakePath, "-c", "bash", "-c", "test -f .env || echo 'Missing'"},
 		},
 	}

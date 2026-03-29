@@ -46,7 +46,7 @@ func RunAudit(cfg *config.ProjectConfig) {
 			} else {
 				ui.ErrorInline("FAILED")
 				fmt.Printf("      -> Error: %v\n", err)
-				
+
 				if check.AutoFix != "" {
 					fmt.Printf("      -> Fix available: The 'start' command will run '%s' to attempt recovery.\n", check.AutoFix)
 				}

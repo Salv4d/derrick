@@ -10,9 +10,9 @@ import (
 )
 
 var startCmd = &cobra.Command{
-	Use: "start",
+	Use:   "start",
 	Short: "Starts the local development environment",
-	Long: `Reads the derrick.yaml configuration and begins the orchestration process, validating the state and executing the defined hooks.`,
+	Long:  `Reads the derrick.yaml configuration and begins the orchestration process, validating the state and executing the defined hooks.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ui.PrintHeader()
 		ui.Info("Starting Derrick orchestration...")
@@ -31,9 +31,9 @@ var startCmd = &cobra.Command{
 			if !engine.IsNixInstalled() {
 				ui.FailFast(fmt.Errorf(
 					"This project requires Nix, but it is not installed on your system.\n" +
-					"To install it on Linux/WSL, run:\n" +
-					"curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install",
-				))	
+						"To install it on Linux/WSL, run:\n" +
+						"curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install",
+				))
 			}
 
 			err := engine.BootEnvironment(cfg.Dependencies.NixPackages)
@@ -52,7 +52,7 @@ var startCmd = &cobra.Command{
 			if !engine.IsDockerInstalled() {
 				ui.FailFast(fmt.Errorf(
 					"This project requires Docker, but it is not installed or not running.\n" +
-					"Please install Docker Desktop or Docker Engine to continue.",
+						"Please install Docker Desktop or Docker Engine to continue.",
 				))
 			}
 
@@ -63,7 +63,7 @@ var startCmd = &cobra.Command{
 		}
 
 		engine.ExecuteHook("post_start", cfg.Hooks.PostStart, useNix)
-		
+
 		ui.Success("Environment is validated and ready!")
 	},
 }

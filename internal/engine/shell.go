@@ -9,7 +9,7 @@ import (
 	"syscall"
 )
 
-type ShellEngine struct {}
+type ShellEngine struct{}
 
 func NewShellEngine() *ShellEngine {
 	return &ShellEngine{}

@@ -9,7 +9,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use: "derrick",
+	Use:   "derrick",
 	Short: "Derrick is a local development environment orchestrator.",
 	Long: `Derrick unites the absolute reproducibility of Nix with 
 Docker Compose containerization, wrapping them in a strict 

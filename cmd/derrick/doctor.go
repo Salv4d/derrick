@@ -8,7 +8,7 @@ import (
 )
 
 var doctorCmd = &cobra.Command{
-	Use: "doctor",
+	Use:   "doctor",
 	Short: "Audits the environment and reports missing dependencies",
 	Long: `Runs a comprehensive, read-only audit of your local environment.
 It checks for necessary system dependencies (like Nix and Docker) and runs 
@@ -25,7 +25,7 @@ health report.`,
 		}
 
 		ui.Infof("Loaded contract for project: %s (v%s)\n", cfg.Name, cfg.Version)
-		
+
 		engine.RunAudit(cfg)
 	},
 }

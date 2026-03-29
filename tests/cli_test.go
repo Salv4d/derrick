@@ -27,7 +27,7 @@ func TestCLI(t *testing.T) {
 
 	t.Run("Doctor Command (Missing YAML)", func(t *testing.T) {
 		cmd := exec.Command("go", "run", "../cmd/derrick/main.go", "doctor")
-		
+
 		var stdout bytes.Buffer
 		cmd.Stdout = &stdout
 

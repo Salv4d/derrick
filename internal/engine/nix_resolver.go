@@ -15,8 +15,8 @@ import (
 )
 
 type NixSearchRecord struct {
-	PName string `json:"pname"`
-	Version string `json:"version"`
+	PName       string `json:"pname"`
+	Version     string `json:"version"`
 	Description string `json:"description"`
 }
 
@@ -94,7 +94,7 @@ func searchAlternatives(pkgName string) ([]NixSearchRecord, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(results) == 0 {
 		re := regexp.MustCompile(`^([a-zA-Z]+[0-9]?)`)
 		if match := re.FindStringSubmatch(pkgName); len(match) > 1 {
@@ -141,7 +141,7 @@ func executeNixSearch(query string) ([]NixSearchRecord, error) {
 	for _, record := range searchResults {
 		results = append(results, record)
 	}
-	
+
 	return results, nil
 }
 
