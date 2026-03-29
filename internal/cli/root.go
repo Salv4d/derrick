@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Salv4d/derrick/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -24,5 +25,5 @@ func Execute() {
 }
 
 func init() {
-	
+	rootCmd.PersistentFlags().BoolVar(&ui.DebugMode, "debug", false, "Enable verbose debug output and stream raw command logs")
 }

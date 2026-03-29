@@ -3,6 +3,8 @@ package engine
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -53,13 +55,21 @@ func executeCommand(command string, useNix bool) error {
 	var cmd *exec.Cmd
 	if useNix {
 		nixArgs := WrapWithNix(command)
+		ui.Debugf("Executing Nix command: %v", nixArgs)
 		cmd = exec.Command(nixArgs[0], nixArgs[1:]...)
 	} else {
+		ui.Debugf("Executing Bash command: bash -c %q", command)
 		cmd = exec.Command("bash", "-c", command)
 	}
 
 	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+
+	if ui.DebugMode {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
+	} else {
+		cmd.Stderr = &stderr
+	}
 
 	err := cmd.Run()
 	if err != nil {

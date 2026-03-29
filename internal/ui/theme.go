@@ -7,16 +7,20 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var DebugMode bool
+
 var (
 	colorSuccess = lipgloss.Color("46")
 	colorError = lipgloss.Color("196")
 	colorInfo = lipgloss.Color("39")
 	colorWarning = lipgloss.Color("214")
+	colorDebug = lipgloss.Color("244")
 	
 	styleSuccess = lipgloss.NewStyle().Foreground(colorSuccess).Bold(true)
 	styleError = lipgloss.NewStyle().Foreground(colorError).Bold(true)
 	styleInfo = lipgloss.NewStyle().Foreground(colorInfo)
 	styleWarning = lipgloss.NewStyle().Foreground(colorWarning).Italic(true)
+	styleDebug = lipgloss.NewStyle().Foreground(colorDebug).Italic(true)
 
 	styleHeader = lipgloss.NewStyle().
 			Bold(true).
@@ -27,6 +31,7 @@ var (
 			PaddingLeft(2).
 			PaddingRight(2).
 			MarginBottom(1)
+
 )
 
 func PrintHeader() {
@@ -65,6 +70,13 @@ func FailFastf(format string, args ...interface{}) {
 	fmt.Printf("\n%s\n", styleError.Render("✖ CRITICAL ERROR"))
 	fmt.Println(styleError.Render(msg))
 	os.Exit(1)
+}
+
+func Debugf(format string, args ...interface{}) {
+	if DebugMode {
+		msg := fmt.Sprintf(format, args...)
+		fmt.Println(styleDebug.Render("⚙ [DEBUG] " + msg))
+	}
 }
 
 func FailFast(err error) {
