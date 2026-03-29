@@ -36,7 +36,7 @@ var startCmd = &cobra.Command{
 				))	
 			}
 
-			err := engine.EnsureNixEnvironment(cfg.Dependencies.NixPackages)
+			err := engine.BootEnvironment(cfg.Dependencies.NixPackages)
 			if err != nil {
 				ui.FailFast(err)
 			}

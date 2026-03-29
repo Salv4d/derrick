@@ -40,6 +40,25 @@ type NixTemplateData struct {
 	Packages []string
 }
 
+func BootEnvironment(requestPackages []string) error {
+	ui.Info("Initializing Derrick sandbox...")
+
+	err := EnsureNixEnvironment(requestPackages)
+	if err != nil {
+		return err
+	}
+
+	finalPackages, err := ValidateAndResolve(requestPackages)
+	if err != nil {
+		return err
+	}
+
+	_ = finalPackages
+
+	ui.SuccessInline("Environment verified and locked. Ready for execution.\n")
+	return nil
+}
+
 func EnsureNixEnvironment(packages []string) error {
 	if len(packages) == 0 {
 		return nil
@@ -71,7 +90,7 @@ func EnsureNixEnvironment(packages []string) error {
 		return fmt.Errorf("failed to write flake.nix: %w", err)
 	}
 
-	ui.SuccessInline("Nix Flake generated successfully.\n")
+	ui.Success("Nix Flake generated successfully.\n")
 	return nil
 }
 
