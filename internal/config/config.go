@@ -1,16 +1,16 @@
 package config
 
 type ProjectConfig struct {
-	Name string `yaml:"name"`
-	Version string `yaml:"version"`
-	Dependencies Dependencies `yaml:"dependencies"`
+	Name string `yaml:"name" validate:"required,lowercase"`
+	Version string `yaml:"version" validate:"required"`
+	Dependencies Dependencies `yaml:"dependencies" validate:"required"`
 	Hooks LifecycleHooks `yaml:"hooks"`
-	Validations []ValidationCheck `yaml:"validations"`
+	Validations []ValidationCheck `yaml:"validations" validate:"dive"`
 }
 
 type Dependencies struct {
-	NixPackages []string `yaml:"nix_packages"`
-	Dockerfile string `yaml:"docker_file,omitempty"`
+	NixPackages []string `yaml:"nix_packages" validate:"required,min=1"`
+	Dockerfile string `yaml:"docker_file,omitempty" validate:"omitempty,filepath"`
 }
 
 type LifecycleHooks struct {
@@ -23,7 +23,7 @@ type LifecycleHooks struct {
 }
 
 type ValidationCheck struct {
-	Name string `yaml:"name"`
-	Command string `yaml:"command"`
+	Name string `yaml:"name" validate:"required"`
+	Command string `yaml:"command" validate:"required"`
 	AutoFix string `yaml:"auto_fix,omitempty"`
 }
