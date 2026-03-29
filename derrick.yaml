@@ -3,7 +3,7 @@ version: "1.0.0"
 dependencies:
   nix_packages:
     - "cowsay"
-  docker_file: "docker-compose.yaml"
+  docker_file: "docker-compose.yml"
 hooks:
   pre_init: "cowsay 'Hello from inside the Nix Bubble!'"
   post_init: "echo 'Setting up local folders...' && mkdir -p tmp/cache"

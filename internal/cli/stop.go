@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"fmt"
+
 	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/engine"
 	"github.com/Salv4d/derrick/internal/ui"
@@ -23,7 +25,18 @@ any defined post_stop lifecycle hooks to clean up the environment.`,
 			ui.FailFast(err)
 		}
 
-		ui.Info("⚙️  [Mock] Stopping Docker containers and Nix environments...\n")
+		if cfg.Dependencies.Dockerfile != "" {
+		if !engine.IsDockerInstalled() {
+			ui.FailFast(fmt.Errorf(
+				"Docker is not running. Cannot stop containers.",
+			))
+		}
+
+		err := engine.StartContainers(cfg.Dependencies.Dockerfile)
+		if err != nil {
+			ui.FailFast(err)
+		}
+	}
 
 		useNix := len(cfg.Dependencies.NixPackages) > 0
 

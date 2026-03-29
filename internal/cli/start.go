@@ -48,11 +48,23 @@ var startCmd = &cobra.Command{
 		engine.ExecuteHook("post_init", cfg.Hooks.PostInit, useNix)
 		engine.ExecuteHook("pre_start", cfg.Hooks.PreStart, useNix)
 
-		ui.Info("⚙️  [Mock] Starting Nix isolated shell and Docker containers...\n")
+		if cfg.Dependencies.Dockerfile != "" {
+			if !engine.IsDockerInstalled() {
+				ui.FailFast(fmt.Errorf(
+					"This project requires Docker, but it is not installed or not running.\n" +
+					"Please install Docker Desktop or Docker Engine to continue.",
+				))
+			}
 
-		ui.Success("Environment is validated and ready!")
+			err := engine.StartContainers(cfg.Dependencies.Dockerfile)
+			if err != nil {
+				ui.FailFast(err)
+			}
+		}
 
 		engine.ExecuteHook("post_start", cfg.Hooks.PostStart, useNix)
+		
+		ui.Success("Environment is validated and ready!")
 	},
 }
 

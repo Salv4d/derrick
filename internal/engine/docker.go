@@ -29,6 +29,17 @@ func StartContainers(composeFile string) error {
 	err := cmd.Run()
 	if err != nil {
 		errMsg := strings.TrimSpace(stderr.String())
+
+		if strings.Contains(errMsg, "permission denied") && strings.Contains(errMsg, "docker.sock") {
+			return fmt.Errorf(
+				"Docker permission denied.\n" +
+				"Your current user does not have access to the Docker daemon.\n" +
+				"To fix this on Linux/WSL, run the following commands:\n\n" +
+				"  sudo usermod -aG docker $USER\n" +
+				"  newgrp docker",
+			)
+		}
+
 		if errMsg != "" {
 			return fmt.Errorf("Docker Compose failed: %s", errMsg)
 		}
