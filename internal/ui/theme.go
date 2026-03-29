@@ -50,3 +50,15 @@ func FailFast(err error) {
 	fmt.Println(styleError.Render(err.Error()))
 	os.Exit(1)
 }
+
+func SuccessInline(msg string) string {
+	return styleSuccess.Render("✓ " + msg)
+}
+
+func ErrorInline(msg string) string {
+	return styleError.Render("✖ " + msg)
+}
+
+func WarningInline(msg string) string {
+	return styleWarning.Render("⚠ " + msg)
+}
