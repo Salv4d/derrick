@@ -25,7 +25,9 @@ any defined post_stop lifecycle hooks to clean up the environment.`,
 
 		ui.Info("⚙️  [Mock] Stopping Docker containers and Nix environments...\n")
 
-		engine.ExecuteHook("post_stop", cfg.Hooks.PostStop)
+		useNix := len(cfg.Dependencies.NixPackages) > 0
+
+		engine.ExecuteHook("post_stop", cfg.Hooks.PostStop, useNix)
 
 		ui.Success("Environment successfully stopped!")
 	},

@@ -15,12 +15,13 @@ func ExecuteHook(stage string, command string, useNix bool) {
 
 	ui.Info(fmt.Sprintf("Executing hook: [%s]", stage))
 
-	actualCmd := command
+	var cmd *exec.Cmd
 	if useNix {
-		actualCmd = WrapWithNix(command)
+		nixArgs := WrapWithNix(command)
+		cmd = exec.Command(nixArgs[0], nixArgs[1:]...)
+	} else {
+		cmd = exec.Command("base", "-c", command)
 	}
-
-	cmd := exec.Command("bash", "-c", actualCmd)
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

@@ -50,12 +50,13 @@ func RunValidations(checks []config.ValidationCheck, useNix bool) {
 }
 
 func executeCommand(command string, useNix bool) error {
-	actualCmd := command
+	var cmd *exec.Cmd
 	if useNix {
-		actualCmd = WrapWithNix(command)
+		nixArgs := WrapWithNix(command)
+		cmd = exec.Command(nixArgs[0], nixArgs[1:]...)
+	} else {
+		cmd = exec.Command("bash", "-c", command)
 	}
-
-	cmd := exec.Command("bash", "-c", actualCmd)
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"text/template"
 
 	"github.com/Salv4d/derrick/internal/ui"
@@ -11,19 +13,19 @@ import (
 
 const nixFlakeTemplate = `
 {
-	description = "Derrick Auto-Generated Flake"
+	description = "Derrick Auto-Generated Flake";
 
 	inputs = {
 		nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 	};
 
-	outputs = { self, nixpkgs };
+	outputs = { self, nixpkgs }:
 	let
 		system = "x86_64-linux";
-		pkg = nixpkgs.legacyPackages.${system}
+		pkgs = nixpkgs.legacyPackages.${system};
 	in
 	{
-		devShells.${system}.default = pkg.mkShell {
+		devShells.${system}.default = pkgs.mkShell {
 			packages = with pkgs; [
 			{{ range .Packages }}
 			{{ . }}
@@ -63,10 +65,30 @@ func EnsureNixEnvironment(packages []string) error {
 		return fmt.Errorf("failed to execute Nix template: %w", err)
 	}
 
+	flakePath := filepath.Join(dir, "flake.nix")
+	err = os.WriteFile(flakePath, flakeContent.Bytes(), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write flake.nix: %w", err)
+	}
+
 	ui.SuccessInline("Nix Flake generated successfully.\n")
 	return nil
 }
 
-func WrapWithNix(command string) string {
-	return fmt.Sprintf("nix develop ./.derrick#default -c bash -c %q", command)
+func WrapWithNix(command string) []string {
+	absPath, _ := filepath.Abs(".derrick")
+	return []string{
+		"nix",
+		"develop",
+		fmt.Sprintf("path:%s#default", absPath),
+		"-c",
+		"bash",
+		"-c",
+		command,
+	}
+}
+
+func IsNixInstalled() bool {
+	_, err := exec.LookPath("nix")
+	return err == nil
 }
