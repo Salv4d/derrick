@@ -5,15 +5,22 @@ dependencies:
     - "cowsay"
   docker_file: "docker-compose.yml"
 hooks:
-  pre_init: "cowsay 'Hello from inside the Nix Bubble!'"
-  post_init: "echo 'Setting up local folders...' && mkdir -p tmp/cache"
-  post_start: |
-    echo 'Running fake database migrations...'
-    for i in {1..3}; do
-      echo "  -> Migrating table $i..."
-      sleep 1
-    done
-  post_stop: |
+  pre_init:
+    - "echo 'Step 1: Fetching credentials...'"
+    - "sleep 1"
+    - "cowsay 'Step 2: Mooing from Nix!'"
+  post_init:
+    - "echo 'Setting up local folders...' && mkdir -p tmp/cache"
+  post_start:
+    - |
+      echo 'Running fake database migrations...'
+      for i in {1..3}; do
+        echo "  -> Migrating table $i..."
+        sleep 1
+      done
+    - "echo 'Seeding database...'"
+  post_stop: 
+    - |
       echo 'Cleaning up temporary files...'
       rm -rf tmp/cache
       echo 'Done! Have a great day.'

@@ -14,12 +14,12 @@ type Dependencies struct {
 }
 
 type LifecycleHooks struct {
-	PreInit string `yaml:"pre_init,omitempty"`
-	PostInit string `yaml:"post_init,omitempty"`
-	PreStart string `yaml:"pre_start,omitempty"`
-	PostStart string `yaml:"post_start,omitempty"`
-	PreBuild string `yaml:"pre_build,omitempty"`
-	PostStop string `yaml:"post_stop,omitempty"`	
+	PreInit []string `yaml:"pre_init,omitempty"`
+	PostInit []string `yaml:"post_init,omitempty"`
+	PreStart []string `yaml:"pre_start,omitempty"`
+	PostStart []string `yaml:"post_start,omitempty"`
+	PreBuild []string `yaml:"pre_build,omitempty"`
+	PostStop []string `yaml:"post_stop,omitempty"`	
 }
 
 type ValidationCheck struct {
