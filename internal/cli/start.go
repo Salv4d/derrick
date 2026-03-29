@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Salv4d/derrick/internal/config"
+	"github.com/Salv4d/derrick/internal/engine"
 	"github.com/Salv4d/derrick/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -25,6 +26,10 @@ var startCmd = &cobra.Command{
 
 		ui.Success(fmt.Sprintf("Successfully loaded configuration for project: %s (v%s)\n", cfg.Name, cfg.Version))
 		ui.Info(fmt.Sprintf("Found %d Nix packages and %d validation checks to run.\n", len(cfg.Dependencies.NixPackages), len(cfg.Validations)))
+		
+		engine.RunValidations(cfg.Validations)
+
+		ui.Success("Environment is validated and ready!")
 	},
 }
 
