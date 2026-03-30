@@ -1,14 +1,20 @@
 <p align="center">
-  <img src="assets/logo.png" alt="Derrick CLI Logo" width="200">
+  <img src="assets/logo.png" alt="Derrick CLI Logo" width="200" style="filter: drop-shadow(0 0 10px rgb(255, 255, 255));">
 </p>
 
-# Derrick CLI
+<h1 align="center">Derrick CLI</h1>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
-[![Go Report Card](https://goreportcard.com/badge/github.com/Salv4d/derrick)](https://goreportcard.com/report/github.com/Salv4d/derrick)
-[![Stability: Alpha](https://img.shields.io/badge/Stability-Alpha-orange.svg)](#status)
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-purple.svg" alt="License: MIT"></a>
+  <a href="https://goreportcard.com/report/github.com/Salv4d/derrick"><img src="https://goreportcard.com/badge/github.com/Salv4d/derrick" alt="Go Report Card"></a>
+  <img src="https://img.shields.io/badge/Stability-Alpha-orange.svg" alt="Stability: Alpha">
+</p>
 
-**Derrick** is a professional-grade local development orchestrator designed for complex microservice environments. It acts as a **smart control plane** that unites the absolute reproducibility of **Nix** with the containerization of **Docker Compose**, wrapped in a rigorous state validation system.
+<p align="center">
+  <strong>Derrick</strong> is a professional-grade local development orchestrator designed for complex microservice environments. It acts as a <strong>smart control plane</strong> that unites the absolute reproducibility of <strong>Nix</strong> with the containerization of <strong>Docker Compose</strong>, wrapped in a rigorous state validation system.
+</p>
+
+---
 
 Unlike generic task runners, Derrick ensures that every contributor's machine is a bit-for-bit clone of the production-grade toolchain, without ever polluting the host OS.
 
