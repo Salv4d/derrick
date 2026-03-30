@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"text/template"
 
+	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/ui"
 )
 
@@ -16,7 +17,7 @@ const nixFlakeTemplate = `
 	description = "Derrick Auto-Generated Flake";
 
 	inputs = {
-		nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+		nixpkgs.url = "{{ .Registry }}";
 	};
 
 	outputs = { self, nixpkgs }:
@@ -37,18 +38,19 @@ const nixFlakeTemplate = `
 `
 
 type NixTemplateData struct {
+	Registry string
 	Packages []string
 }
 
-func BootEnvironment(requestPackages []string) error {
+func BootEnvironment(requestPackages []string, registryURL string) error {
 	ui.Section("Derrick Sandbox Initialization")
 
-	err := EnsureNixEnvironment(requestPackages)
+	err := EnsureNixEnvironment(requestPackages, registryURL)
 	if err != nil {
 		return err
 	}
 
-	_, err = ValidateAndResolve(requestPackages)
+	_, err = ValidateAndResolve(requestPackages, registryURL)
 	if err != nil {
 		return err
 	}
@@ -57,12 +59,17 @@ func BootEnvironment(requestPackages []string) error {
 	return nil
 }
 
-func EnsureNixEnvironment(packages []string) error {
+func EnsureNixEnvironment(packages []string, customRegistry string) error {
 	if len(packages) == 0 {
 		return nil
 	}
 
 	ui.Task("Ensuring Nix environment isolation")
+
+	registry := customRegistry
+	if registry == "" {
+		registry = config.DefaultNixRegistry
+	}
 
 	dir := ".derrick"
 	err := os.MkdirAll(dir, 0o755)
@@ -78,7 +85,7 @@ func EnsureNixEnvironment(packages []string) error {
 	}
 
 	var flakeContent bytes.Buffer
-	data := NixTemplateData{Packages: packages}
+	data := NixTemplateData{Registry: registry, Packages: packages}
 	err = tmpl.Execute(&flakeContent, data)
 	if err != nil {
 		ui.Error("FAILED")

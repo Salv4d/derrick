@@ -1,8 +1,10 @@
 name: "my-awesome-project"
 version: "1.0.0"
 dependencies:
+  nix_registry: "github:NixOS/nixpkgs/nixos-22.11"
   nix_packages:
     - "cowsay"
+    - "python310"
   docker_file: "docker-compose.yml"
 hooks:
   pre_init:
