@@ -22,7 +22,7 @@ type NixSearchRecord struct {
 
 var undefinedRegex = regexp.MustCompile(`undefined variable '(.*?)'`)
 
-func ValidateAndResolve(packages []string) ([]string, error) {
+func ValidateAndResolve(packages []string, registryURL string) ([]string, error) {
 	absPath, _ := filepath.Abs(".derrick")
 
 	cmd := exec.Command("nix", "develop", fmt.Sprintf("path:%s#default", absPath), "-c", "true")
@@ -37,6 +37,27 @@ func ValidateAndResolve(packages []string) ([]string, error) {
 
 		if len(matches) > 1 {
 			missingPkg := matches[1]
+
+			if legacyRegistry, found := LegacyRegistryMap[missingPkg]; found {
+				ui.Warningf("'%s' was removed from the unstable registry.", missingPkg)
+
+				var useTimeMachine bool
+				form := huh.NewForm(
+					huh.NewGroup(
+						huh.NewConfirm().
+							Title(fmt.Sprintf("Derrick found it in a legacy snapshot. Pin registry to %s?", legacyRegistry)).
+							Value(&useTimeMachine),
+					),
+				)
+				if err := form.Run(); err == nil && useTimeMachine {
+					_ = UpdateYAMLRegistry(legacyRegistry)
+					ui.Successf("Pinned registry to legacy snapshot for '%s'.", missingPkg)
+
+					EnsureNixEnvironment(packages, legacyRegistry)
+					return ValidateAndResolve(packages, legacyRegistry)
+				}
+			}
+
 			ui.Errorf("Nix package '%s' not found.", missingPkg)
 
 			alternatives, searchErr := searchAlternatives(missingPkg)
@@ -49,11 +70,13 @@ func ValidateAndResolve(packages []string) ([]string, error) {
 			}
 
 			var selectedPkg string
-			options := make([]huh.Option[string], len(alternatives))
+			options := make([]huh.Option[string], len(alternatives)+1)
 			for i, alt := range alternatives {
 				label := fmt.Sprintf("%s (v%s) - %s", alt.PName, alt.Version, truncate(alt.Description, 50))
 				options[i] = huh.NewOption(label, alt.PName)
 			}
+
+			options[len(alternatives)] = huh.NewOption("✖ None of these (Abort)", "ABORT_RESOLUTION")
 
 			form := huh.NewForm(
 				huh.NewGroup(
@@ -68,6 +91,10 @@ func ValidateAndResolve(packages []string) ([]string, error) {
 				return packages, fmt.Errorf("resolution cancelled: %w", err)
 			}
 
+			if selectedPkg == "ABORT_RESOLUTION" {
+				return packages, fmt.Errorf("user aborted package resolution. Please manually fix '%s' in derrick.yaml", missingPkg)
+			}
+
 			for i, p := range packages {
 				if p == missingPkg {
 					packages[i] = selectedPkg
@@ -75,10 +102,11 @@ func ValidateAndResolve(packages []string) ([]string, error) {
 				}
 			}
 
+			_ = UpdateYAMLPackage(missingPkg, selectedPkg)
 			ui.Successf("Resolved '%s' -> '%s'.", missingPkg, selectedPkg)
 
-			EnsureNixEnvironment(packages)
-			return ValidateAndResolve(packages)
+			EnsureNixEnvironment(packages, registryURL)
+			return ValidateAndResolve(packages, registryURL)
 		}
 
 		return packages, fmt.Errorf("nix evaluation failed:\n%s\n\nRun 'derrick shell --debug' to investigate", errStr)
