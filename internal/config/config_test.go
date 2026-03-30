@@ -42,7 +42,6 @@ validations:
 		assert.Len(t, cfg.Dependencies.NixPackages, 2, "Should parse exactly 2 nix packages")
 		assert.Equal(t, "go", cfg.Dependencies.NixPackages[0], "First nix package should be 'go'")
 
-		// Check defaults
 		assert.Equal(t, DefaultNixRegistry, cfg.Dependencies.NixRegistry, "Should use default nix registry when missing")
 		assert.Equal(t, "docker-compose.yml", cfg.Dependencies.DockerCompose, "Should use default docker-compose.yml when missing")
 

@@ -49,27 +49,32 @@ func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix boo
 	for key, rules := range cfg.Env {
 		val, exists := os.LookupEnv(key)
 
-		// 1. Check if required but missing
-		if (!exists || val == "") && rules.Required {
-			ui.Section("Environment Configuration")
-			ui.Warningf("Required variable %s is missing.", key)
+		if !exists || val == "" {
+			if rules.Default != "" {
+				val = rules.Default
+				ui.Infof("Using default value for %s: %s", key, val)
+				newEnvValues[key] = val
+				os.Setenv(key, val)
+			} else if rules.Required {
+				ui.Section("Environment Configuration")
+				ui.Warningf("Required variable %s is missing.", key)
 
-			input, err := promptInput(fmt.Sprintf("Enter value for %s", key), rules.Description)
-			if err != nil {
-				return fmt.Errorf("configuration aborted by user")
+				input, err := promptInput(fmt.Sprintf("Enter value for %s", key), rules.Description)
+				if err != nil {
+					return fmt.Errorf("configuration aborted by user")
+				}
+
+				input = strings.TrimSpace(input)
+				if input == "" {
+					return fmt.Errorf("%s is required but was left empty", key)
+				}
+
+				val = input
+				newEnvValues[key] = val
+				os.Setenv(key, val)
 			}
-
-			input = strings.TrimSpace(input)
-			if input == "" {
-				return fmt.Errorf("%s is required but was left empty", key)
-			}
-
-			val = input
-			newEnvValues[key] = val
-			os.Setenv(key, val)
 		}
 
-		// 2. Perform optional validation if a command is provided
 		for {
 			if rules.Validation == "" || val == "" {
 				break
@@ -109,7 +114,7 @@ func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix boo
 				val = strings.TrimSpace(input)
 				os.Setenv(key, val)
 				newEnvValues[key] = val
-				// Continue loop to re-validate new value
+
 			}
 		}
 	}
@@ -127,11 +132,10 @@ func updateEnvFile(path string, vars map[string]string) error {
 
 	for k, v := range vars {
 		found := false
-		// Escape double quotes in the value
+
 		escapedVal := strings.ReplaceAll(v, "\"", "\\\"")
 		newLine := fmt.Sprintf("%s=\"%s\"", k, escapedVal)
 
-		// Try to find and replace existing key
 		re := regexp.MustCompile(fmt.Sprintf(`^%s=.*$`, regexp.QuoteMeta(k)))
 		for i, line := range lines {
 			if re.MatchString(strings.TrimSpace(line)) {
@@ -142,7 +146,7 @@ func updateEnvFile(path string, vars map[string]string) error {
 		}
 
 		if !found {
-			// Append if not found
+
 			if len(lines) > 0 && lines[len(lines)-1] != "" {
 				lines = append(lines, "")
 			}
@@ -151,7 +155,7 @@ func updateEnvFile(path string, vars map[string]string) error {
 	}
 
 	output := strings.Join(lines, "\n")
-	// Clean up leading/trailing empty lines if any were introduced by splitting an empty file
+
 	output = strings.TrimLeft(output, "\n")
 
 	err := os.WriteFile(path, []byte(output), 0o600)

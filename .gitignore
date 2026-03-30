@@ -17,3 +17,4 @@ bin/
 
 # Derrick auto-generated files
 .derrick/
+tmp

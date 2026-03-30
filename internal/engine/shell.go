@@ -28,13 +28,8 @@ func (e *ShellEngine) EnterSandbox(projectRoot string) error {
 
 	flakePath := fmt.Sprintf("path:%s#default", derrickDir)
 
-	// Define the internal command we want to run INSIDE the nix environment
-	// We use --norc to keep it clean, and --login to ensure a fresh session
-	// \e[34m is Blue, \e[0m is reset
 	customPrompt := "export PS1='\\e[34m(derrick-sandbox)\\e[0m \\w > '; bash --norc"
 
-	// Construct the final Nix command
-	// We use 'sh -c' so that the semicolon is interpreted by a shel
 	cmd := exec.Command(nixPath, "develop", flakePath, "-c", "sh", "-c", customPrompt)
 
 	cmd.Stdin = os.Stdin

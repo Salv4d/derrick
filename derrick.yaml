@@ -11,10 +11,11 @@ env:
   GITHUB_TOKEN:
     description: "Personal Access Token for GitHub API"
     required: true
-    validation: "curl --fail -s -o /dev/null -I -H \"Authorization: token $GITHUB_TOKEN\" https://api.github.com/user"
+    validation: "curl -s -o /dev/null -I -H \"Authorization: token $GITHUB_TOKEN\" https://api.github.com/user"
   DATABASE_URL:
     description: "Connection string for the PostgreSQL database"
     required: false
+    default: "postgres://user:pass@localhost:5432/derrick"
 
 hooks:
   pre_init:

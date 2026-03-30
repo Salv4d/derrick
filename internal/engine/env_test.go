@@ -13,12 +13,10 @@ import (
 
 func TestValidateAndLoadEnv_AllSet(t *testing.T) {
 	tempDir := t.TempDir()
-	
-	// Set environment variables
+
 	os.Setenv("TEST_VAR_1", "value1")
 	defer os.Unsetenv("TEST_VAR_1")
 
-	// Mock prompters just in case
 	origSelect := promptSelect
 	origInput := promptInput
 	defer func() {
@@ -27,7 +25,7 @@ func TestValidateAndLoadEnv_AllSet(t *testing.T) {
 	}()
 	promptSelect = func(title string, options []huh.Option[string]) (string, error) { return "abort", nil }
 	promptInput = func(title, description string) (string, error) { return "", nil }
-	
+
 	cfg := &config.ProjectConfig{
 		Env: map[string]config.EnvVar{
 			"TEST_VAR_1": {
@@ -47,14 +45,13 @@ func TestValidateAndLoadEnv_AllSet(t *testing.T) {
 
 func TestValidateAndLoadEnv_Validation(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	os.Setenv("VALID_VAR", "ok")
 	defer os.Unsetenv("VALID_VAR")
-	
+
 	os.Setenv("INVALID_VAR", "fail")
 	defer os.Unsetenv("INVALID_VAR")
 
-	// Save original prompters
 	origSelect := promptSelect
 	origInput := promptInput
 	defer func() {
@@ -67,7 +64,7 @@ func TestValidateAndLoadEnv_Validation(t *testing.T) {
 			Env: map[string]config.EnvVar{
 				"VALID_VAR": {
 					Required:   true,
-					Validation: "true", // success
+					Validation: "true",
 				},
 			},
 		}
@@ -84,7 +81,7 @@ func TestValidateAndLoadEnv_Validation(t *testing.T) {
 			Env: map[string]config.EnvVar{
 				"INVALID_VAR": {
 					Required:   true,
-					Validation: "false", // fail
+					Validation: "false",
 				},
 			},
 		}
@@ -103,7 +100,7 @@ func TestValidateAndLoadEnv_Validation(t *testing.T) {
 			Env: map[string]config.EnvVar{
 				"INVALID_VAR": {
 					Required:   true,
-					Validation: "false", // fail
+					Validation: "false",
 				},
 			},
 		}
@@ -119,11 +116,11 @@ func TestValidateAndLoadEnv_Validation(t *testing.T) {
 			if selectCount == 1 {
 				return "update", nil
 			}
-			return "abort", nil // Should not reach here if update works and re-validates (unless second validation also fails)
+			return "abort", nil
 		}
 
 		promptInput = func(title, description string) (string, error) {
-			// Change env var to something that passes validation
+
 			os.Setenv("INVALID_VAR", "new-value")
 			return "new-value", nil
 		}
@@ -137,34 +134,51 @@ func TestValidateAndLoadEnv_Validation(t *testing.T) {
 			},
 		}
 
-		// Initially INVALID_VAR is "fail", so validation "test ... = new-value" will fail.
-		// Then we mock "update" and return "new-value", and validation should pass.
 		err := ValidateAndLoadEnv(tempDir, cfgFail, false)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, selectCount)
 	})
 }
 
+func TestValidateAndLoadEnv_Default(t *testing.T) {
+	tempDir := t.TempDir()
+	envPath := filepath.Join(tempDir, ".env")
+
+	cfg := &config.ProjectConfig{
+		Env: map[string]config.EnvVar{
+			"DEFAULT_VAR": {
+				Default: "my-default-value",
+			},
+		},
+	}
+
+	err := ValidateAndLoadEnv(tempDir, cfg, false)
+	assert.NoError(t, err)
+
+	content, _ := os.ReadFile(envPath)
+	assert.Contains(t, string(content), `DEFAULT_VAR="my-default-value"`)
+	assert.Equal(t, "my-default-value", os.Getenv("DEFAULT_VAR"))
+}
+
 func TestUpdateEnvFile(t *testing.T) {
 	tempDir := t.TempDir()
 	envPath := filepath.Join(tempDir, ".env")
-	
-	// Create initial file
+
 	initialContent := "EXISTING_KEY=\"old_value\"\n# Comment\nSOME_OTHER_KEY=\"keep_this\""
 	err := os.WriteFile(envPath, []byte(initialContent), 0o600)
 	require.NoError(t, err)
 
 	vars := map[string]string{
-		"EXISTING_KEY":   "new_value",
-		"KEY2":           "VALUE2 \"WITH QUOTES\"",
+		"EXISTING_KEY": "new_value",
+		"KEY2":         "VALUE2 \"WITH QUOTES\"",
 	}
-	
+
 	err = updateEnvFile(envPath, vars)
 	require.NoError(t, err)
-	
+
 	content, err := os.ReadFile(envPath)
 	require.NoError(t, err)
-	
+
 	contentStr := string(content)
 	assert.Contains(t, contentStr, `EXISTING_KEY="new_value"`)
 	assert.NotContains(t, contentStr, `EXISTING_KEY="old_value"`)
