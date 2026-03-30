@@ -77,7 +77,7 @@ var startCmd = &cobra.Command{
 			engine.ExecuteHook("pre_start", cfg.Hooks.PreStart, useNix)
 		}
 
-		if cfg.Dependencies.Dockerfile != "" {
+		if cfg.Dependencies.DockerCompose != "" {
 			ui.Section("Docker Orchestration")
 			ui.Task("Verifying Docker daemon")
 
@@ -89,7 +89,7 @@ var startCmd = &cobra.Command{
 			}
 
 			ui.Task("Starting containers")
-			err := engine.StartContainers(cfg.Dependencies.Dockerfile)
+			err := engine.StartContainers(cfg.Dependencies.DockerCompose)
 			if err != nil {
 				ui.FailFast(err)
 			}

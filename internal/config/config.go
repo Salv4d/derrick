@@ -17,9 +17,9 @@ type ProjectConfig struct {
 }
 
 type Dependencies struct {
-	NixPackages []string `yaml:"nix_packages" validate:"required,min=1"`
-	NixRegistry string   `yaml:"nix_registry" validate:"omitempty"`
-	Dockerfile  string   `yaml:"docker_file,omitempty" validate:"omitempty,filepath"`
+	NixPackages   []string `yaml:"nix_packages" validate:"required,min=1"`
+	NixRegistry   string   `yaml:"nix_registry" validate:"omitempty"`
+	DockerCompose string   `yaml:"docker_compose,omitempty" validate:"omitempty,filepath"`
 }
 
 type LifecycleHooks struct {

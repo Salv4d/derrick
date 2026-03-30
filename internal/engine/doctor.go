@@ -23,7 +23,7 @@ func RunAudit(cfg *config.ProjectConfig) {
 		}
 	}
 
-	if cfg.Dependencies.Dockerfile != "" {
+	if cfg.Dependencies.DockerCompose != "" {
 		ui.SubTask("Checking Docker daemon")
 		if IsDockerInstalled() {
 			ui.Success("OK")

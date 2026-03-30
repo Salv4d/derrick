@@ -19,7 +19,7 @@ dependencies:
   nix_packages:
     - "go"
     - "nodejs"
-  docker_file: "docker-compose.yml"
+  docker_compose: "docker-compose.yml"
 hooks:
   pre_init:
     - "echo 'Starting'"
@@ -44,7 +44,7 @@ validations:
 
 		// Check defaults
 		assert.Equal(t, DefaultNixRegistry, cfg.Dependencies.NixRegistry, "Should use default nix registry when missing")
-		assert.Equal(t, "docker-compose.yml", cfg.Dependencies.Dockerfile, "Should use default docker-compose.yml when missing")
+		assert.Equal(t, "docker-compose.yml", cfg.Dependencies.DockerCompose, "Should use default docker-compose.yml when missing")
 
 		assert.Len(t, cfg.Hooks.PreInit, 1, "Should parse exactly 1 pre_init hook")
 		assert.Equal(t, "echo 'Starting'", cfg.Hooks.PreInit[0], "The hook command should match")

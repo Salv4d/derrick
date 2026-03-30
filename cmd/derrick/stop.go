@@ -23,14 +23,14 @@ any defined post_stop lifecycle hooks to clean up the environment.`,
 			ui.FailFast(err)
 		}
 
-		if cfg.Dependencies.Dockerfile != "" {
+		if cfg.Dependencies.DockerCompose != "" {
 			if !engine.IsDockerInstalled() {
 				ui.FailFastf(
 					"Docker is not running. Cannot stop containers.",
 				)
 			}
 
-			err := engine.StartContainers(cfg.Dependencies.Dockerfile)
+			err := engine.StopContainers(cfg.Dependencies.DockerCompose)
 			if err != nil {
 				ui.FailFast(err)
 			}
