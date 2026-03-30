@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="Derrick CLI Logo" width="200">
+</p>
+
 # Derrick CLI
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
