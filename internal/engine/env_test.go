@@ -145,21 +145,30 @@ func TestValidateAndLoadEnv_Validation(t *testing.T) {
 	})
 }
 
-func TestAppendToEnvFile(t *testing.T) {
+func TestUpdateEnvFile(t *testing.T) {
 	tempDir := t.TempDir()
 	envPath := filepath.Join(tempDir, ".env")
 	
+	// Create initial file
+	initialContent := "EXISTING_KEY=\"old_value\"\n# Comment\nSOME_OTHER_KEY=\"keep_this\""
+	err := os.WriteFile(envPath, []byte(initialContent), 0o600)
+	require.NoError(t, err)
+
 	vars := map[string]string{
-		"KEY1": "VALUE1",
-		"KEY2": "VALUE2 \"WITH QUOTES\"",
+		"EXISTING_KEY":   "new_value",
+		"KEY2":           "VALUE2 \"WITH QUOTES\"",
 	}
 	
-	err := appendToEnvFile(envPath, vars)
+	err = updateEnvFile(envPath, vars)
 	require.NoError(t, err)
 	
 	content, err := os.ReadFile(envPath)
 	require.NoError(t, err)
 	
-	assert.Contains(t, string(content), `KEY1="VALUE1"`)
-	assert.Contains(t, string(content), `KEY2="VALUE2 \"WITH QUOTES\""`)
+	contentStr := string(content)
+	assert.Contains(t, contentStr, `EXISTING_KEY="new_value"`)
+	assert.NotContains(t, contentStr, `EXISTING_KEY="old_value"`)
+	assert.Contains(t, contentStr, `SOME_OTHER_KEY="keep_this"`)
+	assert.Contains(t, contentStr, `# Comment`)
+	assert.Contains(t, contentStr, `KEY2="VALUE2 \"WITH QUOTES\""`)
 }

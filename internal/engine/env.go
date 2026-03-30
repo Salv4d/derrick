@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/Salv4d/derrick/internal/config"
@@ -114,26 +115,50 @@ func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix boo
 	}
 
 	if len(newEnvValues) > 0 {
-		return appendToEnvFile(envPath, newEnvValues)
+		return updateEnvFile(envPath, newEnvValues)
 	}
 
 	return nil
 }
 
-func appendToEnvFile(path string, vars map[string]string) error {
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		return fmt.Errorf("failed to open %s for writing: %v\n Fix: Check file permissions using `ls -la %s` and ensure you have write access", path, err, path)
-	}
-	defer f.Close()
+func updateEnvFile(path string, vars map[string]string) error {
+	content, _ := os.ReadFile(path)
+	lines := strings.Split(string(content), "\n")
 
 	for k, v := range vars {
-		line := fmt.Sprintf("\n%s=\"%s\"", k, strings.ReplaceAll(v, "\"", "\\\""))
-		if _, err := f.WriteString(line); err != nil {
-			return fmt.Errorf("failed to write secret to %s: %v\n Fix: Ensure your disk is not full and you have write permissions", path, err)
+		found := false
+		// Escape double quotes in the value
+		escapedVal := strings.ReplaceAll(v, "\"", "\\\"")
+		newLine := fmt.Sprintf("%s=\"%s\"", k, escapedVal)
+
+		// Try to find and replace existing key
+		re := regexp.MustCompile(fmt.Sprintf(`^%s=.*$`, regexp.QuoteMeta(k)))
+		for i, line := range lines {
+			if re.MatchString(strings.TrimSpace(line)) {
+				lines[i] = newLine
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			// Append if not found
+			if len(lines) > 0 && lines[len(lines)-1] != "" {
+				lines = append(lines, "")
+			}
+			lines = append(lines, newLine)
 		}
 	}
 
-	ui.Successf("Saved %d new variables to %s", len(vars), path)
+	output := strings.Join(lines, "\n")
+	// Clean up leading/trailing empty lines if any were introduced by splitting an empty file
+	output = strings.TrimLeft(output, "\n")
+
+	err := os.WriteFile(path, []byte(output), 0o600)
+	if err != nil {
+		return fmt.Errorf("failed to write to %s: %v", path, err)
+	}
+
+	ui.Successf("Updated %s with %d variables", path, len(vars))
 	return nil
 }
