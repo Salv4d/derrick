@@ -42,15 +42,15 @@ type NixTemplateData struct {
 	Packages []string
 }
 
-func BootEnvironment(requestPackages []string, registryURL string) error {
+func BootEnvironment(configPath string, requestPackages []string, registryURL string) error {
 	ui.Section("Derrick Sandbox Initialization")
 
-	err := EnsureNixEnvironment(requestPackages, registryURL)
+	err := EnsureNixEnvironment(configPath, requestPackages, registryURL)
 	if err != nil {
 		return err
 	}
 
-	_, err = ValidateAndResolve(requestPackages, registryURL)
+	_, err = ValidateAndResolve(configPath, requestPackages, registryURL)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func BootEnvironment(requestPackages []string, registryURL string) error {
 	return nil
 }
 
-func EnsureNixEnvironment(packages []string, customRegistry string) error {
+func EnsureNixEnvironment(configPath string, packages []string, customRegistry string) error {
 	if len(packages) == 0 {
 		return nil
 	}

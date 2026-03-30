@@ -22,7 +22,7 @@ type NixSearchRecord struct {
 
 var undefinedRegex = regexp.MustCompile(`undefined variable '(.*?)'`)
 
-func ValidateAndResolve(packages []string, registryURL string) ([]string, error) {
+func ValidateAndResolve(configPath string, packages []string, registryURL string) ([]string, error) {
 	absPath, _ := filepath.Abs(".derrick")
 
 	cmd := exec.Command("nix", "develop", fmt.Sprintf("path:%s#default", absPath), "-c", "true")
@@ -50,11 +50,11 @@ func ValidateAndResolve(packages []string, registryURL string) ([]string, error)
 					),
 				)
 				if err := form.Run(); err == nil && useTimeMachine {
-					_ = UpdateYAMLRegistry(legacyRegistry)
+					_ = UpdateYAMLRegistry(configPath, legacyRegistry)
 					ui.Successf("Pinned registry to legacy snapshot for '%s'.", missingPkg)
 
-					EnsureNixEnvironment(packages, legacyRegistry)
-					return ValidateAndResolve(packages, legacyRegistry)
+					EnsureNixEnvironment(configPath, packages, legacyRegistry)
+					return ValidateAndResolve(configPath, packages, legacyRegistry)
 				}
 			}
 
@@ -66,7 +66,7 @@ func ValidateAndResolve(packages []string, registryURL string) ([]string, error)
 			}
 
 			if len(alternatives) == 0 {
-				return packages, fmt.Errorf("no similar packages found for '%s'. Please check your derrick.yaml.", missingPkg)
+				return packages, fmt.Errorf("no similar packages found for '%s'. Please check your %s.", missingPkg, configPath)
 			}
 
 			var selectedPkg string
@@ -92,7 +92,7 @@ func ValidateAndResolve(packages []string, registryURL string) ([]string, error)
 			}
 
 			if selectedPkg == "ABORT_RESOLUTION" {
-				return packages, fmt.Errorf("user aborted package resolution. Please manually fix '%s' in derrick.yaml", missingPkg)
+				return packages, fmt.Errorf("user aborted package resolution. Please manually fix '%s' in %s", missingPkg, configPath)
 			}
 
 			for i, p := range packages {
@@ -102,11 +102,11 @@ func ValidateAndResolve(packages []string, registryURL string) ([]string, error)
 				}
 			}
 
-			_ = UpdateYAMLPackage(missingPkg, selectedPkg)
+			_ = UpdateYAMLPackage(configPath, missingPkg, selectedPkg)
 			ui.Successf("Resolved '%s' -> '%s'.", missingPkg, selectedPkg)
 
-			EnsureNixEnvironment(packages, registryURL)
-			return ValidateAndResolve(packages, registryURL)
+			EnsureNixEnvironment(configPath, packages, registryURL)
+			return ValidateAndResolve(configPath, packages, registryURL)
 		}
 
 		return packages, fmt.Errorf("nix evaluation failed:\n%s\n\nRun 'derrick shell --debug' to investigate", errStr)

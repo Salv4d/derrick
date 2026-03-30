@@ -16,9 +16,7 @@ any defined post_stop lifecycle hooks to clean up the environment.`,
 		ui.PrintHeader()
 		ui.Info("Stopping Derrick orchestration...")
 
-		filename := "derrick.yaml"
-
-		cfg, err := config.ParseConfig(filename)
+		cfg, err := config.ParseConfig(configFile)
 		if err != nil {
 			ui.FailFast(err)
 		}

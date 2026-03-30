@@ -24,7 +24,7 @@ dependencies:
 	require.NoError(t, err)
 
 	t.Run("Update Package", func(t *testing.T) {
-		err := UpdateYAMLPackage("python3", "python310")
+		err := UpdateYAMLPackage("derrick.yaml", "python3", "python310")
 		require.NoError(t, err)
 
 		content, _ := os.ReadFile("derrick.yaml")
@@ -47,7 +47,7 @@ dependencies:
 `
 		os.WriteFile("derrick.yaml", []byte(initialYAML), 0o644)
 
-		err := UpdateYAMLRegistry("github:NixOS/nixpkgs/nixos-22.11")
+		err := UpdateYAMLRegistry("derrick.yaml", "github:NixOS/nixpkgs/nixos-22.11")
 		require.NoError(t, err)
 
 		content, _ := os.ReadFile("derrick.yaml")
@@ -62,7 +62,7 @@ dependencies:
 `
 		os.WriteFile("derrick.yaml", []byte(initialYAML), 0o644)
 
-		err := UpdateYAMLRegistry("new-registry")
+		err := UpdateYAMLRegistry("derrick.yaml", "new-registry")
 		require.NoError(t, err)
 
 		content, _ := os.ReadFile("derrick.yaml")

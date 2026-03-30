@@ -9,11 +9,10 @@ import (
 	"github.com/Salv4d/derrick/internal/ui"
 )
 
-func UpdateYAMLPackage(oldPkg, newPkg string) error {
-	path := "derrick.yaml"
-	content, err := os.ReadFile(path)
+func UpdateYAMLPackage(configPath, oldPkg, newPkg string) error {
+	content, err := os.ReadFile(configPath)
 	if err != nil {
-		return fmt.Errorf("Could not read derrick.yaml for auto-update: %w", err)
+		return fmt.Errorf("Could not read %s for auto-update: %w", configPath, err)
 	}
 
 	lines := strings.Split(string(content), "\n")
@@ -50,25 +49,24 @@ func UpdateYAMLPackage(oldPkg, newPkg string) error {
 	}
 
 	if !replaced {
-		ui.Warningf("Could not auto-update '%s' in derrick.yaml. Please update it manually.", oldPkg)
+		ui.Warningf("Could not auto-update '%s' in %s. Please update it manually.", oldPkg, configPath)
 		return nil
 	}
 
 	newContent := strings.Join(newLines, "\n")
-	err = os.WriteFile(path, []byte(newContent), 0o644)
+	err = os.WriteFile(configPath, []byte(newContent), 0o644)
 	if err != nil {
-		return fmt.Errorf("failed to write updated derrick.yaml: %w", err)
+		return fmt.Errorf("failed to write updated %s: %w", configPath, err)
 	}
 
-	ui.Successf("Auto-updated derrick.yaml: %s → %s", oldPkg, newPkg)
+	ui.Successf("Auto-updated %s: %s → %s", configPath, oldPkg, newPkg)
 	return nil
 }
 
-func UpdateYAMLRegistry(newRegistry string) error {
-	path := "derrick.yaml"
-	content, err := os.ReadFile(path)
+func UpdateYAMLRegistry(configPath, newRegistry string) error {
+	content, err := os.ReadFile(configPath)
 	if err != nil {
-		return fmt.Errorf("could not read derrick.yaml for auto-update: %w", err)
+		return fmt.Errorf("could not read %s for auto-update: %w", configPath, err)
 	}
 
 	lines := strings.Split(string(content), "\n")
@@ -114,7 +112,7 @@ func UpdateYAMLRegistry(newRegistry string) error {
 	// Pass 2: The Injection (If the key didn't exist at all)
 	if !registryReplaced {
 		if dependenciesIdx == -1 {
-			return fmt.Errorf("could not find 'dependencies:' block in derrick.yaml")
+			return fmt.Errorf("could not find 'dependencies:' block in %s", configPath)
 		}
 
 		// Create a brand new line with standard 2-space YAML indentation
@@ -126,11 +124,11 @@ func UpdateYAMLRegistry(newRegistry string) error {
 
 	// Write the updated lines back to disk
 	newContent := strings.Join(newLines, "\n")
-	err = os.WriteFile(path, []byte(newContent), 0o644)
+	err = os.WriteFile(configPath, []byte(newContent), 0o644)
 	if err != nil {
-		return fmt.Errorf("failed to write updated derrick.yaml: %w", err)
+		return fmt.Errorf("failed to write updated %s: %w", configPath, err)
 	}
 
-	ui.Successf("Pinned Derrick to legacy Nix registry: %s", newRegistry)
+	ui.Successf("Pinned Derrick to legacy Nix registry in %s: %s", configPath, newRegistry)
 	return nil
 }

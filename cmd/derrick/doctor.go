@@ -17,9 +17,7 @@ health report.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ui.PrintHeader()
 
-		filename := "derrick.yaml"
-
-		cfg, err := config.ParseConfig(filename)
+		cfg, err := config.ParseConfig(configFile)
 		if err != nil {
 			ui.FailFast(err)
 		}

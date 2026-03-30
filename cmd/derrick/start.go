@@ -24,8 +24,8 @@ var startCmd = &cobra.Command{
 			ui.FailFastf("Failed to get current working directory: %v", err)
 		}
 
-		ui.Task("Parsing derrick.yaml contract")
-		cfg, err := config.ParseConfig("derrick.yaml")
+		ui.Taskf("Parsing %s contract", configFile)
+		cfg, err := config.ParseConfig(configFile)
 		if err != nil {
 			ui.FailFast(err)
 		}
@@ -53,7 +53,7 @@ var startCmd = &cobra.Command{
 				))
 			}
 
-			err := engine.BootEnvironment(cfg.Dependencies.NixPackages, cfg.Dependencies.NixRegistry)
+			err = engine.BootEnvironment(configFile, cfg.Dependencies.NixPackages, cfg.Dependencies.NixRegistry)
 			if err != nil {
 				ui.FailFast(err)
 			}
