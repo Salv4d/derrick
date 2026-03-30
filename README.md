@@ -1,11 +1,5 @@
 <p align="center">
-  <table align="center">
-    <tr>
-      <td bgcolor="white" align="center">
-        <img src="assets/logo.png" alt="Derrick CLI Logo" width="200">
-      </td>
-    </tr>
-  </table>
+  <img src="assets/logo.jpg" alt="Derrick CLI Logo" width="200">
 </p>
 
 <h1 align="center">Derrick CLI</h1>
