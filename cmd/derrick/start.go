@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/engine"
@@ -15,23 +16,38 @@ var startCmd = &cobra.Command{
 	Long:  `Reads the derrick.yaml configuration and begins the orchestration process, validating the state and executing the defined hooks.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ui.PrintHeader()
-		ui.Info("Starting Derrick orchestration...")
 
-		filename := "derrick.yaml"
-		cfg, err := config.ParseConfig(filename)
+		ui.Section("Configuration")
+
+		cwd, err := os.Getwd()
+		if err != nil {
+			ui.FailFastf("Failed to get current working directory: %v", err)
+		}
+
+		ui.Task("Parsing derrick.yaml contract")
+		cfg, err := config.ParseConfig("derrick.yaml")
+		if err != nil {
+			ui.FailFast(err)
+		}
+		ui.Successf("Loaded project: %s (v%s)", cfg.Name, cfg.Version)
+
+		ui.Task("Validating environment variables")
+		err = engine.ValidateAndLoadEnv(cwd, cfg)
 		if err != nil {
 			ui.FailFast(err)
 		}
 
-		ui.Successf("Successfully loaded configuration for project: %s (v%s)\n", cfg.Name, cfg.Version)
-		ui.Infof("Found %d Nix packages and %d validation checks to run.\n", len(cfg.Dependencies.NixPackages), len(cfg.Validations))
+		ui.Success("Environment state is valid")
 
 		useNix := len(cfg.Dependencies.NixPackages) > 0
 		if useNix {
+			ui.Section("Nix Sandbox")
+			ui.Taskf("Resolving %d Nix packages", len(cfg.Dependencies.NixPackages))
+
 			if !engine.IsNixInstalled() {
 				ui.FailFast(fmt.Errorf(
 					"This project requires Nix, but it is not installed on your system.\n" +
-						"To install it on Linux/WSL, run:\n" +
+						" Fix: Run the following command to install it:\n" +
 						"curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install",
 				))
 			}
@@ -40,31 +56,54 @@ var startCmd = &cobra.Command{
 			if err != nil {
 				ui.FailFast(err)
 			}
+			ui.Success("Sandbox generated successfully")
 		}
-		engine.ExecuteHook("pre_init", cfg.Hooks.PreInit, useNix)
 
-		engine.RunValidations(cfg.Validations, useNix)
+		ui.Section("Initialization Lifecycle")
 
-		engine.ExecuteHook("post_init", cfg.Hooks.PostInit, useNix)
-		engine.ExecuteHook("pre_start", cfg.Hooks.PreStart, useNix)
+		if len(cfg.Hooks.PreInit) > 0 {
+			engine.ExecuteHook("pre_init", cfg.Hooks.PreInit, useNix)
+		}
+
+		if len(cfg.Validations) > 0 {
+			engine.RunValidations(cfg.Validations, useNix)
+		}
+
+		if len(cfg.Hooks.PostInit) > 0 {
+			engine.ExecuteHook("post_init", cfg.Hooks.PostInit, useNix)
+		}
+
+		if len(cfg.Hooks.PreStart) > 0 {
+			engine.ExecuteHook("pre_start", cfg.Hooks.PreStart, useNix)
+		}
 
 		if cfg.Dependencies.Dockerfile != "" {
+			ui.Section("Docker Orchestration")
+			ui.Task("Verifying Docker daemon")
+
 			if !engine.IsDockerInstalled() {
 				ui.FailFast(fmt.Errorf(
-					"This project requires Docker, but it is not installed or not running.\n" +
-						"Please install Docker Desktop or Docker Engine to continue.",
+					"This project requires Docker, but the daemon is not running or not installed.\n" +
+						" Fix: Please start Docker Desktop or install the Docker Engine.",
 				))
 			}
 
+			ui.Task("Starting containers")
 			err := engine.StartContainers(cfg.Dependencies.Dockerfile)
 			if err != nil {
 				ui.FailFast(err)
 			}
+			ui.Success("Containers are running")
 		}
 
-		engine.ExecuteHook("post_start", cfg.Hooks.PostStart, useNix)
+		if len(cfg.Hooks.PostStart) > 0 {
+			ui.Section("Post-Flight")
+			ui.Task("Executing post_start hook")
+			engine.ExecuteHook("post_start", cfg.Hooks.PostStart, useNix)
+		}
 
-		ui.Success("Environment is validated and ready!")
+		fmt.Println()
+		ui.Successf("🚀 %s environment is strictly validated and ready!", cfg.Name)
 	},
 }
 

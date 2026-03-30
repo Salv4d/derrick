@@ -30,7 +30,7 @@ var (
 			MarginBottom(1)
 
 	styleSection = lipgloss.NewStyle().Bold(true).MarginTop(1).MarginBottom(1)
-	styleTask    = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
+	styleTask    = lipgloss.NewStyle().Foreground(lipgloss.Color("252")).Align(lipgloss.Left)
 	styleSubTask = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
 )
 
@@ -47,7 +47,7 @@ func Sectionf(format string, args ...any) {
 }
 
 func Task(msg string) {
-	fmt.Printf("  %-40s ", styleTask.Render(msg+"..."))
+	fmt.Printf("  %s\n", styleTask.Render(msg+"..."))
 }
 
 func Taskf(format string, args ...any) {
@@ -55,7 +55,7 @@ func Taskf(format string, args ...any) {
 }
 
 func SubTask(msg string) {
-	fmt.Printf("    %-38s ", styleSubTask.Render(msg+"..."))
+	fmt.Printf("    %s ", styleSubTask.Render(msg+"..."))
 }
 
 func SubTaskf(format string, args ...any) {
