@@ -20,7 +20,7 @@ func RunValidations(checks []config.ValidationCheck, useNix bool) {
 	ui.Section("Environment Validation")
 
 	for _, check := range checks {
-		ui.Task("Checking " + check.Name)
+		ui.SubTask("Checking " + check.Name)
 
 		err := executeCommand(check.Command, useNix)
 		if err == nil {

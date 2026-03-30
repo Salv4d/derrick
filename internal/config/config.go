@@ -2,12 +2,18 @@ package config
 
 const DefaultNixRegistry = "github:NixOS/nixpkgs/nixos-unstable"
 
+type EnvVar struct {
+	Description string `yaml:"description"`
+	Required    bool   `yaml:"required"`
+}
+
 type ProjectConfig struct {
 	Name         string            `yaml:"name" validate:"required,lowercase"`
 	Version      string            `yaml:"version" validate:"required"`
 	Dependencies Dependencies      `yaml:"dependencies" validate:"required"`
 	Hooks        LifecycleHooks    `yaml:"hooks"`
 	Validations  []ValidationCheck `yaml:"validations" validate:"dive"`
+	Env          map[string]EnvVar `yaml:"env"`
 }
 
 type Dependencies struct {

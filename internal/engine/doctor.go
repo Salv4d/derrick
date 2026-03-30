@@ -13,7 +13,7 @@ func RunAudit(cfg *config.ProjectConfig) {
 
 	useNix := len(cfg.Dependencies.NixPackages) > 0
 	if useNix {
-		ui.Task("Checking Nix package manager")
+		ui.SubTask("Checking Nix package manager")
 		if IsNixInstalled() {
 			ui.Success("OK")
 		} else {
@@ -24,7 +24,7 @@ func RunAudit(cfg *config.ProjectConfig) {
 	}
 
 	if cfg.Dependencies.Dockerfile != "" {
-		ui.Task("Checking Docker daemon")
+		ui.SubTask("Checking Docker daemon")
 		if IsDockerInstalled() {
 			ui.Success("OK")
 		} else {
