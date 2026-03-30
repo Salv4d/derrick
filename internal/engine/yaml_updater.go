@@ -126,7 +126,7 @@ func UpdateYAMLRegistry(newRegistry string) error {
 
 	// Write the updated lines back to disk
 	newContent := strings.Join(newLines, "\n")
-	err = os.WriteFile(path, []byte(newContent), 0644)
+	err = os.WriteFile(path, []byte(newContent), 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to write updated derrick.yaml: %w", err)
 	}
