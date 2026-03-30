@@ -12,6 +12,32 @@ import (
 	"github.com/joho/godotenv"
 )
 
+var (
+	promptSelect = func(title string, options []huh.Option[string]) (string, error) {
+		var choice string
+		form := huh.NewForm(huh.NewGroup(
+			huh.NewSelect[string]().
+				Title(title).
+				Options(options...).
+				Value(&choice),
+		))
+		err := form.Run()
+		return choice, err
+	}
+
+	promptInput = func(title, description string) (string, error) {
+		var input string
+		form := huh.NewForm(huh.NewGroup(
+			huh.NewInput().
+				Title(title).
+				Description(description).
+				Value(&input),
+		))
+		err := form.Run()
+		return input, err
+	}
+)
+
 func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix bool) error {
 	envPath := filepath.Join(projectDir, ".env")
 
@@ -27,14 +53,8 @@ func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix boo
 			ui.Section("Environment Configuration")
 			ui.Warningf("Required variable %s is missing.", key)
 
-			var input string
-			prompt := huh.NewInput().
-				Title(fmt.Sprintf("Enter value for %s", key)).
-				Description(rules.Description).
-				Value(&input)
-
-			form := huh.NewForm(huh.NewGroup(prompt))
-			if err := form.Run(); err != nil {
+			input, err := promptInput(fmt.Sprintf("Enter value for %s", key), rules.Description)
+			if err != nil {
 				return fmt.Errorf("configuration aborted by user")
 			}
 
@@ -49,15 +69,47 @@ func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix boo
 		}
 
 		// 2. Perform optional validation if a command is provided
-		if rules.Validation != "" && val != "" {
-			ui.Taskf("Validating %s value", key)
-
-			err := executeCommand(rules.Validation, useNix)
-			if err != nil {
-				ui.Error("FAILED")
-				return fmt.Errorf("validation failed for %s: %v\n Fix: Ensure the value is correct and try again.", key, err)
+		for {
+			if rules.Validation == "" || val == "" {
+				break
 			}
-			ui.Success("OK")
+
+			ui.Taskf("Validating %s value", key)
+			err := executeCommand(rules.Validation, useNix)
+			if err == nil {
+				ui.Success("OK")
+				break
+			}
+
+			ui.Error("FAILED")
+			ui.Errorf("  Error: %v", err)
+
+			choice, err := promptSelect(fmt.Sprintf("Validation failed for %s. How to proceed?", key), []huh.Option[string]{
+				huh.NewOption("Update value", "update"),
+				huh.NewOption("Skip validation", "skip"),
+				huh.NewOption("Abort", "abort"),
+			})
+
+			if err != nil || choice == "abort" {
+				return fmt.Errorf("configuration aborted for %s", key)
+			}
+
+			if choice == "skip" {
+				ui.Warningf("Skipping validation for %s. Proceeding with caution.", key)
+				break
+			}
+
+			if choice == "update" {
+				input, err := promptInput(fmt.Sprintf("Enter new value for %s", key), rules.Description)
+				if err != nil {
+					return fmt.Errorf("configuration aborted")
+				}
+
+				val = strings.TrimSpace(input)
+				os.Setenv(key, val)
+				newEnvValues[key] = val
+				// Continue loop to re-validate new value
+			}
 		}
 	}
 
