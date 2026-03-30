@@ -1,5 +1,11 @@
 <p align="center">
-  <img src="assets/logo.png" alt="Derrick CLI Logo" width="200" style="filter: drop-shadow(0 0 10px rgb(255, 255, 255));">
+  <table align="center">
+    <tr>
+      <td bgcolor="white" align="center">
+        <img src="assets/logo.png" alt="Derrick CLI Logo" width="200">
+      </td>
+    </tr>
+  </table>
 </p>
 
 <h1 align="center">Derrick CLI</h1>
