@@ -31,15 +31,16 @@ var startCmd = &cobra.Command{
 		}
 		ui.Successf("Loaded project: %s (v%s)", cfg.Name, cfg.Version)
 
+		useNix := len(cfg.Dependencies.NixPackages) > 0
+
 		ui.Task("Validating environment variables")
-		err = engine.ValidateAndLoadEnv(cwd, cfg)
+		err = engine.ValidateAndLoadEnv(cwd, cfg, useNix)
 		if err != nil {
 			ui.FailFast(err)
 		}
 
 		ui.Success("Environment state is valid")
 
-		useNix := len(cfg.Dependencies.NixPackages) > 0
 		if useNix {
 			ui.Section("Nix Sandbox")
 			ui.Taskf("Resolving %d Nix packages", len(cfg.Dependencies.NixPackages))

@@ -5,6 +5,7 @@ const DefaultNixRegistry = "github:NixOS/nixpkgs/nixos-unstable"
 type EnvVar struct {
 	Description string `yaml:"description"`
 	Required    bool   `yaml:"required"`
+	Validation  string `yaml:"validation,omitempty"`
 }
 
 type ProjectConfig struct {

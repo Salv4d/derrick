@@ -30,8 +30,42 @@ func TestValidateAndLoadEnv_AllSet(t *testing.T) {
 		},
 	}
 
-	err := ValidateAndLoadEnv(tempDir, cfg)
+	err := ValidateAndLoadEnv(tempDir, cfg, false)
 	assert.NoError(t, err)
+}
+
+func TestValidateAndLoadEnv_Validation(t *testing.T) {
+	tempDir := t.TempDir()
+	
+	os.Setenv("VALID_VAR", "ok")
+	defer os.Unsetenv("VALID_VAR")
+	
+	os.Setenv("INVALID_VAR", "fail")
+	defer os.Unsetenv("INVALID_VAR")
+	
+	cfg := &config.ProjectConfig{
+		Env: map[string]config.EnvVar{
+			"VALID_VAR": {
+				Required:   true,
+				Validation: "true", // success
+			},
+		},
+	}
+
+	err := ValidateAndLoadEnv(tempDir, cfg, false)
+	assert.NoError(t, err)
+
+	cfgFail := &config.ProjectConfig{
+		Env: map[string]config.EnvVar{
+			"INVALID_VAR": {
+				Required:   true,
+				Validation: "false", // fail
+			},
+		},
+	}
+
+	err = ValidateAndLoadEnv(tempDir, cfgFail, false)
+	assert.Error(t, err)
 }
 
 func TestAppendToEnvFile(t *testing.T) {

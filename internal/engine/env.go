@@ -12,54 +12,60 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig) error {
+func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix bool) error {
 	envPath := filepath.Join(projectDir, ".env")
 
 	_ = godotenv.Load(envPath)
 
-	var missingVars []string
 	newEnvValues := make(map[string]string)
 
 	for key, rules := range cfg.Env {
 		val, exists := os.LookupEnv(key)
+
+		// 1. Check if required but missing
 		if (!exists || val == "") && rules.Required {
-			missingVars = append(missingVars, key)
+			ui.Section("Environment Configuration")
+			ui.Warningf("Required variable %s is missing.", key)
+
+			var input string
+			prompt := huh.NewInput().
+				Title(fmt.Sprintf("Enter value for %s", key)).
+				Description(rules.Description).
+				Value(&input)
+
+			form := huh.NewForm(huh.NewGroup(prompt))
+			if err := form.Run(); err != nil {
+				return fmt.Errorf("configuration aborted by user")
+			}
+
+			input = strings.TrimSpace(input)
+			if input == "" {
+				return fmt.Errorf("%s is required but was left empty", key)
+			}
+
+			val = input
+			newEnvValues[key] = val
+			os.Setenv(key, val)
+		}
+
+		// 2. Perform optional validation if a command is provided
+		if rules.Validation != "" && val != "" {
+			ui.Taskf("Validating %s value", key)
+
+			err := executeCommand(rules.Validation, useNix)
+			if err != nil {
+				ui.Error("FAILED")
+				return fmt.Errorf("validation failed for %s: %v\n Fix: Ensure the value is correct and try again.", key, err)
+			}
+			ui.Success("OK")
 		}
 	}
 
-	if len(missingVars) == 0 {
-		ui.Debug("Environment validation passed. No missing variables.")
-		return nil
+	if len(newEnvValues) > 0 {
+		return appendToEnvFile(envPath, newEnvValues)
 	}
 
-	ui.Section("Environment Validation")
-	ui.Warningf("Detected %d missing required environment variables.", len(missingVars))
-
-	for _, key := range missingVars {
-		rules := cfg.Env[key]
-		var input string
-
-		prompt := huh.NewInput().
-			Title(fmt.Sprintf("Enter value for %s", key)).
-			Description(rules.Description).
-			Value(&input)
-
-		form := huh.NewForm(huh.NewGroup(prompt))
-
-		if err := form.Run(); err != nil {
-			return fmt.Errorf("configuration aborted by user")
-		}
-
-		input = strings.TrimSpace(input)
-		if input == "" {
-			return fmt.Errorf("%s is required but was left empty.\n Fix: Rerun `derrick start` and provide a value", key)
-		}
-
-		newEnvValues[key] = input
-		os.Setenv(key, input)
-	}
-
-	return appendToEnvFile(envPath, newEnvValues)
+	return nil
 }
 
 func appendToEnvFile(path string, vars map[string]string) error {
