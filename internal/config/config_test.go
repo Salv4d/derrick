@@ -42,11 +42,33 @@ validations:
 		assert.Len(t, cfg.Dependencies.NixPackages, 2, "Should parse exactly 2 nix packages")
 		assert.Equal(t, "go", cfg.Dependencies.NixPackages[0], "First nix package should be 'go'")
 
+		// Check defaults
+		assert.Equal(t, DefaultNixRegistry, cfg.Dependencies.NixRegistry, "Should use default nix registry when missing")
+		assert.Equal(t, "docker-compose.yml", cfg.Dependencies.Dockerfile, "Should use default docker-compose.yml when missing")
+
 		assert.Len(t, cfg.Hooks.PreInit, 1, "Should parse exactly 1 pre_init hook")
 		assert.Equal(t, "echo 'Starting'", cfg.Hooks.PreInit[0], "The hook command should match")
 
 		assert.Len(t, cfg.Validations, 1, "Should parse exactly 1 validation")
 		assert.Equal(t, "Check Env", cfg.Validations[0].Name, "Validation name should match")
+	})
+
+	t.Run("Custom Registry", func(t *testing.T) {
+		customYAML := []byte(`
+name: "custom-registry"
+version: "1.0.0"
+dependencies:
+  nix_registry: "github:NixOS/nixpkgs/nixos-22.11"
+  nix_packages: ["go"]
+`)
+		customPath := filepath.Join(tempDir, "custom.yaml")
+		err := os.WriteFile(customPath, customYAML, 0o644)
+		require.NoError(t, err)
+
+		cfg, err := ParseConfig(customPath)
+		require.NoError(t, err)
+
+		assert.Equal(t, "github:NixOS/nixpkgs/nixos-22.11", cfg.Dependencies.NixRegistry)
 	})
 
 	invalidYAML := []byte(`

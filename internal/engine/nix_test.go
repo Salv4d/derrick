@@ -57,8 +57,9 @@ func TestEnsureNixEnvironment(t *testing.T) {
 	require.NoError(t, err, "Failed to change working directory")
 
 	mockPackages := []string{"golang", "python3"}
+	customRegistry := "github:NixOS/nixpkgs/nixos-22.11"
 
-	err = EnsureNixEnvironment(mockPackages)
+	err = EnsureNixEnvironment(mockPackages, customRegistry)
 	assert.NoError(t, err, "EnsureNixEnvironment should not return an error")
 
 	derrickDir := ".derrick"
@@ -72,6 +73,7 @@ func TestEnsureNixEnvironment(t *testing.T) {
 
 	contentStr := string(contentBytes)
 
+	assert.Contains(t, contentStr, customRegistry, "The generated flake should contain the custom registry URL")
 	for _, pkg := range mockPackages {
 		assert.Contains(t, contentStr, pkg, "The generated flake should contain the injected package")
 	}
