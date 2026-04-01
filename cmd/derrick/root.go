@@ -21,8 +21,10 @@ func Execute() {
 }
 
 var configFile string
+var profileName string
 
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&ui.DebugMode, "debug", false, "Enable verbose debug output and stream raw command logs")
 	rootCmd.PersistentFlags().StringVarP(&configFile, "file", "f", "derrick.yaml", "Custom configuration file path")
+	rootCmd.PersistentFlags().StringVarP(&profileName, "profile", "p", "", "Derrick profile to execute")
 }

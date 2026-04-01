@@ -24,8 +24,12 @@ var startCmd = &cobra.Command{
 			ui.FailFastf("Failed to get current working directory: %v", err)
 		}
 
-		ui.Taskf("Parsing %s contract", configFile)
-		cfg, err := config.ParseConfig(configFile)
+		if profileName != "" {
+			ui.Taskf("Parsing %s contract (profile: %s)", configFile, profileName)
+		} else {
+			ui.Taskf("Parsing %s contract", configFile)
+		}
+		cfg, err := config.ParseConfig(configFile, profileName)
 		if err != nil {
 			ui.FailFast(err)
 		}
@@ -90,7 +94,7 @@ var startCmd = &cobra.Command{
 			}
 
 			ui.Task("Starting containers")
-			err := engine.StartContainers(cfg.Dependencies.DockerCompose)
+			err := engine.StartContainers(cfg.Dependencies.DockerCompose, cfg.Dependencies.DockerComposeProfiles)
 			if err != nil {
 				ui.FailFast(err)
 			}

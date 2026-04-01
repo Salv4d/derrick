@@ -16,7 +16,7 @@ any defined post_stop lifecycle hooks to clean up the environment.`,
 		ui.PrintHeader()
 		ui.Info("Stopping Derrick orchestration...")
 
-		cfg, err := config.ParseConfig(configFile)
+		cfg, err := config.ParseConfig(configFile, profileName)
 		if err != nil {
 			ui.FailFast(err)
 		}
@@ -28,7 +28,7 @@ any defined post_stop lifecycle hooks to clean up the environment.`,
 				)
 			}
 
-			err := engine.StopContainers(cfg.Dependencies.DockerCompose)
+			err := engine.StopContainers(cfg.Dependencies.DockerCompose, cfg.Dependencies.DockerComposeProfiles)
 			if err != nil {
 				ui.FailFast(err)
 			}

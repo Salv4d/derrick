@@ -17,7 +17,7 @@ health report.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ui.PrintHeader()
 
-		cfg, err := config.ParseConfig(configFile)
+		cfg, err := config.ParseConfig(configFile, profileName)
 		if err != nil {
 			ui.FailFast(err)
 		}
