@@ -27,7 +27,7 @@ func init() {
 	})
 }
 
-func ParseConfig(filename string) (*ProjectConfig, error) {
+func ParseConfig(filename string, profileName string) (*ProjectConfig, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read %s: %w", filename, err)
@@ -48,6 +48,13 @@ func ParseConfig(filename string) (*ProjectConfig, error) {
 		return nil, formatValidationError(err)
 	}
 
+	if profileName != "" {
+		err = applyProfile(&config, profileName)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if config.Dependencies.NixRegistry == "" {
 		config.Dependencies.NixRegistry = DefaultNixRegistry
 	}
@@ -57,6 +64,63 @@ func ParseConfig(filename string) (*ProjectConfig, error) {
 	}
 
 	return &config, nil
+}
+
+func applyProfile(cfg *ProjectConfig, profileName string) error {
+	profile, exists := cfg.Profiles[profileName]
+	if !exists {
+		return fmt.Errorf("profile '%s' is not defined in derrick.yaml", profileName)
+	}
+
+	if profile.Extend != "" {
+		err := applyProfile(cfg, profile.Extend)
+		if err != nil {
+			return fmt.Errorf("failed to extend profile '%s': %w", profile.Extend, err)
+		}
+	}
+
+	mergeProfileToConfig(cfg, profile)
+
+	return nil
+}
+
+func mergeProfileToConfig(cfg *ProjectConfig, p Profile) {
+	if p.Dependencies != nil {
+		if len(p.Dependencies.NixPackages) > 0 {
+			cfg.Dependencies.NixPackages = append(cfg.Dependencies.NixPackages, p.Dependencies.NixPackages...)
+		}
+		if p.Dependencies.NixRegistry != "" {
+			cfg.Dependencies.NixRegistry = p.Dependencies.NixRegistry
+		}
+		if p.Dependencies.DockerCompose != "" {
+			cfg.Dependencies.DockerCompose = p.Dependencies.DockerCompose
+		}
+		if len(p.Dependencies.DockerComposeProfiles) > 0 {
+			cfg.Dependencies.DockerComposeProfiles = append(cfg.Dependencies.DockerComposeProfiles, p.Dependencies.DockerComposeProfiles...)
+		}
+	}
+
+	if p.Hooks != nil {
+		cfg.Hooks.PreInit = append(cfg.Hooks.PreInit, p.Hooks.PreInit...)
+		cfg.Hooks.PostInit = append(cfg.Hooks.PostInit, p.Hooks.PostInit...)
+		cfg.Hooks.PreStart = append(cfg.Hooks.PreStart, p.Hooks.PreStart...)
+		cfg.Hooks.PostStart = append(cfg.Hooks.PostStart, p.Hooks.PostStart...)
+		cfg.Hooks.PreBuild = append(cfg.Hooks.PreBuild, p.Hooks.PreBuild...)
+		cfg.Hooks.PostStop = append(cfg.Hooks.PostStop, p.Hooks.PostStop...)
+	}
+
+	if len(p.Validations) > 0 {
+		cfg.Validations = append(cfg.Validations, p.Validations...)
+	}
+
+	if len(p.Env) > 0 {
+		if cfg.Env == nil {
+			cfg.Env = make(map[string]EnvVar)
+		}
+		for k, v := range p.Env {
+			cfg.Env[k] = v
+		}
+	}
 }
 
 func formatValidationError(err error) error {

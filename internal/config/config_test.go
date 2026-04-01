@@ -33,7 +33,7 @@ validations:
 	require.NoError(t, err, "Failed to write valid YAML test file")
 
 	t.Run("Valid Config", func(t *testing.T) {
-		cfg, err := ParseConfig(validFilePath)
+		cfg, err := ParseConfig(validFilePath, "")
 		require.NoError(t, err, "Parsing a valid YAML file should not return an error")
 
 		assert.Equal(t, "test-project", cfg.Name, "Project name should match")
@@ -64,7 +64,7 @@ dependencies:
 		err := os.WriteFile(customPath, customYAML, 0o644)
 		require.NoError(t, err)
 
-		cfg, err := ParseConfig(customPath)
+		cfg, err := ParseConfig(customPath, "")
 		require.NoError(t, err)
 
 		assert.Equal(t, "github:NixOS/nixpkgs/nixos-22.11", cfg.Dependencies.NixRegistry)
@@ -84,15 +84,54 @@ dependencies:
 	require.NoError(t, err, "Failed to write invalid yaml test file")
 
 	t.Run("Malformed Config", func(t *testing.T) {
-		_, err := ParseConfig(invalidFilePath)
+		_, err := ParseConfig(invalidFilePath, "")
 
 		assert.Error(t, err, "Parsing a malformed YAML file should return an error")
 	})
 
 	t.Run("Missing File", func(t *testing.T) {
 		missingFilePath := filepath.Join(tempDir, "does_not_exist.yaml")
-		_, err := ParseConfig(missingFilePath)
+		_, err := ParseConfig(missingFilePath, "")
 
 		assert.Error(t, err, "Attempting to parse a non-existing file should return an error")
+	})
+	t.Run("Profile Extension", func(t *testing.T) {
+		profileYAML := []byte(`
+name: "profile-test"
+version: "1.0.0"
+dependencies:
+  nix_packages:
+    - "go"
+profiles:
+  base-worker:
+    dependencies:
+      docker_compose_profiles: ["cache"]
+      nix_packages:
+        - "redis"
+  advanced-worker:
+    extend: "base-worker"
+    dependencies:
+      docker_compose_profiles: ["worker"]
+      nix_packages:
+        - "python3"
+    hooks:
+      pre_start:
+        - "echo 'Starting advanced'"
+`)
+		profilePath := filepath.Join(tempDir, "profile.yaml")
+		err := os.WriteFile(profilePath, profileYAML, 0o644)
+		require.NoError(t, err)
+
+		cfg, err := ParseConfig(profilePath, "advanced-worker")
+		require.NoError(t, err, "Should parse extended profile perfectly")
+
+		assert.Len(t, cfg.Dependencies.NixPackages, 3, "Should merge Root + Base + Advanced")
+		assert.ElementsMatch(t, []string{"go", "redis", "python3"}, cfg.Dependencies.NixPackages)
+
+		assert.Len(t, cfg.Dependencies.DockerComposeProfiles, 2, "Should accumulate compose profiles")
+		assert.ElementsMatch(t, []string{"cache", "worker"}, cfg.Dependencies.DockerComposeProfiles)
+
+		assert.Len(t, cfg.Hooks.PreStart, 1)
+		assert.Equal(t, "echo 'Starting advanced'", cfg.Hooks.PreStart[0])
 	})
 }

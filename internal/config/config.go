@@ -12,16 +12,18 @@ type EnvVar struct {
 type ProjectConfig struct {
 	Name         string            `yaml:"name" validate:"required,lowercase"`
 	Version      string            `yaml:"version" validate:"required"`
-	Dependencies Dependencies      `yaml:"dependencies" validate:"required"`
+	Dependencies Dependencies      `yaml:"dependencies"`
 	Hooks        LifecycleHooks    `yaml:"hooks"`
 	Validations  []ValidationCheck `yaml:"validations" validate:"dive"`
 	Env          map[string]EnvVar `yaml:"env"`
+	Profiles     map[string]Profile `yaml:"profiles,omitempty" validate:"dive"`
 }
 
 type Dependencies struct {
-	NixPackages   []string `yaml:"nix_packages" validate:"required,min=1"`
-	NixRegistry   string   `yaml:"nix_registry" validate:"omitempty"`
-	DockerCompose string   `yaml:"docker_compose,omitempty" validate:"omitempty,filepath"`
+	NixPackages          []string `yaml:"nix_packages"`
+	NixRegistry          string   `yaml:"nix_registry" validate:"omitempty"`
+	DockerCompose        string   `yaml:"docker_compose,omitempty" validate:"omitempty,filepath"`
+	DockerComposeProfiles []string `yaml:"docker_compose_profiles,omitempty"`
 }
 
 type LifecycleHooks struct {
@@ -37,4 +39,12 @@ type ValidationCheck struct {
 	Name    string `yaml:"name" validate:"required"`
 	Command string `yaml:"command" validate:"required"`
 	AutoFix string `yaml:"auto_fix,omitempty"`
+}
+
+type Profile struct {
+	Extend       string            `yaml:"extend,omitempty"`
+	Dependencies *Dependencies     `yaml:"dependencies,omitempty"`
+	Hooks        *LifecycleHooks   `yaml:"hooks,omitempty"`
+	Validations  []ValidationCheck `yaml:"validations,omitempty" validate:"dive"`
+	Env          map[string]EnvVar `yaml:"env,omitempty"`
 }
