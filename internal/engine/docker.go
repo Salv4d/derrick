@@ -14,14 +14,20 @@ func IsDockerInstalled() bool {
 	return err == nil
 }
 
-func StartContainers(composeFile string) error {
+func StartContainers(composeFile string, profiles []string) error {
 	if composeFile == "" {
 		return nil
 	}
 
 	ui.Taskf("Starting Docker containers from [%s]", composeFile)
 
-	cmd := exec.Command("docker", "compose", "-f", composeFile, "up", "-d")
+	args := []string{"compose", "-f", composeFile}
+	for _, p := range profiles {
+		args = append(args, "--profile", p)
+	}
+	args = append(args, "up", "-d")
+
+	cmd := exec.Command("docker", args...)
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -51,14 +57,20 @@ func StartContainers(composeFile string) error {
 	return nil
 }
 
-func StopContainers(composeFile string) error {
+func StopContainers(composeFile string, profiles []string) error {
 	if composeFile == "" {
 		return nil
 	}
 
 	ui.Taskf("Stopping Docker containers from [%s]", composeFile)
 
-	cmd := exec.Command("docker", "compose", "-f", composeFile, "down")
+	args := []string{"compose", "-f", composeFile}
+	for _, p := range profiles {
+		args = append(args, "--profile", p)
+	}
+	args = append(args, "down")
+
+	cmd := exec.Command("docker", args...)
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
