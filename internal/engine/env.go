@@ -66,12 +66,12 @@ func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix boo
 
 				input = strings.TrimSpace(input)
 				if input == "" {
-					return fmt.Errorf("%s is required but was left empty", key)
+					ui.Warningf("%s is required but was left empty. Proceeding with caution.", key)
+				} else {
+					val = input
+					newEnvValues[key] = val
+					os.Setenv(key, val)
 				}
-
-				val = input
-				newEnvValues[key] = val
-				os.Setenv(key, val)
 			}
 		}
 
