@@ -54,7 +54,7 @@ func RunValidations(checks []config.ValidationCheck, useNix bool) {
 func executeCommand(command string, useNix bool) error {
 	var cmd *exec.Cmd
 	if useNix {
-		nixArgs := WrapWithNix(command)
+		nixArgs := WrapWithNix(command, "")
 		ui.Debugf("Executing Nix command: %v", nixArgs)
 		cmd = exec.Command(nixArgs[0], nixArgs[1:]...)
 	} else {

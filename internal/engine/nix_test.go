@@ -39,7 +39,7 @@ func TestWrapWithNix(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := WrapWithNix(tt.command)
+			result := WrapWithNix(tt.command, "")
 
 			assert.Equal(t, tt.expected, result, "The generated Nix command should match the expected output")
 		})
@@ -59,7 +59,7 @@ func TestEnsureNixEnvironment(t *testing.T) {
 	mockPackages := []string{"golang", "python3"}
 	customRegistry := "github:NixOS/nixpkgs/nixos-22.11"
 
-	err = EnsureNixEnvironment("derrick.yaml", mockPackages, customRegistry)
+	err = EnsureNixEnvironment("derrick.yaml", mockPackages, customRegistry, "")
 	assert.NoError(t, err, "EnsureNixEnvironment should not return an error")
 
 	derrickDir := ".derrick"

@@ -22,8 +22,11 @@ type NixSearchRecord struct {
 
 var undefinedRegex = regexp.MustCompile(`undefined variable '(.*?)'`)
 
-func ValidateAndResolve(configPath string, packages []string, registryURL string) ([]string, error) {
-	absPath, _ := filepath.Abs(".derrick")
+func ValidateAndResolve(configPath string, packages []string, registryURL string, outDir string) ([]string, error) {
+	if outDir == "" {
+		outDir = ".derrick"
+	}
+	absPath, _ := filepath.Abs(outDir)
 
 	cmd := exec.Command("nix", "develop", fmt.Sprintf("path:%s#default", absPath), "-c", "true")
 	cmd.Env = append(os.Environ(), "NO_COLOR=1", "TERM=dumb")
@@ -53,8 +56,8 @@ func ValidateAndResolve(configPath string, packages []string, registryURL string
 					_ = UpdateYAMLRegistry(configPath, legacyRegistry)
 					ui.Successf("Pinned registry to legacy snapshot for '%s'.", missingPkg)
 
-					EnsureNixEnvironment(configPath, packages, legacyRegistry)
-					return ValidateAndResolve(configPath, packages, legacyRegistry)
+					EnsureNixEnvironment(configPath, packages, legacyRegistry, outDir)
+					return ValidateAndResolve(configPath, packages, legacyRegistry, outDir)
 				}
 			}
 
@@ -105,8 +108,8 @@ func ValidateAndResolve(configPath string, packages []string, registryURL string
 			_ = UpdateYAMLPackage(configPath, missingPkg, selectedPkg)
 			ui.Successf("Resolved '%s' -> '%s'.", missingPkg, selectedPkg)
 
-			EnsureNixEnvironment(configPath, packages, registryURL)
-			return ValidateAndResolve(configPath, packages, registryURL)
+			EnsureNixEnvironment(configPath, packages, registryURL, outDir)
+			return ValidateAndResolve(configPath, packages, registryURL, outDir)
 		}
 
 		return packages, fmt.Errorf("nix evaluation failed:\n%s\n\nRun 'derrick shell --debug' to investigate", errStr)

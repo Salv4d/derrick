@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/Salv4d/derrick/internal/engine"
 	"github.com/Salv4d/derrick/internal/ui"
@@ -22,7 +23,8 @@ var shellCmd = &cobra.Command{
 		}
 
 		eng := engine.NewShellEngine()
-		if err := eng.EnterSandbox(cwd, args); err != nil {
+		derrickDir := filepath.Join(cwd, ".derrick")
+		if err := eng.EnterSandbox(derrickDir, args); err != nil {
 			ui.FailFast(err)
 		}
 	},

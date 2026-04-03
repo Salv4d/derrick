@@ -42,15 +42,15 @@ type NixTemplateData struct {
 	Packages []string
 }
 
-func BootEnvironment(configPath string, requestPackages []string, registryURL string) error {
+func BootEnvironment(configPath string, requestPackages []string, registryURL string, outDir string) error {
 	ui.Section("Derrick Sandbox Initialization")
 
-	err := EnsureNixEnvironment(configPath, requestPackages, registryURL)
+	err := EnsureNixEnvironment(configPath, requestPackages, registryURL, outDir)
 	if err != nil {
 		return err
 	}
 
-	_, err = ValidateAndResolve(configPath, requestPackages, registryURL)
+	_, err = ValidateAndResolve(configPath, requestPackages, registryURL, outDir)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func BootEnvironment(configPath string, requestPackages []string, registryURL st
 	return nil
 }
 
-func EnsureNixEnvironment(configPath string, packages []string, customRegistry string) error {
+func EnsureNixEnvironment(configPath string, packages []string, customRegistry string, outDir string) error {
 	if len(packages) == 0 {
 		return nil
 	}
@@ -71,7 +71,10 @@ func EnsureNixEnvironment(configPath string, packages []string, customRegistry s
 		registry = config.DefaultNixRegistry
 	}
 
-	dir := ".derrick"
+	dir := outDir
+	if dir == "" {
+		dir = ".derrick"
+	}
 	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		ui.Error("FAILED")
@@ -103,8 +106,11 @@ func EnsureNixEnvironment(configPath string, packages []string, customRegistry s
 	return nil
 }
 
-func WrapWithNix(command string) []string {
-	absPath, _ := filepath.Abs(".derrick")
+func WrapWithNix(command string, outDir string) []string {
+	if outDir == "" {
+		outDir = ".derrick"
+	}
+	absPath, _ := filepath.Abs(outDir)
 	return []string{
 		"nix",
 		"develop",

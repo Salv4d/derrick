@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 )
 
@@ -15,18 +14,17 @@ func NewShellEngine() *ShellEngine {
 	return &ShellEngine{}
 }
 
-func (e *ShellEngine) EnterSandbox(projectRoot string, args []string) error {
+func (e *ShellEngine) EnterSandbox(flakeDir string, args []string) error {
 	nixPath, err := exec.LookPath("nix")
 	if err != nil {
 		return fmt.Errorf("nix is not installed or not in PATH.\nResolution: Install Nix via 'curl -L https://nixos.org/nix/install | sh'")
 	}
 
-	derrickDir := filepath.Join(projectRoot, ".derrick")
-	if _, err := os.Stat(derrickDir); os.IsNotExist(err) {
-		return fmt.Errorf("sandbox not found at %s.\nResolution: Run 'derrick start' to initialize the environment first", derrickDir)
+	if _, err := os.Stat(flakeDir); os.IsNotExist(err) {
+		return fmt.Errorf("sandbox not found at %s.\nResolution: Run 'derrick start' to initialize the environment first", flakeDir)
 	}
 
-	flakePath := fmt.Sprintf("path:%s#default", derrickDir)
+	flakePath := fmt.Sprintf("path:%s#default", flakeDir)
 
 	var cmd *exec.Cmd
 

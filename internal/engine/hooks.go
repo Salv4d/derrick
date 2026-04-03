@@ -23,7 +23,7 @@ func ExecuteHook(stage string, commands []string, useNix bool) {
 
 		var cmd *exec.Cmd
 		if useNix {
-			nixArgs := WrapWithNix(command)
+			nixArgs := WrapWithNix(command, "")
 			ui.Debugf("Executing hook via Nix: %v", nixArgs)
 			cmd = exec.Command(nixArgs[0], nixArgs[1:]...)
 		} else {
