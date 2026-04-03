@@ -14,6 +14,11 @@ const config = {
   projectName: 'derrick',
   trailingSlash: false,
 
+  markdown: {
+    mermaid: true,
+  },
+  themes: ['@docusaurus/theme-mermaid'],
+
   onBrokenLinks: 'warn',
 
   i18n: {
