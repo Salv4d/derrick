@@ -11,6 +11,14 @@ var rootCmd = &cobra.Command{
 	Long: `Derrick unites the absolute reproducibility of Nix with 
 Docker Compose containerization, wrapping them in a strict 
 state validation and hook execution system.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		v, _ := cmd.Flags().GetBool("version")
+		if v {
+			RunVersion()
+			return
+		}
+		cmd.Help()
+	},
 }
 
 func Execute() {
@@ -27,4 +35,5 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&ui.DebugMode, "debug", false, "Enable verbose debug output and stream raw command logs")
 	rootCmd.PersistentFlags().StringVarP(&configFile, "file", "f", "derrick.yaml", "Custom configuration file path")
 	rootCmd.PersistentFlags().StringVarP(&profileName, "profile", "p", "", "Derrick profile to execute")
+	rootCmd.Flags().BoolP("version", "v", false, "Print the version number and seamlessly check for updates")
 }
