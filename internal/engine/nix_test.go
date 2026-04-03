@@ -25,17 +25,17 @@ func TestWrapWithNix(t *testing.T) {
 		{
 			name:     "Simple single word command",
 			command:  "node -v",
-			expected: []string{"nix", "develop", expectedFlakePath, "-c", "bash", "-c", "node -v"},
+			expected: []string{"nix", "develop", "--impure", expectedFlakePath, "-c", "bash", "-c", "node -v"},
 		},
 		{
 			name:     "Complex command with single quotes",
 			command:  "echo 'Hello World'",
-			expected: []string{"nix", "develop", expectedFlakePath, "-c", "bash", "-c", "echo 'Hello World'"},
+			expected: []string{"nix", "develop", "--impure", expectedFlakePath, "-c", "bash", "-c", "echo 'Hello World'"},
 		},
 		{
 			name:     "Command with pipes and logical operators",
 			command:  "test -f .env || echo 'Missing'",
-			expected: []string{"nix", "develop", expectedFlakePath, "-c", "bash", "-c", "test -f .env || echo 'Missing'"},
+			expected: []string{"nix", "develop", "--impure", expectedFlakePath, "-c", "bash", "-c", "test -f .env || echo 'Missing'"},
 		},
 	}
 

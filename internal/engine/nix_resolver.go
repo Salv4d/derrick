@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -29,8 +28,8 @@ func ValidateAndResolve(configPath string, packages []config.NixPackage, registr
 	}
 	absPath, _ := filepath.Abs(outDir)
 
-	cmd := exec.Command("nix", "develop", fmt.Sprintf("path:%s#default", absPath), "-c", "true")
-	cmd.Env = append(os.Environ(), "NO_COLOR=1", "TERM=dumb")
+	cmd := exec.Command("nix", "develop", "--impure", fmt.Sprintf("path:%s#default", absPath), "-c", "true")
+	cmd.Env = NixEnv()
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

@@ -64,6 +64,10 @@ func executeCommand(command string, useNix bool) error {
 
 	var stderr bytes.Buffer
 
+	if useNix {
+		cmd.Env = NixEnv()
+	}
+
 	if ui.DebugMode {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)

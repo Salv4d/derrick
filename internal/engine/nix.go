@@ -133,6 +133,12 @@ func EnsureNixEnvironment(configPath string, packages []config.NixPackage, custo
 	return nil
 }
 
+// NixEnv returns the current environment with NIXPKGS_ALLOW_UNFREE=1 set,
+// so that all Nix invocations can resolve unfree packages (e.g. Cursor, VSCode).
+func NixEnv() []string {
+	return append(os.Environ(), "NIXPKGS_ALLOW_UNFREE=1")
+}
+
 func WrapWithNix(command string, outDir string) []string {
 	if outDir == "" {
 		outDir = ".derrick"
@@ -141,6 +147,7 @@ func WrapWithNix(command string, outDir string) []string {
 	return []string{
 		"nix",
 		"develop",
+		"--impure",
 		fmt.Sprintf("path:%s#default", absPath),
 		"-c",
 		"bash",
