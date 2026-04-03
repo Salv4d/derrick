@@ -15,7 +15,7 @@ func NewShellEngine() *ShellEngine {
 	return &ShellEngine{}
 }
 
-func (e *ShellEngine) EnterSandbox(projectRoot string) error {
+func (e *ShellEngine) EnterSandbox(projectRoot string, args []string) error {
 	nixPath, err := exec.LookPath("nix")
 	if err != nil {
 		return fmt.Errorf("nix is not installed or not in PATH.\nResolution: Install Nix via 'curl -L https://nixos.org/nix/install | sh'")

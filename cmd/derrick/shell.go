@@ -9,14 +9,20 @@ import (
 )
 
 var shellCmd = &cobra.Command{
-	Use:   "shell",
-	Short: "Drop into the isoled Nix development sandbox",
+	Use:   "shell [command...]",
+	Short: "Drop into the isolated Nix development sandbox or execute a command inside it",
+	Args:  cobra.ArbitraryArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		cwd, _ := os.Getwd()
-		ui.Infof("Opening sandbox at %s", cwd)
+		
+		if len(args) > 0 {
+			ui.Infof("Executing command in sandbox at %s", cwd)
+		} else {
+			ui.Infof("Opening sandbox at %s", cwd)
+		}
 
 		eng := engine.NewShellEngine()
-		if err := eng.EnterSandbox(cwd); err != nil {
+		if err := eng.EnterSandbox(cwd, args); err != nil {
 			ui.FailFast(err)
 		}
 	},
