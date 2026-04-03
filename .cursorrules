@@ -1,0 +1,26 @@
+# Derrick CLI - AI Coding Instructions
+
+## 1. Primary Language
+- All code, comments, variables, method names, and commit messages MUST be written strictly in **English**.
+
+## 2. Code Quality & Style
+- **Go Conventions**: Adhere strictly to Go idioms (Effective Go). Use `gofmt` and `golangci-lint` to format and check the code.
+- **Project Structure**: Respect the Go Standard Project Layout.
+  - `cmd/derrick`: CLI command declarations using Cobra.
+  - `internal/`: Core business logic and components.
+  - `internal/engine/`: Core orchestration logic for Nix, Docker, hooks, and environment validation. This is the **heart** of the project.
+  - `internal/ui/`: Terminal interfaces, Bubbletea dashboards, and Lipgloss theming.
+  - `internal/config/`: Parsing and modeling for `derrick.yaml` and `.env` constraints.
+- **Dependencies**: The `go.mod` is the single source of truth for Go dependencies (e.g. `charmbracelet` ecosystem for UI, `spf13/cobra` for CLI).
+
+## 3. Commit Messages
+- Use **Conventional Commits**.
+- Examples: `feat: add Nix environment orchestrator`, `fix: resolve docker race condition`, `docs: update architecture overview`.
+- Ensure descriptions provide context ("why"), not merely restate the code change.
+
+## 4. Documentation & Design
+- Always update Mermaid.js diagrams in `docs/architecture.md` when modifying system topologies.
+- Ensure semantic consistency with terms defined in `docs/glossary.md` (e.g., "Sandbox", "Engine").
+
+## 5. Work in Progress / Honesty
+- Do not invent implementations if the codebase is incomplete or undocumented. Mark undocumented areas as `TODO` or Work in Progress. Maintain strict intellectual honesty regarding technical debt.
