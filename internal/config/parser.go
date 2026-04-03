@@ -59,9 +59,7 @@ func ParseConfig(filename string, profileName string) (*ProjectConfig, error) {
 		config.Dependencies.NixRegistry = DefaultNixRegistry
 	}
 
-	if config.Dependencies.DockerCompose == "" {
-		config.Dependencies.DockerCompose = "docker-compose.yml"
-	}
+
 
 	return &config, nil
 }
