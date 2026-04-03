@@ -17,17 +17,19 @@ const nixFlakeTemplate = `
 	description = "Derrick Auto-Generated Flake";
 
 	inputs = {
-		nixpkgs.url = "{{ .Registry }}";
+		nixpkgs.url = "{{ .Registry }}";{{ range $regName, $regUrl := .ExtraRegistries }}
+		{{ $regName }}.url = "{{ $regUrl }}";{{ end }}
 	};
 
-	outputs = { self, nixpkgs }:
+	outputs = { self, nixpkgs{{ range $name, $url := .ExtraRegistries }}, {{ $name }}{{ end }}, ... }:
 	let
 		system = "x86_64-linux";
-		pkgs = nixpkgs.legacyPackages.${system};
+		pkgs = nixpkgs.legacyPackages.${system};{{ range $name, $url := .ExtraRegistries }}
+		{{ $name }}_pkgs = {{ $name }}.legacyPackages.${system};{{ end }}
 	in
 	{
 		devShells.${system}.default = pkgs.mkShell {
-			packages = with pkgs; [
+			packages = [
 			{{ range .Packages }}
 			{{ . }}
 			{{ end }}
@@ -38,11 +40,12 @@ const nixFlakeTemplate = `
 `
 
 type NixTemplateData struct {
-	Registry string
-	Packages []string
+	Registry        string
+	Packages        []string
+	ExtraRegistries map[string]string
 }
 
-func BootEnvironment(configPath string, requestPackages []string, registryURL string, outDir string) error {
+func BootEnvironment(configPath string, requestPackages []config.NixPackage, registryURL string, outDir string) error {
 	ui.Section("Derrick Sandbox Initialization")
 
 	err := EnsureNixEnvironment(configPath, requestPackages, registryURL, outDir)
@@ -59,7 +62,7 @@ func BootEnvironment(configPath string, requestPackages []string, registryURL st
 	return nil
 }
 
-func EnsureNixEnvironment(configPath string, packages []string, customRegistry string, outDir string) error {
+func EnsureNixEnvironment(configPath string, packages []config.NixPackage, customRegistry string, outDir string) error {
 	if len(packages) == 0 {
 		return nil
 	}
@@ -87,8 +90,32 @@ func EnsureNixEnvironment(configPath string, packages []string, customRegistry s
 		return fmt.Errorf("failed to parse Nix template: %w", err)
 	}
 
+	data := NixTemplateData{
+		Registry:        registry,
+		ExtraRegistries: make(map[string]string),
+	}
+
+	registryIndex := 1
+	registryMap := make(map[string]string)
+
+	for _, p := range packages {
+		targetPkg := ""
+		if p.Registry != "" && p.Registry != registry {
+			regName, exists := registryMap[p.Registry]
+			if !exists {
+				regName = fmt.Sprintf("reg%d", registryIndex)
+				registryIndex++
+				registryMap[p.Registry] = regName
+				data.ExtraRegistries[regName] = p.Registry
+			}
+			targetPkg = fmt.Sprintf("%s_pkgs.%s", regName, p.Name)
+		} else {
+			targetPkg = fmt.Sprintf("pkgs.%s", p.Name)
+		}
+		data.Packages = append(data.Packages, targetPkg)
+	}
+
 	var flakeContent bytes.Buffer
-	data := NixTemplateData{Registry: registry, Packages: packages}
 	err = tmpl.Execute(&flakeContent, data)
 	if err != nil {
 		ui.Error("FAILED")

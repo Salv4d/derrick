@@ -1,6 +1,31 @@
 package config
 
+import (
+	"gopkg.in/yaml.v3"
+)
+
 const DefaultNixRegistry = "github:NixOS/nixpkgs/nixos-unstable"
+
+type NixPackage struct {
+	Name     string `yaml:"package"`
+	Registry string `yaml:"registry,omitempty"`
+}
+
+func (n *NixPackage) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		n.Name = value.Value
+		return nil
+	}
+
+	type alias NixPackage
+	var tmp alias
+	if err := value.Decode(&tmp); err != nil {
+		return err
+	}
+	n.Name = tmp.Name
+	n.Registry = tmp.Registry
+	return nil
+}
 
 type EnvVar struct {
 	Description string `yaml:"description"`
@@ -27,7 +52,7 @@ type EnvManagement struct {
 }
 
 type Dependencies struct {
-	NixPackages          []string `yaml:"nix_packages"`
+	NixPackages          []NixPackage `yaml:"nix_packages"`
 	NixRegistry          string   `yaml:"nix_registry" validate:"omitempty"`
 	DockerCompose        string   `yaml:"docker_compose,omitempty" validate:"omitempty,filepath"`
 	DockerComposeProfiles []string `yaml:"docker_compose_profiles,omitempty"`

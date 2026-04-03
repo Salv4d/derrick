@@ -76,8 +76,13 @@ var runCmd = &cobra.Command{
 
 		ui.Taskf("Resolving packages: %v", args)
 
+		var nixPkgs []config.NixPackage
+		for _, arg := range args {
+			nixPkgs = append(nixPkgs, config.NixPackage{Name: arg})
+		}
+
 		// Initialize Environment
-		err = engine.BootEnvironment("", args, config.DefaultNixRegistry, flakeOutDir)
+		err = engine.BootEnvironment("", nixPkgs, config.DefaultNixRegistry, flakeOutDir)
 		if err != nil {
 			ui.FailFast(fmt.Errorf("failed to initialize run environment: %v", err))
 		}
@@ -88,7 +93,7 @@ var runCmd = &cobra.Command{
 			var cfg config.ProjectConfig
 			cfg.Name = filepath.Base(workDir)
 			cfg.Version = "0.1.0"
-			cfg.Dependencies.NixPackages = args
+			cfg.Dependencies.NixPackages = nixPkgs
 			cfg.Dependencies.NixRegistry = config.DefaultNixRegistry
 
 			data, _ := yaml.Marshal(&cfg)

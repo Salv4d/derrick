@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Salv4d/derrick/internal/config"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,7 +58,7 @@ func TestEnsureNixEnvironment(t *testing.T) {
 	err = os.Chdir(tempDir)
 	require.NoError(t, err, "Failed to change working directory")
 
-	mockPackages := []string{"golang", "python3"}
+	mockPackages := []config.NixPackage{{Name: "golang"}, {Name: "python3"}}
 	customRegistry := "github:NixOS/nixpkgs/nixos-22.11"
 
 	err = EnsureNixEnvironment("derrick.yaml", mockPackages, customRegistry, "")
@@ -75,6 +77,6 @@ func TestEnsureNixEnvironment(t *testing.T) {
 
 	assert.Contains(t, contentStr, customRegistry, "The generated flake should contain the custom registry URL")
 	for _, pkg := range mockPackages {
-		assert.Contains(t, contentStr, pkg, "The generated flake should contain the injected package")
+		assert.Contains(t, contentStr, pkg.Name, "The generated flake should contain the injected package")
 	}
 }

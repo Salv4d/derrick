@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"sort"
 
+	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/ui"
 	"github.com/charmbracelet/huh"
 )
@@ -22,7 +23,7 @@ type NixSearchRecord struct {
 
 var undefinedRegex = regexp.MustCompile(`undefined variable '(.*?)'`)
 
-func ValidateAndResolve(configPath string, packages []string, registryURL string, outDir string) ([]string, error) {
+func ValidateAndResolve(configPath string, packages []config.NixPackage, registryURL string, outDir string) ([]config.NixPackage, error) {
 	if outDir == "" {
 		outDir = ".derrick"
 	}
@@ -99,8 +100,8 @@ func ValidateAndResolve(configPath string, packages []string, registryURL string
 			}
 
 			for i, p := range packages {
-				if p == missingPkg {
-					packages[i] = selectedPkg
+				if p.Name == missingPkg {
+					packages[i].Name = selectedPkg
 					break
 				}
 			}

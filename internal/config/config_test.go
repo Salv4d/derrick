@@ -40,7 +40,7 @@ validations:
 		assert.Equal(t, "1.0.0", cfg.Version, "Project version should match")
 
 		assert.Len(t, cfg.Dependencies.NixPackages, 2, "Should parse exactly 2 nix packages")
-		assert.Equal(t, "go", cfg.Dependencies.NixPackages[0], "First nix package should be 'go'")
+		assert.Equal(t, "go", cfg.Dependencies.NixPackages[0].Name, "First nix package should be 'go'")
 
 		assert.Equal(t, DefaultNixRegistry, cfg.Dependencies.NixRegistry, "Should use default nix registry when missing")
 		assert.Equal(t, "docker-compose.yml", cfg.Dependencies.DockerCompose, "Should use default docker-compose.yml when missing")
@@ -126,7 +126,8 @@ profiles:
 		require.NoError(t, err, "Should parse extended profile perfectly")
 
 		assert.Len(t, cfg.Dependencies.NixPackages, 3, "Should merge Root + Base + Advanced")
-		assert.ElementsMatch(t, []string{"go", "redis", "python3"}, cfg.Dependencies.NixPackages)
+		expectedPkgs := []NixPackage{{Name: "go"}, {Name: "redis"}, {Name: "python3"}}
+		assert.ElementsMatch(t, expectedPkgs, cfg.Dependencies.NixPackages)
 
 		assert.Len(t, cfg.Dependencies.DockerComposeProfiles, 2, "Should accumulate compose profiles")
 		assert.ElementsMatch(t, []string{"cache", "worker"}, cfg.Dependencies.DockerComposeProfiles)

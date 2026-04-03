@@ -53,8 +53,8 @@ The core pillar. Determines what global packages and container topologies must e
 
 | Keyword | Type | Required | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `dependencies.nix_registry` | `string` | No | `"github:NixOS/nixpkgs/nixos-unstable"` | The Nixpkgs flake or channel to lock. |
-| `dependencies.nix_packages` | `array[string]` | **Yes** | `[]` | List of system dependencies (e.g. `go`, `nodejs_20`). |
+| `dependencies.nix_registry` | `string` | No | `"github:NixOS/nixpkgs/nixos-unstable"` | The default Nixpkgs flake or channel to lock. |
+| `dependencies.nix_packages` | `array[string|object]` | **Yes** | `[]` | List of system dependencies. Can be an object `{package, registry}` for mixed versions. |
 | `dependencies.docker_compose` | `string` | No | `""` | Filepath to docker-compose matrix. |
 | `dependencies.docker_compose_profiles` | `array[string]`| No | `[]` | Subset of docker profiles to boot natively. |
 
@@ -64,6 +64,8 @@ dependencies:
   nix_registry: "github:NixOS/nixpkgs/nixos-unstable" 
   nix_packages:
     - "nodejs_20"
+    - package: "legacy_database"
+      registry: "github:NixOS/nixpkgs/nixos-20.09"
   docker_compose: "docker-compose.yml" 
 ```
 
