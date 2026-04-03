@@ -74,15 +74,6 @@ var startCmd = &cobra.Command{
 
 		useNix := len(cfg.Dependencies.NixPackages) > 0
 
-		ui.Section("Environment Validation")
-		ui.Task("Validating environment variables")
-		err = engine.ValidateAndLoadEnv(cwd, cfg, useNix)
-		if err != nil {
-			ui.FailFast(err)
-		}
-
-		ui.Success("Environment state is valid")
-
 		if useNix {
 			ui.Section("Nix Sandbox")
 			ui.Taskf("Resolving %d Nix packages", len(cfg.Dependencies.NixPackages))
@@ -101,6 +92,15 @@ var startCmd = &cobra.Command{
 			}
 			ui.Success("Sandbox generated successfully")
 		}
+
+		ui.Section("Environment Validation")
+		ui.Task("Validating environment variables")
+		err = engine.ValidateAndLoadEnv(cwd, cfg, useNix)
+		if err != nil {
+			ui.FailFast(err)
+		}
+
+		ui.Success("Environment state is valid")
 
 		ui.Section("Initialization Lifecycle")
 

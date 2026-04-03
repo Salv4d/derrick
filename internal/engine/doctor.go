@@ -36,6 +36,17 @@ func RunAudit(cfg *config.ProjectConfig) {
 
 	canUseNixBubble := useNix && IsNixInstalled()
 
+	if canUseNixBubble {
+		ui.SubTask("Bootstrapping dry-run Nix Sandbox for validations")
+		err := BootEnvironment("derrick.yaml", cfg.Dependencies.NixPackages, cfg.Dependencies.NixRegistry, "")
+		if err != nil {
+			ui.Warningf("  -> Failed to cleanly bootstrap Nix evaluation sandbox: %v", err)
+			canUseNixBubble = false
+		} else {
+			ui.Success("OK")
+		}
+	}
+
 	if len(cfg.Validations) > 0 {
 		ui.Section("State Validations")
 		for _, check := range cfg.Validations {
