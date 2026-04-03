@@ -10,16 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Version = "0.1.0-alpha"
-
-type GithubRelease struct {
-	TagName string `json:"tag_name"`
-}
-
-func RunVersion() {
-	ui.PrintHeader()
-	fmt.Printf("📦 Derrick CLI version \033[1;36m%s\033[0m\n\n", Version)
-
+func RunUpdate() {
 	ui.Taskf("Checking for latest releases on GitHub...")
 
 	client := http.Client{
@@ -37,9 +28,12 @@ func RunVersion() {
 		var release GithubRelease
 		if err := json.NewDecoder(resp.Body).Decode(&release); err == nil {
 			if release.TagName != Version && release.TagName != "v"+Version {
-				ui.Warningf("A new version is available: %s! Run 'derrick update' to efficiently upgrade.", release.TagName)
+				ui.Warningf("A new version is available: %s!", release.TagName)
+				fmt.Println("\nTo flawlessly update your binary instantly, run:")
+				fmt.Printf("\033[1;33mcurl -L -o derrick https://github.com/Salv4d/derrick/releases/latest/download/derrick-linux-amd64\033[0m\n")
+				fmt.Printf("\033[1;33mchmod +x derrick && sudo mv derrick /usr/local/bin/\033[0m\n\n")
 			} else {
-				ui.Successf("Your version is exactly up to date!")
+				ui.Successf("You are already on the latest version (%s). No update required!", Version)
 			}
 		}
 	} else {
@@ -47,14 +41,14 @@ func RunVersion() {
 	}
 }
 
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print the current version and gracefully check for updates",
+var updateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Check for updates and elegantly retrieve the upgrade script",
 	Run: func(cmd *cobra.Command, args []string) {
-		RunVersion()
+		RunUpdate()
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(updateCmd)
 }
