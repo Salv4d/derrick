@@ -113,6 +113,18 @@ func mergeProfileToConfig(cfg *ProjectConfig, p Profile) {
 		cfg.Validations = append(cfg.Validations, p.Validations...)
 	}
 
+	if p.EnvManagement != nil {
+		if p.EnvManagement.BaseFile != "" {
+			cfg.EnvManagement.BaseFile = p.EnvManagement.BaseFile
+		}
+		// If profile forcefully defines it, override the root. Wait, how do we handle false? 
+		// Actually, standard bool merging means true applies over false, but false might not apply over true.
+		// Since we want simple behavior, let's just do an override if it's set to true.
+		if p.EnvManagement.PromptMissing {
+			cfg.EnvManagement.PromptMissing = true
+		}
+	}
+
 	if len(p.Env) > 0 {
 		if cfg.Env == nil {
 			cfg.Env = make(map[string]EnvVar)

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -42,11 +43,46 @@ var (
 func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix bool) error {
 	envPath := filepath.Join(projectDir, ".env")
 
+	if cfg.EnvManagement.BaseFile != "" {
+		if _, err := os.Stat(envPath); os.IsNotExist(err) {
+			basePath := filepath.Join(projectDir, cfg.EnvManagement.BaseFile)
+			if _, err := os.Stat(basePath); err == nil {
+				ui.Infof("Auto-generating .env from %s", cfg.EnvManagement.BaseFile)
+				_ = copyFile(basePath, envPath)
+			}
+		}
+	}
+
 	_ = godotenv.Load(envPath)
+
+	unifiedEnv := make(map[string]config.EnvVar)
+	if cfg.Env != nil {
+		for k, v := range cfg.Env {
+			unifiedEnv[k] = v
+		}
+	}
+
+	if cfg.EnvManagement.PromptMissing {
+		fileEnv, err := godotenv.Read(envPath)
+		if err == nil {
+			for k, v := range fileEnv {
+				if v == "" {
+					if val, exists := unifiedEnv[k]; exists {
+						val.Required = true
+						unifiedEnv[k] = val
+					} else {
+						unifiedEnv[k] = config.EnvVar{
+							Required: true,
+						}
+					}
+				}
+			}
+		}
+	}
 
 	newEnvValues := make(map[string]string)
 
-	for key, rules := range cfg.Env {
+	for key, rules := range unifiedEnv {
 		val, exists := os.LookupEnv(key)
 
 		if !exists || val == "" {
@@ -165,4 +201,29 @@ func updateEnvFile(path string, vars map[string]string) error {
 
 	ui.Successf("Updated %s with %d variables", path, len(vars))
 	return nil
+}
+
+func copyFile(src, dst string) error {
+	sourceFileStat, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if !sourceFileStat.Mode().IsRegular() {
+		return fmt.Errorf("%s is not a regular file", src)
+	}
+
+	source, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destination.Close()
+
+	_, err = io.Copy(destination, source)
+	return err
 }

@@ -186,3 +186,48 @@ func TestUpdateEnvFile(t *testing.T) {
 	assert.Contains(t, contentStr, `# Comment`)
 	assert.Contains(t, contentStr, `KEY2="VALUE2 \"WITH QUOTES\""`)
 }
+
+func TestValidateAndLoadEnv_AutoDiscover(t *testing.T) {
+	tempDir := t.TempDir()
+
+	baseFileContent := "DISCOVERED_VAR=\nEXISTING_VAR=exists"
+	baseFilePath := filepath.Join(tempDir, ".env.example")
+	err := os.WriteFile(baseFilePath, []byte(baseFileContent), 0o644)
+	require.NoError(t, err)
+
+	cfg := &config.ProjectConfig{
+		EnvManagement: config.EnvManagement{
+			BaseFile:      ".env.example",
+			PromptMissing: true,
+		},
+		Env: map[string]config.EnvVar{
+			"DISCOVERED_VAR": {
+				Description: "this came from yaml",
+			},
+		},
+	}
+
+	origInput := promptInput
+	defer func() { promptInput = origInput }()
+	
+	promptCount := 0
+	promptInput = func(title, description string) (string, error) {
+		promptCount++
+		assert.Equal(t, "Enter value for DISCOVERED_VAR", title)
+		assert.Equal(t, "this came from yaml", description)
+		return "magic-value", nil
+	}
+
+	err = ValidateAndLoadEnv(tempDir, cfg, false)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, promptCount, "Should prompt once for DISCOVERED_VAR")
+	
+	envPath := filepath.Join(tempDir, ".env")
+	content, err := os.ReadFile(envPath)
+	require.NoError(t, err)
+	contentStr := string(content)
+	
+	assert.Contains(t, contentStr, `EXISTING_VAR=exists`)
+	assert.Contains(t, contentStr, `DISCOVERED_VAR="magic-value"`)
+}
