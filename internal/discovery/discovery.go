@@ -1,0 +1,283 @@
+package discovery
+
+import (
+	"encoding/json"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+)
+
+type ProjectMetadata struct {
+	Name    string
+	Version string
+}
+
+type Detector interface {
+	Detect(dir string) (*ProjectMetadata, bool)
+}
+
+func DiscoverProject(dir string) *ProjectMetadata {
+	detectors := []Detector{
+		&NodeDetector{},
+		&GoDetector{},
+		&PythonDetector{},
+		&RustDetector{},
+		&PHPDetector{},
+		&JavaMavenDetector{},
+		&JavaGradleDetector{},
+		&RubyDetector{},
+		&CSharpDetector{},
+		&CppCMakeDetector{},
+		&SwiftDetector{},
+	}
+
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		absDir = dir
+	}
+
+	for _, d := range detectors {
+		if meta, ok := d.Detect(dir); ok {
+			if meta.Name == "" {
+				meta.Name = sanitizeName(filepath.Base(absDir))
+			}
+			if meta.Version == "" {
+				meta.Version = "0.1.0"
+			}
+			return meta
+		}
+	}
+
+	return &ProjectMetadata{
+		Name:    sanitizeName(filepath.Base(absDir)),
+		Version: "0.1.0",
+	}
+}
+
+func sanitizeName(name string) string {
+	name = strings.ToLower(name)
+	name = strings.ReplaceAll(name, " ", "-")
+	name = strings.ReplaceAll(name, "_", "-")
+	return name
+}
+
+func extractRegex(content string, pattern string) string {
+	re := regexp.MustCompile(pattern)
+	matches := re.FindStringSubmatch(content)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
+}
+
+// 1. Node.js
+type NodeDetector struct{}
+
+func (d *NodeDetector) Detect(dir string) (*ProjectMetadata, bool) {
+	b, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	if err != nil {
+		return nil, false
+	}
+	var pkg struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+	}
+	_ = json.Unmarshal(b, &pkg)
+	return &ProjectMetadata{Name: pkg.Name, Version: pkg.Version}, true
+}
+
+// 2. Go
+type GoDetector struct{}
+
+func (d *GoDetector) Detect(dir string) (*ProjectMetadata, bool) {
+	b, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	if err != nil {
+		return nil, false
+	}
+	name := extractRegex(string(b), `(?m)^module\s+([^\s]+)`)
+	if name != "" {
+		parts := strings.Split(name, "/")
+		name = parts[len(parts)-1]
+	}
+	return &ProjectMetadata{Name: name, Version: "0.1.0"}, true
+}
+
+// 3. Python
+type PythonDetector struct{}
+
+func (d *PythonDetector) Detect(dir string) (*ProjectMetadata, bool) {
+	b, err := os.ReadFile(filepath.Join(dir, "pyproject.toml"))
+	if err == nil {
+		name := extractRegex(string(b), `(?m)name\s*=\s*["']([^"']+)["']`)
+		version := extractRegex(string(b), `(?m)version\s*=\s*["']([^"']+)["']`)
+		return &ProjectMetadata{Name: name, Version: version}, true
+	}
+	b, err = os.ReadFile(filepath.Join(dir, "setup.py"))
+	if err == nil {
+		name := extractRegex(string(b), `(?m)name\s*=\s*["']([^"']+)["']`)
+		version := extractRegex(string(b), `(?m)version\s*=\s*["']([^"']+)["']`)
+		return &ProjectMetadata{Name: name, Version: version}, true
+	}
+	return nil, false
+}
+
+// 4. Rust
+type RustDetector struct{}
+
+func (d *RustDetector) Detect(dir string) (*ProjectMetadata, bool) {
+	b, err := os.ReadFile(filepath.Join(dir, "Cargo.toml"))
+	if err != nil {
+		return nil, false
+	}
+	name := extractRegex(string(b), `(?m)name\s*=\s*["']([^"']+)["']`)
+	version := extractRegex(string(b), `(?m)version\s*=\s*["']([^"']+)["']`)
+	return &ProjectMetadata{Name: name, Version: version}, true
+}
+
+// 5. PHP
+type PHPDetector struct{}
+
+func (d *PHPDetector) Detect(dir string) (*ProjectMetadata, bool) {
+	b, err := os.ReadFile(filepath.Join(dir, "composer.json"))
+	if err != nil {
+		return nil, false
+	}
+	var pkg struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+	}
+	_ = json.Unmarshal(b, &pkg)
+	if pkg.Name != "" {
+		parts := strings.Split(pkg.Name, "/")
+		pkg.Name = parts[len(parts)-1]
+	}
+	return &ProjectMetadata{Name: pkg.Name, Version: pkg.Version}, true
+}
+
+// 6. Java (Maven)
+type JavaMavenDetector struct{}
+
+func (d *JavaMavenDetector) Detect(dir string) (*ProjectMetadata, bool) {
+	b, err := os.ReadFile(filepath.Join(dir, "pom.xml"))
+	if err != nil {
+		return nil, false
+	}
+	name := extractRegex(string(b), `(?m)<artifactId>([^<]+)</artifactId>`)
+	version := extractRegex(string(b), `(?m)<version>([^<]+)</version>`)
+	return &ProjectMetadata{Name: name, Version: version}, true
+}
+
+// 7. Java (Gradle)
+type JavaGradleDetector struct{}
+
+func (d *JavaGradleDetector) Detect(dir string) (*ProjectMetadata, bool) {
+	// Try build.gradle and build.gradle.kts
+	b, err := os.ReadFile(filepath.Join(dir, "build.gradle"))
+	if err != nil {
+		b, err = os.ReadFile(filepath.Join(dir, "build.gradle.kts"))
+		if err != nil {
+			return nil, false
+		}
+	}
+	version := extractRegex(string(b), `(?m)version\s*=?\s*["']([^"']+)["']`)
+	// Name in gradle is often in settings.gradle
+	name := ""
+	s, err := os.ReadFile(filepath.Join(dir, "settings.gradle"))
+	if err == nil {
+		name = extractRegex(string(s), `(?m)rootProject\.name\s*=?\s*["']([^"']+)["']`)
+	} else {
+		s, err = os.ReadFile(filepath.Join(dir, "settings.gradle.kts"))
+		if err == nil {
+			name = extractRegex(string(s), `(?m)rootProject\.name\s*=?\s*["']([^"']+)["']`)
+		}
+	}
+	return &ProjectMetadata{Name: name, Version: version}, true
+}
+
+// 8. Ruby
+type RubyDetector struct{}
+
+func (d *RubyDetector) Detect(dir string) (*ProjectMetadata, bool) {
+	if _, err := os.Stat(filepath.Join(dir, "Gemfile")); err != nil {
+		return nil, false
+	}
+	// Try to find a gemspec
+	var name, version string
+	_ = filepath.WalkDir(dir, func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".gemspec") {
+			b, err := os.ReadFile(path)
+			if err == nil {
+				name = extractRegex(string(b), `(?m)name\s*=\s*["']([^"']+)["']`)
+				version = extractRegex(string(b), `(?m)version\s*=\s*["']([^"']+)["']`)
+			}
+			return fs.SkipAll
+		}
+		if info.IsDir() && dir != path {
+			return fs.SkipDir
+		}
+		return nil
+	})
+	return &ProjectMetadata{Name: name, Version: version}, true
+}
+
+// 9. C#
+type CSharpDetector struct{}
+
+func (d *CSharpDetector) Detect(dir string) (*ProjectMetadata, bool) {
+	var name string
+	found := false
+	_ = filepath.WalkDir(dir, func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".csproj") {
+			found = true
+			b, err := os.ReadFile(path)
+			if err == nil {
+				name = extractRegex(string(b), `(?m)<AssemblyName>([^<]+)</AssemblyName>`)
+				if name == "" {
+					name = strings.TrimSuffix(info.Name(), ".csproj")
+				}
+			}
+			return fs.SkipAll
+		}
+		if info.IsDir() && dir != path {
+			return fs.SkipDir
+		}
+		return nil
+	})
+	if found {
+		return &ProjectMetadata{Name: name, Version: "0.1.0"}, true
+	}
+	return nil, false
+}
+
+// 10. C/C++ Extractor
+type CppCMakeDetector struct{}
+
+func (d *CppCMakeDetector) Detect(dir string) (*ProjectMetadata, bool) {
+	b, err := os.ReadFile(filepath.Join(dir, "CMakeLists.txt"))
+	if err != nil {
+		return nil, false
+	}
+	name := extractRegex(string(b), `(?i)project\s*\(\s*([^ \)]+)`)
+	version := extractRegex(string(b), `(?i)VERSION\s+([^\s\)]+)`) // Some basic matching for PROJECT(NAME VERSION 1.0)
+	return &ProjectMetadata{Name: name, Version: version}, true
+}
+
+// 11. Swift
+type SwiftDetector struct{}
+
+func (d *SwiftDetector) Detect(dir string) (*ProjectMetadata, bool) {
+	b, err := os.ReadFile(filepath.Join(dir, "Package.swift"))
+	if err != nil {
+		return nil, false
+	}
+	name := extractRegex(string(b), `(?m)name:\s*["']([^"']+)["']`)
+	return &ProjectMetadata{Name: name, Version: "0.1.0"}, true
+}
