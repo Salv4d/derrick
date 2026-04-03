@@ -66,7 +66,7 @@ For advanced features, lifecycle hooks, complex `derrick.yaml` directives, and t
 
 👉 **[https://salv4d.github.io/derrick/](https://salv4d.github.io/derrick/)**
 
-*(Or browse the raw Markdown files locally in the [`/docs`](./docs/index.md) folder).*
+*(Or browse the raw Markdown files locally in the [`/website/docs`](./website/docs/getting_started.md) folder).*
 
 ---
 
@@ -86,7 +86,7 @@ Derrick is currently in **Alpha**. It is stable for Linux/WSL environments.
 ## 🤝 Contributing
 
 We heavily welcome contributions and improvements!
-Read our fully detailed **[Contributing Guide](./docs/contributing.md)** to learn how to properly set up your environment, write tests, and open Conventional pull requests.
+Read our fully detailed **[Contributing Guide](./website/docs/contributing.md)** to learn how to properly set up your environment, write tests, and open Conventional pull requests.
 
 *We also maintain a set of [Benchmark Projects](.derrick/benchmark_projects.md) to test Derrick against strict, enterprise-style scenarios.*
 
