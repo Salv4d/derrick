@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -31,6 +32,8 @@ type DashboardModel struct {
 	width      int
 	height     int
 	containers []Container
+	logs       []string
+	logScanner *bufio.Scanner
 }
 
 type Container struct {
@@ -45,11 +48,45 @@ func NewDashboardModel() DashboardModel {
 	return DashboardModel{
 		activeTab: 0,
 		tabs:      []string{"Containers", "Logs", "Config"},
+		logs:      []string{"System initialized. Awaiting logs..."},
 	}
 }
 
 func (m DashboardModel) Init() tea.Cmd {
-	return fetchDocker
+	return tea.Batch(fetchDocker, startLogStream)
+}
+
+type logStreamInitMsg struct {
+	scanner *bufio.Scanner
+}
+type logLineMsg string
+
+func startLogStream() tea.Msg {
+	cmd := exec.Command("docker", "compose", "logs", "-f", "--tail", "20")
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return logLineMsg("Error: could not pipe logs. Are you in a compose directory?")
+	}
+	cmd.Stderr = cmd.Stdout
+	if err := cmd.Start(); err != nil {
+		return logLineMsg("Error: failed to start log sub-process.")
+	}
+
+	return logStreamInitMsg{
+		scanner: bufio.NewScanner(stdout),
+	}
+}
+
+func waitForNextLog(scanner *bufio.Scanner) tea.Cmd {
+	return func() tea.Msg {
+		if scanner.Scan() {
+			return logLineMsg(scanner.Text())
+		}
+		if err := scanner.Err(); err != nil {
+			return logLineMsg(fmt.Sprintf("Stream scan err: %v", err))
+		}
+		return logLineMsg("[Stream Disconnected]")
+	}
 }
 
 func fetchDocker() tea.Msg {
@@ -96,6 +133,18 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case dockerStatusMsg:
 		m.containers = msg
 		return m, tickDockerStatus()
+	case logStreamInitMsg:
+		m.logScanner = msg.scanner
+		return m, waitForNextLog(m.logScanner)
+	case logLineMsg:
+		m.logs = append(m.logs, string(msg))
+		if len(m.logs) > m.height-10 {
+			m.logs = m.logs[1:] // Keep buffer clamped
+		}
+		if m.logScanner != nil {
+			return m, waitForNextLog(m.logScanner)
+		}
+		return m, nil
 	}
 	return m, nil
 }
@@ -137,7 +186,13 @@ func (m DashboardModel) View() string {
 		}
 		content += "\n(Press 'q' or 'ctrl+c' to exit, 'tab' to change menus)"
 	case 1:
-		content = "Log Stream:\n[Multiplexer Async Data Pending...]"
+		sb := strings.Builder{}
+		sb.WriteString(lipgloss.NewStyle().Bold(true).Render("Real-time Compose Logs:"))
+		sb.WriteString("\n\n")
+		for _, l := range m.logs {
+			sb.WriteString(l + "\n")
+		}
+		content = sb.String()
 	case 2:
 		content = "Global Configuration:\n[Registry Sync Pending...]"
 	}
