@@ -10,13 +10,20 @@ type EnvVar struct {
 }
 
 type ProjectConfig struct {
-	Name         string            `yaml:"name" validate:"required,lowercase"`
-	Version      string            `yaml:"version" validate:"required"`
+	Name          string             `yaml:"name" validate:"required,lowercase"`
+	Version       string             `yaml:"version" validate:"required"`
+	Requires      []string           `yaml:"requires,omitempty"`
 	Dependencies Dependencies      `yaml:"dependencies"`
 	Hooks        LifecycleHooks    `yaml:"hooks"`
-	Validations  []ValidationCheck `yaml:"validations" validate:"dive"`
-	Env          map[string]EnvVar `yaml:"env"`
-	Profiles     map[string]Profile `yaml:"profiles,omitempty" validate:"dive"`
+	Validations   []ValidationCheck  `yaml:"validations" validate:"dive"`
+	EnvManagement EnvManagement      `yaml:"env_management,omitempty"`
+	Env           map[string]EnvVar  `yaml:"env"`
+	Profiles      map[string]Profile `yaml:"profiles,omitempty" validate:"dive"`
+}
+
+type EnvManagement struct {
+	BaseFile      string `yaml:"base_file,omitempty" validate:"omitempty,filepath"`
+	PromptMissing bool   `yaml:"prompt_missing,omitempty"`
 }
 
 type Dependencies struct {
@@ -44,7 +51,8 @@ type ValidationCheck struct {
 type Profile struct {
 	Extend       string            `yaml:"extend,omitempty"`
 	Dependencies *Dependencies     `yaml:"dependencies,omitempty"`
-	Hooks        *LifecycleHooks   `yaml:"hooks,omitempty"`
-	Validations  []ValidationCheck `yaml:"validations,omitempty" validate:"dive"`
-	Env          map[string]EnvVar `yaml:"env,omitempty"`
+	Hooks         *LifecycleHooks    `yaml:"hooks,omitempty"`
+	Validations   []ValidationCheck  `yaml:"validations,omitempty" validate:"dive"`
+	EnvManagement *EnvManagement     `yaml:"env_management,omitempty"`
+	Env           map[string]EnvVar  `yaml:"env,omitempty"`
 }
