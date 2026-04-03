@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -89,8 +88,7 @@ var initCmd = &cobra.Command{
 				huh.NewInput().
 					Title("Docker Compose File Path").
 					Value(&dockerComposeFile).
-					Placeholder("e.g. docker-compose.yml").
-					WithFunc(func() bool { return useDockerCompose }),
+					Placeholder("e.g. docker-compose.yml"),
 			),
 			huh.NewGroup(
 				huh.NewConfirm().
@@ -99,8 +97,7 @@ var initCmd = &cobra.Command{
 				huh.NewInput().
 					Title("Base Env File").
 					Value(&envBaseFile).
-					Placeholder("e.g. .env").
-					WithFunc(func() bool { return useEnvFile }),
+					Placeholder("e.g. .env"),
 			),
 		)
 
