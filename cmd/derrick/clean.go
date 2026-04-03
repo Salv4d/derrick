@@ -1,0 +1,145 @@
+package main
+
+import (
+	"os"
+	"os/exec"
+
+	"github.com/Salv4d/derrick/internal/ui"
+	"github.com/charmbracelet/huh"
+	"github.com/spf13/cobra"
+)
+
+var (
+	cleanAll     bool
+	cleanNix     bool
+	cleanDocker  bool
+	cleanVolumes bool
+	cleanImages  bool
+	cleanConts   bool
+	cleanNets    bool
+)
+
+var cleanCmd = &cobra.Command{
+	Use:   "clean",
+	Short: "Clean up unused tools, packages, and docker assets",
+	Run: func(cmd *cobra.Command, args []string) {
+		ui.PrintHeader()
+
+		if !cleanAll && !cleanNix && !cleanDocker && !cleanVolumes && !cleanImages && !cleanConts && !cleanNets {
+			var targets []string
+			form := huh.NewForm(
+				huh.NewGroup(
+					huh.NewMultiSelect[string]().
+						Title("What would you like to clean?").
+						Description("Select components to prune. This frees disk space but removes caches.").
+						Options(
+							huh.NewOption("Nix (Garbage Collect old generations)", "nix").Selected(true),
+							huh.NewOption("Docker System (Stopped Containers, Networks, Dangling Images)", "docker-system"),
+							huh.NewOption("Docker All Images (Removes ALL unused images)", "docker-images"),
+							huh.NewOption("Docker Volumes (Removes ALL unused volumes)", "docker-volumes"),
+						).
+						Value(&targets),
+				),
+			)
+			if err := form.Run(); err != nil {
+				ui.FailFast(err)
+			}
+
+			if len(targets) == 0 {
+				ui.Warning("Nothing selected. Exiting.")
+				return
+			}
+
+			for _, t := range targets {
+				switch t {
+				case "nix":
+					cleanNix = true
+				case "docker-system":
+					cleanDocker = true
+				case "docker-images":
+					cleanImages = true
+				case "docker-volumes":
+					cleanVolumes = true
+				}
+			}
+		}
+
+		if cleanAll || cleanNix {
+			ui.Section("Nix Store")
+			ui.Task("Executing 'nix-collect-garbage -d' (Clearing all unreachable packages & old profiles)...")
+			c := exec.Command("nix-collect-garbage", "-d")
+			c.Stdout = os.Stdout
+			c.Stderr = os.Stderr
+			if err := c.Run(); err != nil {
+				ui.Warningf("Nix GC failed: %v", err)
+			} else {
+				ui.Success("Nix Garbage Collection complete.")
+			}
+		}
+
+		// Execute specialized docker pruning
+		if cleanAll || cleanDocker || cleanVolumes || cleanImages || cleanConts || cleanNets {
+			ui.Section("Docker Engine")
+
+			if cleanAll || cleanDocker || (cleanImages && cleanVolumes) {
+				args := []string{"system", "prune", "-f"}
+				if cleanAll || cleanImages {
+					args = append(args, "-a")
+				}
+				if cleanAll || cleanVolumes {
+					args = append(args, "--volumes")
+				}
+				
+				ui.Task("Running full docker system prune...")
+				c := exec.Command("docker", args...)
+				c.Stdout = os.Stdout
+				c.Stderr = os.Stderr
+				if err := c.Run(); err != nil {
+					ui.Warningf("Docker prune failed: %v", err)
+				} else {
+					ui.Success("Docker system cleaned.")
+				}
+				return
+			}
+
+			// Individual granular pruning if not doing full system prune
+			if cleanConts {
+				runDockerPrune("container")
+			}
+			if cleanNets {
+				runDockerPrune("network")
+			}
+			if cleanImages {
+				runDockerPrune("image", "-a")
+			}
+			if cleanVolumes {
+				runDockerPrune("volume")
+			}
+		}
+	},
+}
+
+func runDockerPrune(resource string, flags ...string) {
+	ui.Taskf("Running 'docker %s prune'...", resource)
+	cmdArgs := append([]string{resource, "prune", "-f"}, flags...)
+	c := exec.Command("docker", cmdArgs...)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	if err := c.Run(); err != nil {
+		ui.Warningf("Docker %s prune failed: %v", resource, err)
+	} else {
+		ui.Successf("Docker %s pruned successfully.", resource)
+	}
+}
+
+func init() {
+	cleanCmd.Flags().BoolVarP(&cleanAll, "all", "a", false, "Clean everything automatically without prompting")
+	cleanCmd.Flags().BoolVar(&cleanNix, "nix", false, "Only run Nix Garbage Collection")
+	cleanCmd.Flags().BoolVar(&cleanDocker, "docker", false, "Only run Docker System Prune")
+	cleanCmd.Flags().BoolVar(&cleanVolumes, "volumes", false, "Include Docker Volumes in pruning")
+	cleanCmd.Flags().BoolVar(&cleanImages, "images", false, "Clean ALL unused Docker Images (not just dangling)")
+	cleanCmd.Flags().BoolVar(&cleanConts, "containers", false, "Clean unused Docker Containers")
+	cleanCmd.Flags().BoolVar(&cleanNets, "networks", false, "Clean unused Docker Networks")
+	
+	rootCmd.AddCommand(cleanCmd)
+}
