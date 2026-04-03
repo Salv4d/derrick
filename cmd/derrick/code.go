@@ -42,16 +42,38 @@ var codeCmd = &cobra.Command{
 		var targetPath string
 
 		editorArg := ""
+		var possiblePaths []string
+
 		if len(args) > 0 {
 			editorArg = args[0]
+			possiblePaths = args[1:]
 		}
 
 		found := false
+
 		for _, profile := range editorProfiles {
 			if editorArg == profile.Binary || editorArg == profile.Package || (editorArg == "vscode" && profile.Binary == "code") {
 				selectedEditor = profile
 				found = true
 				break
+			}
+		}
+
+		if !found {
+			envEditor := os.Getenv("VISUAL")
+			if envEditor == "" {
+				envEditor = os.Getenv("EDITOR")
+			}
+
+			if envEditor != "" {
+				for _, profile := range editorProfiles {
+					if envEditor == profile.Binary || envEditor == profile.Package || (envEditor == "vscode" && profile.Binary == "code") {
+						selectedEditor = profile
+						found = true
+						possiblePaths = args // All original args were targeted paths
+						break
+					}
+				}
 			}
 		}
 
@@ -73,15 +95,12 @@ var codeCmd = &cobra.Command{
 				ui.FailFast(err)
 			}
 
-			targetPath = "."
-			if len(args) > 0 {
-				targetPath = args[0]
-			}
-		} else {
-			targetPath = "."
-			if len(args) > 1 {
-				targetPath = args[1]
-			}
+			possiblePaths = args
+		}
+
+		targetPath = "."
+		if len(possiblePaths) > 0 {
+			targetPath = possiblePaths[0]
 		}
 
 		ui.Taskf("Parsing baseline configuration (%s)", configFile)
