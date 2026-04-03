@@ -96,7 +96,32 @@ derrick run claude-code
 
 ## 5. Cross-Project Clustering 🌐
 
-If you use `derrick` mapped to multiple microservices (e.g., `api/derrick.yaml` and `web/derrick.yaml`), **they instantly know how to communicate.**
-You do not need to hardcode manual IP addresses or rewrite your `docker-compose` bridges. 
+If you use `derrick` across multiple microservices (e.g., a Backend API and a separate Frontend Web app), **they instantly know how to communicate with zero configuration.**
 
-Derrick automatically injects the `derrick-net` global bridge into your compose evaluations behind the scenes. Furthermore, every Container spawned can flawlessly speak backwards to any local ports open in your `derrick shell` Host sandbox using the URL `http://host.docker.internal:<PORT>`!
+Wait, what is the "easiest way to do it?" 
+**Just boot them!** Run `derrick start` in Project A, and `derrick start` in Project B. Derrick automatically injects the `derrick-net` global Docker bridge into your projects behind the scenes without modifying your file states!
+
+Here is how the magic works in practice:
+
+### Example A: Container to Container (Across Projects)
+Imagine your Backend API (`api/docker-compose.yml`) defines a service named `payment-worker`. 
+Your separate Frontend Web app (`web/docker-compose.yml`) can immediately speak to it via standard DNS!
+```javascript
+// Inside your Frontend Web app
+const response = await fetch("http://payment-worker:8080/charge");
+```
+
+### Example B: Container to Host Sandbox
+What if your Frontend Web app isn't running in Docker, but is simply running natively in your `derrick shell` (Host OS) on `localhost:3000`? 
+Historically, Docker containers struggle to route traffic backwards to the Host OS on Linux. Derrick solves this automatically:
+```yaml
+# Inside your Backend API docker-compose.yml
+services:
+  nginx-gateway:
+    image: nginx:latest
+```
+```nginx
+# Wait! How does the nginx gateway reach your native Host OS React App?
+# Simply reference the globally injected host.docker.internal!
+proxy_pass http://host.docker.internal:3000;
+```
