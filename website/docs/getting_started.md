@@ -13,7 +13,15 @@ You must have the following installed on your host OS:
 
 ## 2. Installation
 
-Clone the repository and build the binary:
+**Option A: Download Pre-compiled Binary (Recommended)**
+```bash
+curl -L -o derrick https://github.com/Salv4d/derrick/releases/latest/download/derrick-linux-amd64
+chmod +x derrick
+sudo mv derrick /usr/local/bin/
+```
+
+**Option B: Build from Source**
+If you have Go installed, you can compile it manually:
 
 ```bash
 git clone https://github.com/Salv4d/derrick.git

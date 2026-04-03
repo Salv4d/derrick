@@ -37,7 +37,14 @@ Experience a fully hermetic environment in seconds.
 
 ### 1. Installation
 
-**Using Go (Recommended)**
+**Download Pre-compiled Binary (Recommended)**
+```bash
+curl -L -o derrick https://github.com/Salv4d/derrick/releases/latest/download/derrick-linux-amd64
+chmod +x derrick
+sudo mv derrick /usr/local/bin/
+```
+
+**Using Go**
 ```bash
 go install github.com/Salv4d/derrick/cmd/derrick@latest
 ```
