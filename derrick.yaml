@@ -7,17 +7,7 @@ dependencies:
   nix_packages:
     - "go"
     - "golangci-lint"
-  docker_compose: "docker-compose.yml"
-
-env:
-  GITHUB_TOKEN:
-    description: "Personal Access Token for GitHub API"
-    required: true
-    validation: "curl -s --fail -H \"Authorization: Bearer $GITHUB_TOKEN\" https://api.github.com/user"
-  DATABASE_URL:
-    description: "Connection string for the PostgreSQL database"
-    required: false
-    default: "postgres://user:pass@localhost:5432/derrick"
+    - "gofumpt"
 
 hooks:
   pre_init:
@@ -27,12 +17,10 @@ hooks:
   pre_start:
     - "echo '🚀 Starting development environment...'"
   post_start:
-    - "echo '✨ Environment is ready!'"
-  post_stop:
-    - "echo '👋 Environment stopped.'"
+    - "echo '✨ Environment is ready! (Hint: Run derrick shell to develop islation)'"
 
 validations:
-  - name: "Go Modules"
-    command: "ls go.mod"
-  - name: "Linting"
+  - name: "Go Compiler"
+    command: "go version"
+  - name: "Linter"
     command: "golangci-lint --version"

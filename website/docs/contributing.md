@@ -9,10 +9,16 @@ Welcome to the Derrick project! We are building the smartest local control plane
 
 ## Setting Up Your Development Environment
 
-You will need the host prerequisites to develop Derrick itself.
+You **DO NOT** need to install Go, linters, or formatting tools on your host machine to contribute. We use Derrick to build Derrick!
 
-1. Ensure you have **Go 1.26.1** installed (see `go.mod`).
-2. Clone the repository and download dependencies using `go mod download`.
+1. Ensure you have [Nix](https://nixos.org/download) installed.
+2. Install the latest **Derrick CLI** on your system.
+3. Clone the repository: `git clone https://github.com/Salv4d/derrick.git`
+4. Navigate inside the project root and run `derrick shell`.
+
+*(Derrick will parse our `derrick.yaml`, download the exact `go` compiler structure, `gofumpt`, and `golangci-lint` binaries transparently into your active sandbox).*
+
+You can now run `go test ./...` safely!
 
 ## Branching & Commit Strategy
 
