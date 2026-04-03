@@ -16,6 +16,8 @@ The CLI acts as your portal to the sandbox.
 | Command | Description | Behavior Context |
 | :--- | :--- | :--- |
 | `start` | Main Bootstrapper | Reads `derrick.yaml`, validates envs, boots Nix dependencies, and runs Docker Compose. |
+| `run` | Ephemeral Sandbox | Spawns a temporary ad-hoc Nix environment based on requested packages. |
+| `clean` | System Maintenance | Garbage collects orphaned Nix derivatives and unused Docker assets. |
 | `shell` | Hermetic Terminal | Spawns an interactive bash terminal hermetically mapped to Nix definitions. |
 | `stop` | Graceful Teardown | Executes `post_stop` scripts and gracefully halts Docker. |
 | `doctor`| Diagnostic Tool | Runs Validation checks manually without bootstrapping. |

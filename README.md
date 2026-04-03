@@ -64,8 +64,14 @@ derrick start
 # Drops you into the strictly sealed bash terminal (your sandbox)
 derrick shell
 
+# Need an ad-hoc throwaway sandbox with specific tools?
+derrick run python3 jq
+
 # Audits if your project meets the strict derrick.yaml constraints
 derrick doctor
+
+# Free up disk space with the universal garbage collector
+derrick clean
 ```
 
 ### 3. IDE Integration (VSCode)
