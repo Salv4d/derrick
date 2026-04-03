@@ -17,5 +17,7 @@ bin/
 
 # Derrick auto-generated files
 .derrick/
+.derrick-code/
+node_modules/
 tmp
 .aider*
