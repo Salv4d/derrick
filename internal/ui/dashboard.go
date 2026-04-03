@@ -1,7 +1,11 @@
 package ui
 
 import (
+	"encoding/json"
+	"fmt"
+	"os/exec"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -22,11 +26,20 @@ var (
 )
 
 type DashboardModel struct {
-	activeTab int
-	tabs      []string
-	width     int
-	height    int
+	activeTab  int
+	tabs       []string
+	width      int
+	height     int
+	containers []Container
 }
+
+type Container struct {
+	Names  string `json:"Names"`
+	Status string `json:"Status"`
+	State  string `json:"State"`
+}
+
+type dockerStatusMsg []Container
 
 func NewDashboardModel() DashboardModel {
 	return DashboardModel{
@@ -36,7 +49,34 @@ func NewDashboardModel() DashboardModel {
 }
 
 func (m DashboardModel) Init() tea.Cmd {
-	return nil
+	return fetchDocker
+}
+
+func fetchDocker() tea.Msg {
+	cmd := exec.Command("docker", "ps", "--format", "{{json .}}")
+	out, err := cmd.Output()
+	if err != nil {
+		return dockerStatusMsg{}
+	}
+
+	var containers []Container
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		var c Container
+		if err := json.Unmarshal([]byte(line), &c); err == nil {
+			containers = append(containers, c)
+		}
+	}
+	return dockerStatusMsg(containers)
+}
+
+func tickDockerStatus() tea.Cmd {
+	return tea.Tick(time.Second*2, func(t time.Time) tea.Msg {
+		return fetchDocker()
+	})
 }
 
 func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -53,6 +93,9 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case dockerStatusMsg:
+		m.containers = msg
+		return m, tickDockerStatus()
 	}
 	return m, nil
 }
@@ -76,7 +119,23 @@ func (m DashboardModel) View() string {
 	content := ""
 	switch m.activeTab {
 	case 0:
-		content = "Container Status: [Async Health Check Pending...]\n\n(Press 'q' or 'ctrl+c' to exit, 'tab' to change menus)"
+		if len(m.containers) == 0 {
+			content = "Container Status: [No running containers found or scanning...]\n"
+		} else {
+			sb := strings.Builder{}
+			sb.WriteString(lipgloss.NewStyle().Bold(true).Render("Running Containers:"))
+			sb.WriteString("\n\n")
+			for _, c := range m.containers {
+				statusColor := "42" // Green
+				if c.State != "running" {
+					statusColor = "196" // Red
+				}
+				statusTag := lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor)).Render(fmt.Sprintf("[%s]", c.State))
+				sb.WriteString(fmt.Sprintf("%s %s - %s\n", statusTag, lipgloss.NewStyle().Bold(true).Render(c.Names), c.Status))
+			}
+			content = sb.String()
+		}
+		content += "\n(Press 'q' or 'ctrl+c' to exit, 'tab' to change menus)"
 	case 1:
 		content = "Log Stream:\n[Multiplexer Async Data Pending...]"
 	case 2:
