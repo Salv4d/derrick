@@ -28,9 +28,16 @@ func (e *ShellEngine) EnterSandbox(projectRoot string, args []string) error {
 
 	flakePath := fmt.Sprintf("path:%s#default", derrickDir)
 
-	customPrompt := "export PS1='\\e[34m(derrick-sandbox)\\e[0m \\w > '; bash --norc"
+	var cmd *exec.Cmd
 
-	cmd := exec.Command(nixPath, "develop", flakePath, "-c", "sh", "-c", customPrompt)
+	if len(args) > 0 {
+		cmdArgs := []string{"develop", flakePath, "--command"}
+		cmdArgs = append(cmdArgs, args...)
+		cmd = exec.Command(nixPath, cmdArgs...)
+	} else {
+		customPrompt := "export PS1='\\e[34m(derrick-sandbox)\\e[0m \\w > '; bash --norc"
+		cmd = exec.Command(nixPath, "develop", flakePath, "-c", "sh", "-c", customPrompt)
+	}
 
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
