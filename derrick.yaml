@@ -1,5 +1,7 @@
+---
 name: "derrick"
 version: "0.1.0"
+
 dependencies:
   nix_registry: "github:NixOS/nixpkgs/nixos-unstable"
   nix_packages:
@@ -11,7 +13,7 @@ env:
   GITHUB_TOKEN:
     description: "Personal Access Token for GitHub API"
     required: true
-    validation: "curl -s --fail -H \"Authorization: token $GITHUB_TOKEN\" https://api.github.com/user"
+    validation: "curl -s --fail -H \"Authorization: Bearer $GITHUB_TOKEN\" https://api.github.com/user"
   DATABASE_URL:
     description: "Connection string for the PostgreSQL database"
     required: false
@@ -26,7 +28,7 @@ hooks:
     - "echo '🚀 Starting development environment...'"
   post_start:
     - "echo '✨ Environment is ready!'"
-  post_stop: 
+  post_stop:
     - "echo '👋 Environment stopped.'"
 
 validations:
