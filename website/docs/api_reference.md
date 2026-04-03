@@ -11,16 +11,15 @@ This guide exhaustively covers the Derrick CLI surface and validates all possibl
 
 The CLI acts as your portal to the sandbox. 
 
-* `derrick start`
-  * **Behavior**: Reads the `derrick.yaml`, executes `pre_init` hooks, validates environment constraints, downloads Nix derivations, boosts Docker Compose profiles, and executes `pre_start` hooks.
-* `derrick shell`
-  * **Behavior**: Bypasses host binaries. Spawns an interactive bash terminal hermetically mapped to the dependencies defined inside the `derrick.yaml`. 
-* `derrick stop`
-  * **Behavior**: Hooks `post_stop` scripts and gracefully orchestrates Docker down algorithms.
-* `derrick doctor`
-  * **Behavior**: Diagnostics only. Runs `Validations` mapping network/port bindings. Does not bootstrap anything. Useful for troubleshooting why a teammate's environment refuses to start.
-* `derrick dashboard`
-  * **Behavior**: Spawns an interactive BubbleTea application pane visually mapping Docker Container Health logs across sidecars.
+### Commands
+
+| Command | Description | Behavior Context |
+| :--- | :--- | :--- |
+| `start` | Main Bootstrapper | Reads `derrick.yaml`, validates envs, boots Nix dependencies, and runs Docker Compose. |
+| `shell` | Hermetic Terminal | Spawns an interactive bash terminal hermetically mapped to Nix definitions. |
+| `stop` | Graceful Teardown | Executes `post_stop` scripts and gracefully halts Docker. |
+| `doctor`| Diagnostic Tool | Runs Validation checks manually without bootstrapping. |
+| `dashboard` | Interactive UI | Spawns a BubbleTea pane mapping Container Health via TUI. |
 
 ---
 
@@ -28,71 +27,118 @@ The CLI acts as your portal to the sandbox.
 
 Your configuration defines the absolute state of the project. A complete YAML uses the `ProjectConfig` schema beneath the internal engine logic.
 
-### 1. Metadata
+### 1. Metadata Schema
+
+Identify your microservice cleanly across the host boundaries.
+
+| Keyword | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `name` | `string` | **Yes** | `""` | The canonical name of the project. Must be lowercase. |
+| `version` | `string` | **Yes** | `""` | Version mapping for the workspace. |
+| `requires` | `array[string]` | No | `[]` | Used for project clustering to declare other services that must be booted. |
+
+**Example Usage**:
 ```yaml
-name: "my_service" # Must be lowercase as per validation tags
+name: "my_service"
 version: "1.2.0"
 requires: 
-  - "database_service" # For project clustering hints across workspaces
+  - "database_service" 
 ```
 
-### 2. Dependencies
-Orchestrate global dependencies seamlessly.
+### 2. Dependencies Schema
+
+The core pillar. Determines what global packages and container topologies must exist.
+
+| Keyword | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `dependencies.nix_registry` | `string` | No | `"github:NixOS/nixpkgs/nixos-unstable"` | The Nixpkgs flake or channel to lock. |
+| `dependencies.nix_packages` | `array[string]` | **Yes** | `[]` | List of system dependencies (e.g. `go`, `nodejs_20`). |
+| `dependencies.docker_compose` | `string` | No | `""` | Filepath to docker-compose matrix. |
+| `dependencies.docker_compose_profiles` | `array[string]`| No | `[]` | Subset of docker profiles to boot natively. |
+
+**Example Usage**:
 ```yaml
 dependencies:
-  nix_registry: "github:NixOS/nixpkgs/nixos-unstable" # Highly recommended to keep unstable for modern packages
+  nix_registry: "github:NixOS/nixpkgs/nixos-unstable" 
   nix_packages:
     - "nodejs_20"
-    - "go"
-    - "postgresql_15"
-  docker_compose: "docker-compose.yml" # Target filepath for container services
-  docker_compose_profiles: # E.g., spawn only 'backend' profiles from a multi-service yaml
-    - "cache"
+  docker_compose: "docker-compose.yml" 
 ```
 
 ### 3. Environment Constraints (`env`)
-Avoid missing `.env` miscommunication scenarios and assure developers possess tokens they need securely.
+
+Avoid missing `.env` miscommunication scenarios and assure developers possess tokens securely.
+
+| Keyword | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `env.<KEY>.description` | `string` | No | `""` | Helper text when prompting developers. |
+| `env.<KEY>.required` | `boolean`| No | `false` | Prompts fail-fast mechanism if missing. |
+| `env.<KEY>.default` | `string` | No | `""` | Injects baseline values if `required` is false. |
+| `env.<KEY>.validation` | `string` | No | `""` | Shell command. If it yields exit code `> 0`, fails validation. |
+
+**Example Usage**:
 ```yaml
 env:
   STRIPE_SECRET_KEY:
     description: "Production Stripe Key for Sandbox Testing"
     required: true
-    # Evaluated at runtime! If it exits > 0, the environment fails fast.
     validation: "curl -s --fail -H \"Authorization: Bearer $STRIPE_SECRET_KEY\" https://api.stripe.com/v1/balance"
-  DB_PASSWORD:
-    description: "Local Postgres bypass"
-    default: "postgres"
 ```
 
 ### 4. Direct Validations
+
 Custom assertions ran systematically before Nix or Docker attempt to pull assets.
+
+| Keyword | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `validations.name` | `string` | **Yes** | `""` | Contextual name of the Validation step. |
+| `validations.command` | `string` | **Yes** | `""` | Evaluated Bash script. |
+| `validations.auto_fix`| `string` | No | `""` | Shell script triggered natively if `command` fails. |
+
+**Example Usage**:
 ```yaml
 validations:
-  - name: "Is Port 8080 Context Availability?"
-    command: "! lsof -i :8080" # Fails fast if port is busy
-    auto_fix: "kill -9 $(lsof -t -i:8080)" # Automatically executes if the above check fails
+  - name: "Is Port 8080 Available?"
+    command: "! lsof -i :8080" 
+    auto_fix: "kill -9 $(lsof -t -i:8080)" 
 ```
 
 ### 5. Lifecycle Hooks
+
 Bash scripts fired across bootstrap stages. Extremely efficient for executing seed generators or local development commands.
+
+| Keyword | Description | Timing Logic |
+| :--- | :--- | :--- |
+| `pre_init` | Triggers before Nix resolves dependencies. | Used for validation or directory structures. |
+| `post_init` | Triggers directly after Sandbox lock established. | E.g., `npm install` (utilizing the cached Nix node bin). |
+| `pre_start` | Triggers before Docker Compose UP. | Database setups or network proxies. |
+| `post_start`| Triggers when Environment is functionally ready. | Displaying ASCII art, or running auto-migrations. |
+| `post_stop` | Triggers after terminal exits and environment tears down.| Cleaning up temporary PID files. |
+
+**Example Usage**:
 ```yaml
 hooks:
-  pre_init:
-    - "echo 'Validating directory structures...'"
   post_init:
-    - "npm install" # Happens safely *after* Nix successfully caches the nodejs_20 binary!
+    - "npm install" 
   pre_start:
-    - "go run scripts/migrate.go" # Runs locally against the network footprint before compose fully yields.
+    - "go run scripts/migrate.go"
 ```
 
-### 6. Profile Overrrides
-Derrick fundamentally allows environment inheritance to scale up into multiple profiles easily. By targeting a profile via the CLI (e.g., `-p prod`), you can extend or replace core attributes.
+### 6. Profile Overrides (`profiles`)
+
+Derrick allows environment inheritance to scale up into multiple profiles. By targeting a profile via the CLI (e.g., `-p prod`), you can extend core attributes.
+
+| Keyword | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `profiles.<KEY>.extend` | `string` | No | `""` | Inherit from `default` or another profile snippet. |
+| `profiles.<KEY>.<SCHEMA>` | `object`| No | `{}` | Re-implements any core `ProjectConfig` key to overwrite. |
+
+**Example Usage**:
 ```yaml
 profiles:
   testing:
     extend: "default"
     dependencies:
       docker_compose_profiles:
-        - "cache" 
-        - "integration-broker" # In the testing profile, we append the integration-broker container!
+        - "integration-broker" 
 ```
