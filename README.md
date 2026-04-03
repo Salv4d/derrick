@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="https://salv4d.github.io/derrick/"><img src="https://img.shields.io/badge/📖_Documentation-salv4d.github.io/derrick-blue.svg?style=for-the-badge" alt="Documentation"></a>
+  <a href="https://github.com/Salv4d/derrick/actions/workflows/deploy-docs.yml"><img src="https://img.shields.io/github/actions/workflow/status/Salv4d/derrick/deploy-docs.yml?style=for-the-badge&label=Docs%20CI" alt="Docs CI"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-purple.svg?style=for-the-badge" alt="License: MIT"></a>
   <a href="https://goreportcard.com/report/github.com/Salv4d/derrick"><img src="https://goreportcard.com/badge/github.com/Salv4d/derrick?style=for-the-badge" alt="Go Report Card"></a>
   <img src="https://img.shields.io/badge/Stability-Alpha-orange.svg?style=for-the-badge" alt="Stability: Alpha">
@@ -36,6 +37,12 @@ Experience a fully hermetic environment in seconds.
 
 ### 1. Installation
 
+**Using Go (Recommended)**
+```bash
+go install github.com/Salv4d/derrick/cmd/derrick@latest
+```
+
+**Build from Source**
 ```bash
 git clone https://github.com/Salv4d/derrick.git
 cd derrick
@@ -77,9 +84,9 @@ Derrick is currently in **Alpha**. It is stable for Linux/WSL environments.
 - [x] Nix + Docker Compose Orchestration
 - [x] Interactive Environment Validation & `.env` Setup
 - [x] Custom Config YAML Support (`-f` flag)
+- [x] **TUI Dashboard:** A live BubbleTea-powered container and lifecycle log viewer (`derrick dashboard`).
 - [ ] **Project Clustering:** Cross-directory service discovery and networking.
 - [ ] **Remote Config Extensions:** Inherit base YAML settings from remote URLs.
-- [ ] **TUI Dashboard:** A live BubbleTea-powered container and lifecycle log viewer (`derrick dashboard`).
 
 ---
 
