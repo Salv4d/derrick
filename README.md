@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>A professional-grade local development orchestrator for complex microservice environments.</strong><br>
-  <em>Unite the absolute reproducibility of Nix with the containerization of Docker Compose.</em>
+  <em>Unite the absolute reproducibility of Nix with the optional containerization of Docker Compose.</em>
 </p>
 
 <p align="center">
@@ -33,7 +33,7 @@ Unlike generic task runners, Derrick ensures that every contributor's machine is
 
 Experience a fully hermetic environment in seconds. 
 
-> *Note: Requires [Nix](https://nixos.org/download) and [Docker](https://docs.docker.com/engine/install/) to be previously installed on your machine.*
+> *Note: Requires [Nix](https://nixos.org/download) to be previously installed on your machine. Docker is optional!*
 
 ### 1. Installation
 
@@ -52,9 +52,12 @@ sudo mv derrick /usr/local/bin/
 
 ### 2. Enter the Sandbox
 
-Create a simple `derrick.yaml` in your project folder, and then run:
+Navigate to your project folder and run the smart wizard to generate your `derrick.yaml`:
 
 ```bash
+# Auto-detects your project language and optional external databases
+derrick init
+
 # Formats and starts Nix binaries and Docker containers
 derrick start
 
@@ -63,6 +66,15 @@ derrick shell
 
 # Audits if your project meets the strict derrick.yaml constraints
 derrick doctor
+```
+
+### 3. IDE Integration (VSCode)
+
+To effortlessly bind your IDE extensions (Language Servers, Linters, Debuggers) to your isolated Nix dependencies, simply launch the IDE from within the sandbox:
+
+```bash
+derrick shell
+code .
 ```
 
 ---
