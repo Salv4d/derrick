@@ -1,0 +1,62 @@
+---
+name: "my-advanced-project"
+version: "1.0.0"
+
+dependencies:
+  nix_registry: "github:NixOS/nixpkgs/nixos-unstable"
+  nix_packages:
+    - "nodejs"
+    - "postgresql"
+    - "redis"
+    - "docker"
+    - "docker-compose"
+  docker_compose: "docker-compose.project.yml"
+
+env:
+  DB_USER:
+    description: "Database admin username"
+    required: true
+    default: "admin"
+  DB_PASSWORD:
+    description: "Database admin password"
+    required: true
+    default: "secret123"
+    validation: "[[ ${#DB_PASSWORD} -ge 8 ]] || (echo 'Password must be at least 8 characters' && exit 1)"
+  DB_NAME:
+    description: "Database name"
+    required: true
+    default: "myapp_dev"
+
+hooks:
+  pre_init:
+    - "echo '🔍 Validating environment for ${name}...'"
+    - "command -v docker >/dev/null 2>&1 || (echo '❌ Docker is required' && exit 1)"
+  
+  post_init:
+    - "echo '📦 Installing API dependencies...'"
+    - "cd api && npm install"
+  
+  pre_start:
+    - "echo '⛓️  Checking if ports 3000, 5432, and 6379 are free...'"
+    - "! nc -z localhost 3000 || (echo '❌ Port 3000 is busy' && exit 1)"
+    - "! nc -z localhost 5432 || (echo '❌ Port 5432 is busy' && exit 1)"
+    - "! nc -z localhost 6379 || (echo '❌ Port 6379 is busy' && exit 1)"
+  
+  post_start:
+    - "echo '🚀 services are warming up...'"
+    - "sleep 5"
+    - "echo '✨ Environment is ready at http://localhost:3000'"
+    - "echo '📊 Database: localhost:5432'"
+    - "echo '🗄️  Cache: localhost:6379'"
+
+  post_stop:
+    - "echo '🛑 Cleaning up...'"
+    - "docker-compose -f docker-compose.project.yml down -v"
+
+validations:
+  - name: "Docker Daemon"
+    command: "docker info >/dev/null 2>&1"
+  - name: "Node.js Availability"
+    command: "node --version"
+  - name: "NPM Readiness"
+    command: "npm --version"
