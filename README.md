@@ -80,11 +80,14 @@ One of the most powerful features of Derrick is **Hermetic IDE Mapping**. You ca
 
 They will seamlessly inherit all the locked dependencies (Language Servers, DB drivers, Linters) without touching your Host OS.
 
-**Bind an existing IDE session natively:**
+**Launch a Zero-Install IDE instantly:**
 ```bash
-derrick shell
-code .    # Spawns VSCode infused with your isolated Nix PATH!
-cursor .  # Works seamlessly with Cursor!
+# Auto-detects $EDITOR or prompts an interactive selection
+derrick code
+
+# Force a specific IDE to boot targeting the current environment:
+derrick code neovim
+derrick code cursor
 ```
 
 **Run an AI coding assistant in an ephemeral sandbox:**

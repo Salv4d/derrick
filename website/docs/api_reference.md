@@ -20,6 +20,7 @@ The CLI acts as your portal to the sandbox.
 | `clean` | System Maintenance | Garbage collects orphaned Nix derivatives and unused Docker assets. |
 | `shell` | Hermetic Terminal | Spawns an interactive bash terminal hermetically mapped to Nix definitions. |
 | `stop` | Graceful Teardown | Executes `post_stop` scripts and gracefully halts Docker. |
+| `code` | IDE Sandboxing | Intelligently injects an IDE (e.g., vscode, neovim) into a workspace-bound environment, reading your host's `$VISUAL` or `$EDITOR`. |
 | `doctor`| Diagnostic Tool | Runs Validation checks manually without bootstrapping. |
 | `dashboard` | Interactive UI | Spawns a BubbleTea pane mapping Container Health via TUI. |
 
