@@ -3,11 +3,82 @@ package engine
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/Salv4d/derrick/internal/ui"
+	"gopkg.in/yaml.v3"
 )
+
+type ComposeMap struct {
+	Services map[string]interface{} `yaml:"services"`
+}
+
+type OverrideMap struct {
+	Services map[string]ServiceOverride `yaml:"services"`
+	Networks map[string]NetworkOverride `yaml:"networks"`
+}
+
+type ServiceOverride struct {
+	ExtraHosts []string `yaml:"extra_hosts,omitempty"`
+}
+
+type NetworkOverride struct {
+	Name     string `yaml:"name"`
+	External bool   `yaml:"external"`
+}
+
+func GenerateNetworkOverride(composeFile string, outDir string) (string, error) {
+	data, err := os.ReadFile(composeFile)
+	if err != nil {
+		return "", err
+	}
+
+	var base ComposeMap
+	if err := yaml.Unmarshal(data, &base); err != nil {
+		return "", fmt.Errorf("failed to parse %s: %v", composeFile, err)
+	}
+
+	override := OverrideMap{
+		Services: make(map[string]ServiceOverride),
+		Networks: map[string]NetworkOverride{
+			"default": {
+				Name:     "derrick-net",
+				External: true,
+			},
+		},
+	}
+
+	for svcName := range base.Services {
+		override.Services[svcName] = ServiceOverride{
+			ExtraHosts: []string{"host.docker.internal:host-gateway"},
+		}
+	}
+
+	overrideData, err := yaml.Marshal(&override)
+	if err != nil {
+		return "", err
+	}
+
+	if outDir == "" {
+		outDir = ".derrick"
+	}
+
+	err = os.MkdirAll(outDir, 0o755)
+	if err != nil {
+		return "", err
+	}
+
+	overridePath := filepath.Join(outDir, "docker-compose.override.yml")
+	err = os.WriteFile(overridePath, overrideData, 0o644)
+	if err != nil {
+		return "", err
+	}
+
+	return overridePath, nil
+}
 
 func IsDockerInstalled() bool {
 	_, err := exec.LookPath("docker")
@@ -28,7 +99,15 @@ func StartContainers(composeFile string, profiles []string) error {
 
 	ui.Taskf("Starting Docker containers from [%s]", composeFile)
 
+	overridePath, err := GenerateNetworkOverride(composeFile, ".derrick")
+	if err != nil {
+		ui.Warningf("Failed to generate network overrides (clustering disabled): %v", err)
+	}
+
 	args := []string{"compose", "-f", composeFile}
+	if err == nil && overridePath != "" {
+		args = append(args, "-f", overridePath)
+	}
 	for _, p := range profiles {
 		args = append(args, "--profile", p)
 	}
@@ -39,7 +118,7 @@ func StartContainers(composeFile string, profiles []string) error {
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		ui.Error("FAILED")
 		errMsg := strings.TrimSpace(stderr.String())
@@ -71,7 +150,12 @@ func StopContainers(composeFile string, profiles []string) error {
 
 	ui.Taskf("Stopping Docker containers from [%s]", composeFile)
 
+	overridePath, err := GenerateNetworkOverride(composeFile, ".derrick")
+
 	args := []string{"compose", "-f", composeFile}
+	if err == nil && overridePath != "" {
+		args = append(args, "-f", overridePath)
+	}
 	for _, p := range profiles {
 		args = append(args, "--profile", p)
 	}
@@ -82,7 +166,7 @@ func StopContainers(composeFile string, profiles []string) error {
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		ui.Error("FAILED")
 		errMsg := strings.TrimSpace(stderr.String())
