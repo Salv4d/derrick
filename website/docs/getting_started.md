@@ -93,3 +93,10 @@ You can also securely run terminal-based AI coding agents inside verified sandbo
 ```bash
 derrick run claude-code
 ```
+
+## 5. Cross-Project Clustering 🌐
+
+If you use `derrick` mapped to multiple microservices (e.g., `api/derrick.yaml` and `web/derrick.yaml`), **they instantly know how to communicate.**
+You do not need to hardcode manual IP addresses or rewrite your `docker-compose` bridges. 
+
+Derrick automatically injects the `derrick-net` global bridge into your compose evaluations behind the scenes. Furthermore, every Container spawned can flawlessly speak backwards to any local ports open in your `derrick shell` Host sandbox using the URL `http://host.docker.internal:<PORT>`!

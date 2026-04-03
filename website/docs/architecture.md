@@ -38,3 +38,10 @@ The `engine` is the undeniable **heart** of the project. It conducts the orchest
 ## The UI (`internal/ui`)
 
 Driven by the `charmbracelet` ecosystem (`huh` for prompts, `lipgloss` for styling, and `bubbletea` for interactivity), providing developers robust, real-time feedback over their environment.
+
+## 🌐 Project Clustering & Network Topologies
+
+Derrick performs intelligent overrides to bridge your Host OS sandbox with isolated Docker Compose networks dynamically:
+
+1. **Inter-Project Resolution (`derrick-net`)**: During bootstrap, Derrick dynamically rewrites your Docker network routing via an ephemeral `.derrick/docker-compose.override.yml`. This links all independent `derrick` projects onto a single unified Docker network, allowing containers from Backend Project X to transparently resolve containers from Frontend Project Y natively!
+2. **Host OS Passthrough (`host.docker.internal`)**: Because your linters and runtime frameworks execute securely in the local Nix sandbox (Host OS context), containers must be able to route traffic backwards. Derrick forcefully injects a `host.docker.internal:host-gateway` trace into every spawned container so they can seamlessly `curl` your natively bound sandbox ports!
