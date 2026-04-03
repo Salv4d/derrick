@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 
 	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/engine"
@@ -35,8 +37,44 @@ var startCmd = &cobra.Command{
 		}
 		ui.Successf("Loaded project: %s (v%s)", cfg.Name, cfg.Version)
 
+		if len(cfg.Requires) > 0 {
+			ui.Section("Dependency Resolution")
+			resolver, err := engine.NewDependencyResolver()
+			if err != nil {
+				ui.Warningf("Failed to initialize remote Hub: %v", err)
+			} else {
+				if err := resolver.ResolveAndClone(cwd, cfg.Requires); err != nil {
+					ui.FailFast(err)
+				}
+			}
+
+			ui.Task("Booting required dependencies")
+			parentDir := filepath.Dir(cwd)
+			for _, dep := range cfg.Requires {
+				depPath := filepath.Join(parentDir, dep)
+				ui.Infof("Entering dependency tree: %s", dep)
+				
+				cmdArgs := []string{"start"}
+				if profileName != "" {
+					cmdArgs = append(cmdArgs, "--profile", profileName)
+				}
+				
+				cmdBoot := exec.Command(os.Args[0], cmdArgs...)
+				cmdBoot.Dir = depPath
+				cmdBoot.Stdout = os.Stdout
+				cmdBoot.Stderr = os.Stderr
+				cmdBoot.Stdin = os.Stdin
+				
+				if err := cmdBoot.Run(); err != nil {
+					ui.FailFast(fmt.Errorf("failed to boot dependency '%s': %w", dep, err))
+				}
+			}
+			ui.Success("All dependencies booted successfully")
+		}
+
 		useNix := len(cfg.Dependencies.NixPackages) > 0
 
+		ui.Section("Environment Validation")
 		ui.Task("Validating environment variables")
 		err = engine.ValidateAndLoadEnv(cwd, cfg, useNix)
 		if err != nil {
