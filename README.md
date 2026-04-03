@@ -5,74 +5,68 @@
 <h1 align="center">Derrick CLI</h1>
 
 <p align="center">
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-purple.svg" alt="License: MIT"></a>
-  <a href="https://goreportcard.com/report/github.com/Salv4d/derrick"><img src="https://goreportcard.com/badge/github.com/Salv4d/derrick" alt="Go Report Card"></a>
-  <img src="https://img.shields.io/badge/Stability-Alpha-orange.svg" alt="Stability: Alpha">
+  <strong>A professional-grade local development orchestrator for complex microservice environments.</strong><br>
+  <em>Unite the absolute reproducibility of Nix with the containerization of Docker Compose.</em>
 </p>
 
 <p align="center">
-  <strong>Derrick</strong> is a professional-grade local development orchestrator designed for complex microservice environments. It acts as a <strong>smart control plane</strong> that unites the absolute reproducibility of <strong>Nix</strong> with the containerization of <strong>Docker Compose</strong>, wrapped in a rigorous state validation system.
+  <a href="https://salv4d.github.io/derrick/"><img src="https://img.shields.io/badge/📖_Documentation-salv4d.github.io/derrick-blue.svg?style=for-the-badge" alt="Documentation"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-purple.svg?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://goreportcard.com/report/github.com/Salv4d/derrick"><img src="https://goreportcard.com/badge/github.com/Salv4d/derrick?style=for-the-badge" alt="Go Report Card"></a>
+  <img src="https://img.shields.io/badge/Stability-Alpha-orange.svg?style=for-the-badge" alt="Stability: Alpha">
 </p>
 
 ---
 
-Unlike generic task runners, Derrick ensures that every contributor's machine is a bit-for-bit clone of the production-grade toolchain, without ever polluting the host OS.
+## 💡 The Problem Derrick Solves
+
+Unlike generic task runners, Derrick ensures that every contributor's machine is a bit-for-bit clone of the production-grade toolchain. 
+
+1. **Zero Host OS Pollution:** No `nvm`, `pyenv`, or global `go` required. All your project dependencies live strictly inside an isolated Nix sandbox.
+2. **Declarative Contracts:** Define your environment in `derrick.yaml`. If the contract says you need Go 1.21 and Postgres, Derrick guarantees that state.
+3. **Fail-Fast Validation:** Audits local constraints like `.env` secrets or active ports in milliseconds before booting the environment, prompting self-healing fixes.
 
 ---
 
-## 🚀 The Core Philosophy
+## ⚡ Quick Start
 
-1.  **Zero Host Pollution:** No more `nvm`, `pyenv`, or `gvm`. All compilers, runtimes, and libraries live strictly inside an isolated Nix sandbox.
-2.  **Declarative Contracts:** Your environment is defined in `derrick.yaml`. If the contract says you need Go 1.21 and a specific Postgres extension, Derrick guarantees you have them before the first line of code runs.
-3.  **Fail-Fast Validation:** Derrick audits your local state (secrets, network, dependencies) in milliseconds. If a requirement is missing, it provides interactive, self-healing prompts instead of cryptic stack traces.
-4.  **Surgical Persistence:** Interactive configuration of `.env` files with support for default values and shell-based validation (e.g., verifying a GitHub token via `curl` before saving it).
+Experience a fully hermetic environment in seconds. 
 
----
+> *Note: Requires [Nix](https://nixos.org/download) and [Docker](https://docs.docker.com/engine/install/) to be previously installed on your machine.*
 
-## 🛠 Features
-
-### 📦 Unified Sandbox (Nix + Docker)
-Derrick orchestrates your **tooling** (via Nix) and your **services** (via Docker Compose) simultaneously.
-*   **Nix Sandbox:** Version-locked binaries (`node`, `go`, `redis-cli`) available via `derrick shell`.
-*   **Docker Orchestration:** Native lifecycle management of containers with built-in health checks.
-
-### 🛡 Rigorous Environment Validation
-Define an `env` block in your `derrick.yaml` to enforce security and connectivity:
-*   **Interactive Prompts:** Missing secrets? Derrick securely asks for them.
-*   **Default Values:** Sensible defaults for non-sensitive data.
-*   **Live Validation:** Run shell commands (like `ping` or `api calls`) to verify that the provided secret actually works.
-
-### ⚡ Lifecycle Hooks
-Execute bash scripts at critical junctions:
-*   `pre_init` / `post_init`: Seed databases or download private modules.
-*   `pre_start` / `post_start`: Run migrations once the environment is healthy.
-
----
-
-## 📥 Installation
+### 1. Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/Salv4d/derrick.git
 cd derrick
-
-# Build and install
 go build -o derrick ./cmd/derrick
 sudo mv derrick /usr/local/bin/
 ```
 
-*Note: Requires [Nix](https://nixos.org/download.html) and [Docker](https://docs.docker.com/engine/install/) to be installed on the host.*
+### 2. Enter the Sandbox
+
+Create a simple `derrick.yaml` in your project folder, and then run:
+
+```bash
+# Formats and starts Nix binaries and Docker containers
+derrick start
+
+# Drops you into the strictly sealed bash terminal (your sandbox)
+derrick shell
+
+# Audits if your project meets the strict derrick.yaml constraints
+derrick doctor
+```
 
 ---
 
-## 📖 Documentation
+## 📖 Deep-Dive Documentation
 
-The full documentation is now hosted on our GitHub Pages site, generated from the [`docs/`](./docs/index.md) directory:
+For advanced features, lifecycle hooks, complex `derrick.yaml` directives, and the architecture design, visit our official documentation portal:
 
-* [**Getting Started**](./docs/getting_started.md)
-* [**Architecture Overview**](./docs/architecture.md)
-* [**CLI & Configuration Reference**](./docs/api_reference.md)
-* [**Glossary**](./docs/glossary.md)
+👉 **[https://salv4d.github.io/derrick/](https://salv4d.github.io/derrick/)**
+
+*(Or browse the raw Markdown files locally in the [`/docs`](./docs/index.md) folder).*
 
 ---
 
@@ -81,20 +75,20 @@ The full documentation is now hosted on our GitHub Pages site, generated from th
 Derrick is currently in **Alpha**. It is stable for Linux/WSL environments.
 
 - [x] Nix + Docker Compose Orchestration
-- [x] Interactive Environment Validation & `.env` Replacement
-- [x] Custom Config Support (`-f` flag)
+- [x] Interactive Environment Validation & `.env` Setup
+- [x] Custom Config YAML Support (`-f` flag)
 - [ ] **Project Clustering:** Cross-directory service discovery and networking.
-- [ ] **Remote Config Extensions:** Inherit base configurations from remote URLs.
-- [ ] **TUI Dashboard:** A live BubbleTea-powered container and log viewer.
+- [ ] **Remote Config Extensions:** Inherit base YAML settings from remote URLs.
+- [ ] **TUI Dashboard:** A live BubbleTea-powered container and lifecycle log viewer (`derrick dashboard`).
 
 ---
 
 ## 🤝 Contributing
 
-We heavily welcome contributions and improvements to the orchestrator.
-Read our fully detailed [Contributing Guide](./docs/contributing.md) to learn how to set up your environment, run tests, and open proper pull requests.
+We heavily welcome contributions and improvements!
+Read our fully detailed **[Contributing Guide](./docs/contributing.md)** to learn how to properly set up your environment, write tests, and open Conventional pull requests.
 
-We also maintain [Benchmark Projects](.derrick/benchmark_projects.md) to see how we test Derrick against realistic production-grade scenarios.
+*We also maintain a set of [Benchmark Projects](.derrick/benchmark_projects.md) to test Derrick against strict, enterprise-style scenarios.*
 
 ---
 
