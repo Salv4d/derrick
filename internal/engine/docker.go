@@ -14,10 +14,17 @@ func IsDockerInstalled() bool {
 	return err == nil
 }
 
+func EnsureGlobalNetwork() {
+	cmd := exec.Command("docker", "network", "create", "derrick-net")
+	_ = cmd.Run() // Ignore errors; network might already exist
+}
+
 func StartContainers(composeFile string, profiles []string) error {
 	if composeFile == "" {
 		return nil
 	}
+
+	EnsureGlobalNetwork()
 
 	ui.Taskf("Starting Docker containers from [%s]", composeFile)
 
