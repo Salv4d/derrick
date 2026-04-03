@@ -58,14 +58,22 @@ derrick shell
 node -v
 ```
 
-## 4. IDE Integration
+## 4. IDE Integration & AI Coding Agents ✨
 
-To access your dependencies (like Language Servers, Linters, or Compilers) in your favorite IDE without polluting your host OS, simply launch your IDE directly from the active sandbox:
+To access your dependencies (like Language Servers, Linters, or Compilers) in your favorite IDE without polluting your host OS, simply launch your IDE directly from the active sandbox.
 
-**Using VSCode:**
+**Using VSCode or Cursor:**
 ```bash
 derrick shell
 code .
+# or
+cursor .
 ```
 
 *The IDE will launch securely infused with the Nix PATH! Any extension requiring `node`, `go`, or `python` will automatically resolve to the isolated sandbox dependencies.*
+
+**Ephemeral AI Agents:**
+You can also securely run terminal-based AI coding agents inside verified sandboxes using the ephemeral `run` tool:
+```bash
+derrick run claude-code
+```

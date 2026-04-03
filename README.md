@@ -74,13 +74,24 @@ derrick doctor
 derrick clean
 ```
 
-### 3. IDE Integration (VSCode)
+### 3. IDE Integration & AI Coding Agents ✨
 
-To effortlessly bind your IDE extensions (Language Servers, Linters, Debuggers) to your isolated Nix dependencies, simply launch the IDE from within the sandbox:
+One of the most powerful features of Derrick is **Hermetic IDE Mapping**. You can securely launch modern IDEs (like **Cursor** or **VSCode**) alongside your favorite AI coding agents (like **Claude Code** or **Antigravity**) directly from the verified sandbox. 
 
+They will seamlessly inherit all the locked dependencies (Language Servers, DB drivers, Linters) without touching your Host OS.
+
+**Bind an existing IDE session natively:**
 ```bash
 derrick shell
-code .
+code .    # Spawns VSCode infused with your isolated Nix PATH!
+cursor .  # Works seamlessly with Cursor!
+```
+
+**Run an AI coding assistant in an ephemeral sandbox:**
+Need Claude or a specialized coding agent loaded with dependencies securely?
+```bash
+derrick run claude-code
+# Your AI terminal is now isolated and executing with locked tooling!
 ```
 
 ---
