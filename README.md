@@ -65,46 +65,14 @@ sudo mv derrick /usr/local/bin/
 
 ---
 
-## 📖 Quick Start
+## 📖 Documentation
 
-1.  **Initialize your project:** Create a `derrick.yaml` in your root directory.
-2.  **Start the environment:**
-    ```bash
-    derrick start
-    ```
-3.  **Enter the sandbox:**
-    ```bash
-    derrick shell
-    ```
-4.  **Audit your health:**
-    ```bash
-    derrick doctor
-    ```
+The full documentation is now hosted on our GitHub Pages site, generated from the [`docs/`](./docs/index.md) directory:
 
-### Example `derrick.yaml`
-```yaml
-name: "my-microservice"
-version: "1.0.0"
-
-dependencies:
-  nix_packages:
-    - "go_1_21"
-    - "postgresql_15"
-  docker_compose: "docker-compose.yml"
-
-env:
-  GITHUB_TOKEN:
-    description: "Token for private module access"
-    required: true
-    validation: "curl -s --fail -H \"Authorization: token $GITHUB_TOKEN\" https://api.github.com/notifications"
-  DB_PASSWORD:
-    description: "Local DB password"
-    default: "postgres"
-
-validations:
-  - name: "Port 8080 Availability"
-    command: "! lsof -i :8080"
-```
+* [**Getting Started**](./docs/getting_started.md)
+* [**Architecture Overview**](./docs/architecture.md)
+* [**CLI & Configuration Reference**](./docs/api_reference.md)
+* [**Glossary**](./docs/glossary.md)
 
 ---
 
@@ -123,13 +91,10 @@ Derrick is currently in **Alpha**. It is stable for Linux/WSL environments.
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Benchmark Projects](.derrick/benchmark_projects.md) to see how we are testing Derrick against production-grade environments.
+We heavily welcome contributions and improvements to the orchestrator.
+Read our fully detailed [Contributing Guide](./docs/contributing.md) to learn how to set up your environment, run tests, and open proper pull requests.
 
-1. Fork the repo.
-2. Create your feature branch (`git checkout -b feature/amazing-feature`).
-3. Commit your changes (`git commit -m 'feat: add some amazing feature'`).
-4. Push to the branch (`git push origin feature/amazing-feature`).
-5. Open a Pull Request.
+We also maintain [Benchmark Projects](.derrick/benchmark_projects.md) to see how we test Derrick against realistic production-grade scenarios.
 
 ---
 
