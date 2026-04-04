@@ -1,0 +1,136 @@
+name: Release
+
+# Triggered ONLY when a semver tag is pushed, e.g. v0.2.0 or v1.0.0-beta.1
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+permissions:
+  contents: write  # Required to create GitHub Releases and upload assets
+
+jobs:
+  build:
+    name: Build — ${{ matrix.os }}/${{ matrix.arch }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            asset: derrick-linux-amd64
+
+          - os: linux
+            arch: arm64
+            asset: derrick-linux-arm64
+
+          - os: darwin
+            arch: amd64
+            asset: derrick-macos-amd64
+
+          - os: darwin
+            arch: arm64
+            asset: derrick-macos-arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Strip the leading 'v' for the version string injected into the binary,
+      # so `derrick --version` prints  0.2.0  not  v0.2.0
+      - name: Derive version string
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: 0
+        run: |
+          go build \
+            -ldflags="-s -w -X main.Version=${{ steps.version.outputs.VERSION }}" \
+            -o ${{ matrix.asset }} \
+            ./cmd/derrick
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+          retention-days: 1
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for git log changelog generation
+
+      - name: Download all binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Generate changelog from commits
+        id: changelog
+        run: |
+          # Get the previous tag to bound the commit range
+          PREV_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sed -n '2p')
+          
+          if [ -z "$PREV_TAG" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="${PREV_TAG}..HEAD"
+          fi
+
+          echo "Previous tag: ${PREV_TAG:-none}"
+          
+          # Group commits by conventional commit type
+          FEATURES=$(git log $RANGE --pretty=format:"- %s" --no-merges | grep -E "^- feat(\(.+\))?:" || true)
+          FIXES=$(git log $RANGE --pretty=format:"- %s" --no-merges | grep -E "^- fix(\(.+\))?:" || true)
+          DOCS=$(git log $RANGE --pretty=format:"- %s" --no-merges | grep -E "^- docs(\(.+\))?:" || true)
+          CHORES=$(git log $RANGE --pretty=format:"- %s" --no-merges | grep -E "^- (chore|refactor|perf)(\(.+\))?:" || true)
+          
+          BODY=""
+          [ -n "$FEATURES" ] && BODY+="### ✨ New Features\n${FEATURES}\n\n"
+          [ -n "$FIXES"    ] && BODY+="### 🐛 Bug Fixes\n${FIXES}\n\n"
+          [ -n "$DOCS"     ] && BODY+="### 📚 Documentation\n${DOCS}\n\n"
+          [ -n "$CHORES"   ] && BODY+="### 🔧 Maintenance\n${CHORES}\n\n"
+          
+          # Fallback if all commits are non-conventional
+          if [ -z "$BODY" ]; then
+            BODY=$(git log $RANGE --pretty=format:"- %s" --no-merges | head -20)
+          fi
+
+          BODY+="---\n\n**Full changelog:** https://github.com/Salv4d/derrick/compare/${PREV_TAG}...${GITHUB_REF_NAME}"
+
+          # Write to a file to safely pass multi-line content to the next step
+          printf "%b" "$BODY" > RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Derrick CLI ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}  # e.g. v1.0.0-beta.1 → prerelease
+          files: |
+            dist/derrick-linux-amd64
+            dist/derrick-linux-arm64
+            dist/derrick-macos-amd64
+            dist/derrick-macos-arm64
+          fail_on_unmatched_files: true

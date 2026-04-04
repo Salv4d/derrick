@@ -1,0 +1,42 @@
+name: CI
+
+# Run on every push to main and on every opened/updated PR
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'website/**'
+      - '**.md'
+      - '.github/workflows/deploy-docs.yml'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Run tests
+        run: go test -v -race -count=1 ./...
+
+      - name: Build (verify compilation)
+        run: |
+          go build -o /dev/null ./cmd/derrick
