@@ -20,4 +20,7 @@ bin/
 .derrick-code/
 node_modules/
 tmp
+
+# AI coding tool session files (Aider, Claude, etc.)
 .aider*
+.claude/
