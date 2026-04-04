@@ -1,13 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
-	"github.com/charmbracelet/huh"
 	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/discovery"
 	"github.com/Salv4d/derrick/internal/ui"
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -24,11 +26,11 @@ var initCmd = &cobra.Command{
 			ui.FailFastf("Failed to get current working directory: %v", err)
 		}
 
-		targetConfig := filepath.Join(cwd, "derrick.yaml")
+		targetConfig := filepath.Join(cwd, configFile)
 		if _, err := os.Stat(targetConfig); err == nil {
 			var overwrite bool
 			err := huh.NewConfirm().
-				Title("A derrick.yaml file already exists. Overwrite?").
+				Title(fmt.Sprintf("A %s file already exists. Overwrite?", configFile)).
 				Value(&overwrite).
 				Run()
 			if err != nil || !overwrite {
@@ -42,6 +44,9 @@ var initCmd = &cobra.Command{
 
 		metadata := discovery.DiscoverProject(cwd)
 		ui.Infof("Detected project: %s (v%s)", metadata.Name, metadata.Version)
+		if metadata.Language != "" {
+			ui.Infof("Detected language: %s", metadata.Language)
+		}
 
 		var (
 			projectName       = metadata.Name
@@ -50,11 +55,12 @@ var initCmd = &cobra.Command{
 			dockerComposeFile string
 			useEnvFile        bool
 			envBaseFile       string
+			selectedPackages  []string
+			extraPackages     string
 		)
 
-		// Check for existing docker-compose
-		possibleDockerFiles := []string{"docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"}
-		for _, f := range possibleDockerFiles {
+		// Auto-detect docker-compose file
+		for _, f := range []string{"docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"} {
 			if _, err := os.Stat(filepath.Join(cwd, f)); err == nil {
 				dockerComposeFile = f
 				useDockerCompose = true
@@ -62,7 +68,7 @@ var initCmd = &cobra.Command{
 			}
 		}
 
-		// Check for existing .env
+		// Auto-detect .env file
 		if matches, _ := filepath.Glob(filepath.Join(cwd, ".env*")); len(matches) > 0 {
 			useEnvFile = true
 			envBaseFile = filepath.Base(matches[0])
@@ -72,47 +78,111 @@ var initCmd = &cobra.Command{
 
 		ui.Section("Configuration Wizard")
 
-		form := huh.NewForm(
-			huh.NewGroup(
-				huh.NewInput().
-					Title("Project Name").
-					Value(&projectName),
-				huh.NewInput().
-					Title("Project Version").
-					Value(&projectVersion),
-			),
-			huh.NewGroup(
-				huh.NewConfirm().
-					Title("Do you want to use Docker Compose?").
-					Value(&useDockerCompose),
-				huh.NewInput().
-					Title("Docker Compose File Path").
-					Value(&dockerComposeFile).
-					Placeholder("e.g. docker-compose.yml"),
-			),
-			huh.NewGroup(
-				huh.NewConfirm().
-					Title("Do you want Derrick to manage Environment Variables?").
-					Value(&useEnvFile),
-				huh.NewInput().
-					Title("Base Env File").
-					Value(&envBaseFile).
-					Placeholder("e.g. .env"),
-			),
+		// ── Group 1: Project identity ─────────────────────────────────────────
+		group1 := huh.NewGroup(
+			huh.NewInput().
+				Title("Project Name").
+				Value(&projectName),
+			huh.NewInput().
+				Title("Project Version").
+				Value(&projectVersion),
 		)
+
+		// ── Group 2: Nix packages (language-aware) ────────────────────────────
+		suggestions := discovery.SuggestedPackages(metadata.Language)
+
+		var group2 *huh.Group
+		if len(suggestions) > 0 {
+			options := make([]huh.Option[string], len(suggestions))
+			for i, pkg := range suggestions {
+				options[i] = huh.NewOption(pkg, pkg).Selected(true)
+			}
+			group2 = huh.NewGroup(
+				huh.NewMultiSelect[string]().
+					Title(fmt.Sprintf("Nix packages — suggested for %s (toggle with x)", metadata.Language)).
+					Description("Pre-selected based on your detected language. Deselect anything you don't need.").
+					Options(options...).
+					Value(&selectedPackages),
+			)
+		} else {
+			group2 = huh.NewGroup(
+				huh.NewInput().
+					Title("Nix packages").
+					Description("Comma-separated list of packages to install (e.g. nodejs, go, python3)").
+					Placeholder("nodejs, go, python3").
+					Value(&extraPackages),
+			)
+		}
+
+		// ── Group 3: Extra packages (shown when suggestions exist) ────────────
+		group3 := huh.NewGroup(
+			huh.NewInput().
+				Title("Additional Nix packages").
+				Description("Comma-separated extras to add on top — leave blank to skip").
+				Placeholder("e.g. git, curl, jq").
+				Value(&extraPackages),
+		)
+
+		// ── Group 4: Docker Compose ───────────────────────────────────────────
+		group4 := huh.NewGroup(
+			huh.NewConfirm().
+				Title("Do you want to use Docker Compose?").
+				Value(&useDockerCompose),
+			huh.NewInput().
+				Title("Docker Compose File Path").
+				Value(&dockerComposeFile).
+				Placeholder("e.g. docker-compose.yml"),
+		)
+
+		// ── Group 5: Env management ───────────────────────────────────────────
+		group5 := huh.NewGroup(
+			huh.NewConfirm().
+				Title("Do you want Derrick to manage Environment Variables?").
+				Value(&useEnvFile),
+			huh.NewInput().
+				Title("Base Env File").
+				Value(&envBaseFile).
+				Placeholder("e.g. .env"),
+		)
+
+		var form *huh.Form
+		if len(suggestions) > 0 {
+			// With suggestions: show multiselect + extras group
+			form = huh.NewForm(group1, group2, group3, group4, group5)
+		} else {
+			// Without suggestions: free-text field already captures packages in group2
+			form = huh.NewForm(group1, group2, group4, group5)
+		}
 
 		err = form.Run()
 		if err != nil {
 			ui.FailFastf("Wizard aborted: %v", err)
 		}
 
+		// Merge multiselect + free-text into a deduplicated package list
+		pkgSet := make(map[string]struct{})
+		for _, p := range selectedPackages {
+			pkgSet[p] = struct{}{}
+		}
+		for _, p := range strings.Split(extraPackages, ",") {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				pkgSet[p] = struct{}{}
+			}
+		}
+
+		var nixPackages []config.NixPackage
+		for p := range pkgSet {
+			nixPackages = append(nixPackages, config.NixPackage{Name: p})
+		}
+
 		if useDockerCompose {
-			ui.Infof("🐳 Notice: Ensure Docker is installed and can be run without root (e.g. rootless or correct group permissions) to avoid friction.")
+			ui.Infof("🐳 Ensure Docker can run without root (rootless or correct group membership).")
 			if dockerComposeFile == "" {
 				dockerComposeFile = "docker-compose.yml"
 			}
 		} else {
-			dockerComposeFile = "" // ensure empty if user selected NO
+			dockerComposeFile = ""
 		}
 
 		if !useEnvFile {
@@ -123,6 +193,8 @@ var initCmd = &cobra.Command{
 			Name:    projectName,
 			Version: projectVersion,
 		}
+
+		cfg.Dependencies.NixPackages = nixPackages
 
 		if useDockerCompose {
 			cfg.Dependencies.DockerCompose = dockerComposeFile

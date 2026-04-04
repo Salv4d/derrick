@@ -10,8 +10,32 @@ import (
 )
 
 type ProjectMetadata struct {
-	Name    string
-	Version string
+	Name     string
+	Version  string
+	Language string // e.g. "node", "go", "python" — set by the detector
+}
+
+// LanguageNixSuggestions maps a detected language to a recommended set of Nix packages.
+var LanguageNixSuggestions = map[string][]string{
+	"node":   {"nodejs", "nodePackages.npm"},
+	"go":     {"go", "gopls"},
+	"python": {"python3", "python3Packages.pip"},
+	"rust":   {"rustc", "cargo", "rust-analyzer"},
+	"php":    {"php", "phpPackages.composer"},
+	"java":   {"jdk17", "maven"},
+	"ruby":   {"ruby", "bundler"},
+	"csharp": {"dotnet-sdk"},
+	"cpp":    {"gcc", "cmake", "gnumake"},
+	"swift":  {"swift"},
+}
+
+// SuggestedPackages returns the recommended Nix packages for the detected language,
+// or an empty slice when the language is unknown.
+func SuggestedPackages(lang string) []string {
+	if pkgs, ok := LanguageNixSuggestions[lang]; ok {
+		return pkgs
+	}
+	return []string{}
 }
 
 type Detector interface {
@@ -85,7 +109,7 @@ func (d *NodeDetector) Detect(dir string) (*ProjectMetadata, bool) {
 		Version string `json:"version"`
 	}
 	_ = json.Unmarshal(b, &pkg)
-	return &ProjectMetadata{Name: pkg.Name, Version: pkg.Version}, true
+	return &ProjectMetadata{Name: pkg.Name, Version: pkg.Version, Language: "node"}, true
 }
 
 // 2. Go
@@ -101,7 +125,7 @@ func (d *GoDetector) Detect(dir string) (*ProjectMetadata, bool) {
 		parts := strings.Split(name, "/")
 		name = parts[len(parts)-1]
 	}
-	return &ProjectMetadata{Name: name, Version: "0.1.0"}, true
+	return &ProjectMetadata{Name: name, Version: "0.1.0", Language: "go"}, true
 }
 
 // 3. Python
@@ -112,13 +136,13 @@ func (d *PythonDetector) Detect(dir string) (*ProjectMetadata, bool) {
 	if err == nil {
 		name := extractRegex(string(b), `(?m)name\s*=\s*["']([^"']+)["']`)
 		version := extractRegex(string(b), `(?m)version\s*=\s*["']([^"']+)["']`)
-		return &ProjectMetadata{Name: name, Version: version}, true
+		return &ProjectMetadata{Name: name, Version: version, Language: "python"}, true
 	}
 	b, err = os.ReadFile(filepath.Join(dir, "setup.py"))
 	if err == nil {
 		name := extractRegex(string(b), `(?m)name\s*=\s*["']([^"']+)["']`)
 		version := extractRegex(string(b), `(?m)version\s*=\s*["']([^"']+)["']`)
-		return &ProjectMetadata{Name: name, Version: version}, true
+		return &ProjectMetadata{Name: name, Version: version, Language: "python"}, true
 	}
 	return nil, false
 }
@@ -133,7 +157,7 @@ func (d *RustDetector) Detect(dir string) (*ProjectMetadata, bool) {
 	}
 	name := extractRegex(string(b), `(?m)name\s*=\s*["']([^"']+)["']`)
 	version := extractRegex(string(b), `(?m)version\s*=\s*["']([^"']+)["']`)
-	return &ProjectMetadata{Name: name, Version: version}, true
+	return &ProjectMetadata{Name: name, Version: version, Language: "rust"}, true
 }
 
 // 5. PHP
@@ -153,7 +177,7 @@ func (d *PHPDetector) Detect(dir string) (*ProjectMetadata, bool) {
 		parts := strings.Split(pkg.Name, "/")
 		pkg.Name = parts[len(parts)-1]
 	}
-	return &ProjectMetadata{Name: pkg.Name, Version: pkg.Version}, true
+	return &ProjectMetadata{Name: pkg.Name, Version: pkg.Version, Language: "php"}, true
 }
 
 // 6. Java (Maven)
@@ -166,7 +190,7 @@ func (d *JavaMavenDetector) Detect(dir string) (*ProjectMetadata, bool) {
 	}
 	name := extractRegex(string(b), `(?m)<artifactId>([^<]+)</artifactId>`)
 	version := extractRegex(string(b), `(?m)<version>([^<]+)</version>`)
-	return &ProjectMetadata{Name: name, Version: version}, true
+	return &ProjectMetadata{Name: name, Version: version, Language: "java"}, true
 }
 
 // 7. Java (Gradle)
@@ -193,7 +217,7 @@ func (d *JavaGradleDetector) Detect(dir string) (*ProjectMetadata, bool) {
 			name = extractRegex(string(s), `(?m)rootProject\.name\s*=?\s*["']([^"']+)["']`)
 		}
 	}
-	return &ProjectMetadata{Name: name, Version: version}, true
+	return &ProjectMetadata{Name: name, Version: version, Language: "java"}, true
 }
 
 // 8. Ruby
@@ -222,7 +246,7 @@ func (d *RubyDetector) Detect(dir string) (*ProjectMetadata, bool) {
 		}
 		return nil
 	})
-	return &ProjectMetadata{Name: name, Version: version}, true
+	return &ProjectMetadata{Name: name, Version: version, Language: "ruby"}, true
 }
 
 // 9. C#
@@ -252,7 +276,7 @@ func (d *CSharpDetector) Detect(dir string) (*ProjectMetadata, bool) {
 		return nil
 	})
 	if found {
-		return &ProjectMetadata{Name: name, Version: "0.1.0"}, true
+		return &ProjectMetadata{Name: name, Version: "0.1.0", Language: "csharp"}, true
 	}
 	return nil, false
 }
@@ -267,7 +291,7 @@ func (d *CppCMakeDetector) Detect(dir string) (*ProjectMetadata, bool) {
 	}
 	name := extractRegex(string(b), `(?i)project\s*\(\s*([^ \)]+)`)
 	version := extractRegex(string(b), `(?i)VERSION\s+([^\s\)]+)`) // Some basic matching for PROJECT(NAME VERSION 1.0)
-	return &ProjectMetadata{Name: name, Version: version}, true
+	return &ProjectMetadata{Name: name, Version: version, Language: "cpp"}, true
 }
 
 // 11. Swift
@@ -279,5 +303,5 @@ func (d *SwiftDetector) Detect(dir string) (*ProjectMetadata, bool) {
 		return nil, false
 	}
 	name := extractRegex(string(b), `(?m)name:\s*["']([^"']+)["']`)
-	return &ProjectMetadata{Name: name, Version: "0.1.0"}, true
+	return &ProjectMetadata{Name: name, Version: "0.1.0", Language: "swift"}, true
 }
