@@ -17,16 +17,26 @@ type ProjectMetadata struct {
 
 // LanguageNixSuggestions maps a detected language to a recommended set of Nix packages.
 var LanguageNixSuggestions = map[string][]string{
-	"node":   {"nodejs", "nodePackages.npm"},
-	"go":     {"go", "gopls"},
-	"python": {"python3", "python3Packages.pip"},
-	"rust":   {"rustc", "cargo", "rust-analyzer"},
-	"php":    {"php", "phpPackages.composer"},
-	"java":   {"jdk17", "maven"},
-	"ruby":   {"ruby", "bundler"},
+	// nodejs includes npm — nodePackages namespace was removed from nixpkgs
+	"node": {"nodejs"},
+	// gopls is the Go language server, useful for IDE support
+	"go": {"go", "gopls"},
+	// python3 in nixpkgs includes pip; python3Packages.pip is a separate wrapper
+	"python": {"python3"},
+	// rust-analyzer is the LSP; available directly in nixpkgs unstable
+	"rust": {"rustc", "cargo", "rust-analyzer"},
+	// composer is available as a top-level package in nixpkgs
+	"php": {"php", "phpPackages.composer"},
+	// jdk21 is current LTS; maven as standard build tool
+	"java": {"jdk21", "maven"},
+	// bundler is available as a top-level nixpkgs package
+	"ruby": {"ruby", "bundler"},
+	// dotnet-sdk covers C# / F# development
 	"csharp": {"dotnet-sdk"},
-	"cpp":    {"gcc", "cmake", "gnumake"},
-	"swift":  {"swift"},
+	// gcc + cmake + gnumake cover most C/C++ build setups
+	"cpp": {"gcc", "cmake", "gnumake"},
+	// swift toolchain is available in nixpkgs unstable
+	"swift": {"swift"},
 }
 
 // SuggestedPackages returns the recommended Nix packages for the detected language,
