@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/Salv4d/derrick/internal/config"
@@ -18,11 +19,31 @@ var (
 	rmFiles bool
 )
 
+// runCmd creates an ephemeral environment loaded with specific Nix packages.
 var runCmd = &cobra.Command{
-	Use:   "run [packages...]",
+	Use:   "run [packages...] [-- command args...]",
 	Short: "Creates an ephemeral environment loaded with specific Nix packages",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		var packages []string
+		var execArgs []string
+		separatorFound := false
+		for _, arg := range args {
+			if arg == "--" {
+				separatorFound = true
+				continue
+			}
+			if separatorFound {
+				execArgs = append(execArgs, arg)
+			} else {
+				packages = append(packages, arg)
+			}
+		}
+
+		if len(packages) == 0 {
+			ui.FailFast(fmt.Errorf("at least one package is required"))
+		}
+
 		cwd, err := os.Getwd()
 		if err != nil {
 			ui.FailFast(err)
@@ -32,7 +53,6 @@ var runCmd = &cobra.Command{
 		var isolateDir bool
 		var flakeOutDir string
 
-		// Logic for directory handling based on flags
 		if rmFiles {
 			workDir, err = os.MkdirTemp("", "derrick-run-*")
 			if err != nil {
@@ -41,15 +61,6 @@ var runCmd = &cobra.Command{
 			flakeOutDir = filepath.Join(workDir, ".derrick")
 			isolateDir = true
 			ui.Infof("Running in ephemeral isolated directory (will be deleted on exit): %s", workDir)
-
-			defer func() {
-				ui.Infof("Cleaning up ephemeral files: %s", workDir)
-				os.RemoveAll(workDir)
-			}()
-
-			os.Chdir(workDir)
-			defer os.Chdir(cwd)
-
 		} else if saveEnv {
 			envName := fmt.Sprintf("derrick-env-%d", time.Now().Unix())
 			workDir = filepath.Join(cwd, envName)
@@ -59,35 +70,39 @@ var runCmd = &cobra.Command{
 			}
 			flakeOutDir = filepath.Join(workDir, ".derrick")
 			ui.Infof("Saving environment to isolated directory: %s", workDir)
-			
-			// We move there to execute
-			os.Chdir(workDir)
-			defer os.Chdir(cwd)
-
 		} else {
-			// standard ephemeral run in same directory (no files wiped, but .derrick flake wiped)
 			workDir = cwd
 			flakeOutDir = filepath.Join(workDir, fmt.Sprintf(".derrick-tmp-%d", time.Now().UnixNano()))
 			ui.Infof("Running in local directory, will discard Nix configuration on exit.")
-			defer func() {
-				os.RemoveAll(flakeOutDir)
-			}()
 		}
 
-		ui.Taskf("Resolving packages: %v", args)
+		if rmFiles {
+			defer func() {
+				ui.Infof("Cleaning up ephemeral files: %s", workDir)
+				os.RemoveAll(workDir)
+			}()
+		} else {
+			defer os.RemoveAll(flakeOutDir)
+		}
+
+		if workDir != cwd {
+			if err := os.Chdir(workDir); err != nil {
+				ui.FailFast(fmt.Errorf("failed to change directory to %s: %v", workDir, err))
+			}
+			defer os.Chdir(cwd)
+		}
+
+		ui.Taskf("Resolving packages: %v", packages)
 
 		var nixPkgs []config.NixPackage
-		for _, arg := range args {
+		for _, arg := range packages {
 			nixPkgs = append(nixPkgs, config.NixPackage{Name: arg})
 		}
 
-		// Initialize Environment
-		err = engine.BootEnvironment("", nixPkgs, config.DefaultNixRegistry, flakeOutDir)
-		if err != nil {
+		if err := engine.BootEnvironment("", nixPkgs, config.DefaultNixRegistry, flakeOutDir); err != nil {
 			ui.FailFast(fmt.Errorf("failed to initialize run environment: %v", err))
 		}
 
-		// Handle save state yaml generation
 		if saveEnv {
 			yamlPath := filepath.Join(workDir, "derrick.yaml")
 			var cfg config.ProjectConfig
@@ -96,23 +111,38 @@ var runCmd = &cobra.Command{
 			cfg.Dependencies.NixPackages = nixPkgs
 			cfg.Dependencies.NixRegistry = config.DefaultNixRegistry
 
-			data, _ := yaml.Marshal(&cfg)
-			os.WriteFile(yamlPath, data, 0644)
+			data, err := yaml.Marshal(&cfg)
+			if err != nil {
+				ui.FailFast(fmt.Errorf("failed to generate derrick.yaml: %v", err))
+			}
+			if err := os.WriteFile(yamlPath, data, 0644); err != nil {
+				ui.FailFast(fmt.Errorf("failed to write derrick.yaml: %v", err))
+			}
 			ui.Successf("Successfully wrote derrick.yaml to %s", yamlPath)
 		}
 
-		ui.Success("Environment loaded. Entering shell...")
-		// Provide an indication this is temporary if we isolate
+		ui.Successf("Environment loaded. Entering %s...", func() string {
+			if len(execArgs) > 0 {
+				return fmt.Sprintf("command [%s]", strings.Join(execArgs, " "))
+			}
+			return "shell"
+		}())
 		if isolateDir {
 			ui.Warning("NOTE: Any files created here will be permanently deleted on exit (--rm-files is active).")
 		}
 
 		eng := engine.NewShellEngine()
-		if err := eng.EnterSandbox(flakeOutDir, nil); err != nil {
-			// Can fail with exit code if they just exit naturally with error code
-			ui.Warningf("Application execution ended: %v", err)
+		if len(execArgs) > 0 {
+			if err := eng.EnterSandbox(flakeOutDir, execArgs); err != nil {
+				ui.FailFast(fmt.Errorf("command execution failed: %v", err))
+			}
 		} else {
-			ui.Success("Sandbox session closed normally.")
+			ui.Success("Sandbox ready. Use Ctrl+D to exit.")
+			if err := eng.EnterSandbox(flakeOutDir, nil); err != nil {
+				ui.Warningf("Sandbox session ended: %v", err)
+			} else {
+				ui.Success("Sandbox session closed.")
+			}
 		}
 	},
 }

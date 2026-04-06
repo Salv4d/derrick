@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestUpdateYAMLPackage verifies that Nix package names in derrick.yaml
+// can be updated correctly.
 func TestUpdateYAMLPackage(t *testing.T) {
 	tempDir := t.TempDir()
 	originalWD, _ := os.Getwd()
@@ -33,6 +35,8 @@ dependencies:
 	})
 }
 
+// TestUpdateYAMLRegistry verifies that the Nix registry URL in derrick.yaml
+// can be injected or updated correctly.
 func TestUpdateYAMLRegistry(t *testing.T) {
 	tempDir := t.TempDir()
 	originalWD, _ := os.Getwd()

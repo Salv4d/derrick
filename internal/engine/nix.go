@@ -39,12 +39,14 @@ const nixFlakeTemplate = `
 }
 `
 
+// NixTemplateData holds data for rendering the Nix flake template.
 type NixTemplateData struct {
 	Registry        string
 	Packages        []string
 	ExtraRegistries map[string]string
 }
 
+// BootEnvironment initializes and validates the Nix sandbox.
 func BootEnvironment(configPath string, requestPackages []config.NixPackage, registryURL string, outDir string) error {
 	ui.Section("Derrick Sandbox Initialization")
 
@@ -62,6 +64,7 @@ func BootEnvironment(configPath string, requestPackages []config.NixPackage, reg
 	return nil
 }
 
+// EnsureNixEnvironment creates the flake.nix and ensures isolation.
 func EnsureNixEnvironment(configPath string, packages []config.NixPackage, customRegistry string, outDir string) error {
 	if len(packages) == 0 {
 		return nil
@@ -139,6 +142,7 @@ func NixEnv() []string {
 	return append(os.Environ(), "NIXPKGS_ALLOW_UNFREE=1")
 }
 
+// WrapWithNix returns a command array to run inside the Nix environment.
 func WrapWithNix(command string, outDir string) []string {
 	if outDir == "" {
 		outDir = ".derrick"
@@ -156,6 +160,7 @@ func WrapWithNix(command string, outDir string) []string {
 	}
 }
 
+// IsNixInstalled checks if the nix binary is available in PATH.
 func IsNixInstalled() bool {
 	_, err := exec.LookPath("nix")
 	return err == nil

@@ -12,6 +12,7 @@ import (
 	"github.com/Salv4d/derrick/internal/ui"
 )
 
+// RunValidations runs each validation check, attempting auto-fixes when defined.
 func RunValidations(checks []config.ValidationCheck, useNix bool) {
 	if len(checks) == 0 {
 		return

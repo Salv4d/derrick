@@ -40,6 +40,7 @@ var (
 	}
 )
 
+// ValidateAndLoadEnv ensures the .env file exists and loads environment variables.
 func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix bool) error {
 	envPath := filepath.Join(projectDir, ".env")
 

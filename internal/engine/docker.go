@@ -12,24 +12,29 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// ComposeMap represents the structure of a docker-compose.yml for parsing.
 type ComposeMap struct {
 	Services map[string]interface{} `yaml:"services"`
 }
 
+// OverrideMap represents the docker-compose.override.yml structure.
 type OverrideMap struct {
 	Services map[string]ServiceOverride `yaml:"services"`
 	Networks map[string]NetworkOverride `yaml:"networks"`
 }
 
+// ServiceOverride defines service-specific overrides for docker-compose.
 type ServiceOverride struct {
 	ExtraHosts []string `yaml:"extra_hosts,omitempty"`
 }
 
+// NetworkOverride defines network configuration for overrides.
 type NetworkOverride struct {
 	Name     string `yaml:"name"`
 	External bool   `yaml:"external"`
 }
 
+// GenerateNetworkOverride creates a docker-compose.override.yml that attaches containers to the derrick-net.
 func GenerateNetworkOverride(composeFile string, outDir string) (string, error) {
 	data, err := os.ReadFile(composeFile)
 	if err != nil {
@@ -80,16 +85,19 @@ func GenerateNetworkOverride(composeFile string, outDir string) (string, error) 
 	return overridePath, nil
 }
 
+// IsDockerInstalled checks if the docker binary is available in PATH.
 func IsDockerInstalled() bool {
 	_, err := exec.LookPath("docker")
 	return err == nil
 }
 
+// EnsureGlobalNetwork creates the derrick-net bridge network if it doesn't exist.
 func EnsureGlobalNetwork() {
 	cmd := exec.Command("docker", "network", "create", "derrick-net")
-	_ = cmd.Run() // Ignore errors; network might already exist
+	_ = cmd.Run()
 }
 
+// StartContainers brings up the docker-compose project.
 func StartContainers(composeFile string, profiles []string) error {
 	if composeFile == "" {
 		return nil
@@ -143,6 +151,7 @@ func StartContainers(composeFile string, profiles []string) error {
 	return nil
 }
 
+// StopContainers stops the docker-compose project.
 func StopContainers(composeFile string, profiles []string) error {
 	if composeFile == "" {
 		return nil

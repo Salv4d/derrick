@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// startCmd starts the local development environment.
 var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Starts the local development environment",
@@ -53,18 +54,18 @@ var startCmd = &cobra.Command{
 			for _, dep := range cfg.Requires {
 				depPath := filepath.Join(parentDir, dep)
 				ui.Infof("Entering dependency tree: %s", dep)
-				
+
 				cmdArgs := []string{"start"}
 				if profileName != "" {
 					cmdArgs = append(cmdArgs, "--profile", profileName)
 				}
-				
+
 				cmdBoot := exec.Command(os.Args[0], cmdArgs...)
 				cmdBoot.Dir = depPath
 				cmdBoot.Stdout = os.Stdout
 				cmdBoot.Stderr = os.Stderr
 				cmdBoot.Stdin = os.Stdin
-				
+
 				if err := cmdBoot.Run(); err != nil {
 					ui.FailFast(fmt.Errorf("failed to boot dependency '%s': %w", dep, err))
 				}
@@ -146,7 +147,7 @@ var startCmd = &cobra.Command{
 		}
 
 		fmt.Println()
-		ui.Successf("🚀 %s environment is strictly validated and ready!", cfg.Name)
+		ui.Successf("%s environment is strictly validated and ready!", cfg.Name)
 	},
 }
 

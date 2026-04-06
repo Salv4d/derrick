@@ -7,10 +7,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// stopCmd stops the local development environment.
 var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stops the local development environment",
-	Long: `Stops all running containers, closes Nix shells, and executes 
+	Long: `Stops all running containers, closes Nix shells, and executes
 any defined post_stop lifecycle hooks to clean up the environment.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ui.PrintHeader()

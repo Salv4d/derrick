@@ -8,12 +8,15 @@ import (
 	"syscall"
 )
 
+// ShellEngine manages interactive shell sessions inside the Nix sandbox.
 type ShellEngine struct{}
 
+// NewShellEngine creates a new shell engine instance.
 func NewShellEngine() *ShellEngine {
 	return &ShellEngine{}
 }
 
+// EnterSandbox starts an interactive shell or runs a command inside the Nix sandbox.
 func (e *ShellEngine) EnterSandbox(flakeDir string, args []string) error {
 	nixPath, err := exec.LookPath("nix")
 	if err != nil {

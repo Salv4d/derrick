@@ -7,6 +7,7 @@ import (
 	"github.com/Salv4d/derrick/internal/ui"
 )
 
+// RunAudit performs a comprehensive, read-only audit of the local environment.
 func RunAudit(cfg *config.ProjectConfig) {
 	ui.Section("Environment Audit")
 	issues := 0

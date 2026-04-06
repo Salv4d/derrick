@@ -1,3 +1,4 @@
+// Derrick CLI — local development orchestrator.
 package main
 
 import (
@@ -10,15 +11,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Version is the current version of Derrick CLI.
 var Version = "0.1.0-alpha"
 
+// GithubRelease represents a GitHub API release object.
 type GithubRelease struct {
 	TagName string `json:"tag_name"`
 }
 
+// RunVersion prints the current version and checks for updates.
 func RunVersion() {
 	ui.PrintHeader()
-	fmt.Printf("📦 Derrick CLI version \033[1;36m%s\033[0m\n\n", Version)
+	fmt.Printf("Derrick CLI version %s\n\n", Version)
 
 	ui.Taskf("Checking for latest releases on GitHub...")
 
@@ -47,6 +51,7 @@ func RunVersion() {
 	}
 }
 
+// versionCmd prints the current version and gracefully checks for updates.
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the current version and gracefully check for updates",

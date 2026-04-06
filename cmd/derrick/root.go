@@ -5,11 +5,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Root command for the Derrick CLI.
 var rootCmd = &cobra.Command{
 	Use:   "derrick",
 	Short: "Derrick is a local development environment orchestrator.",
-	Long: `Derrick unites the absolute reproducibility of Nix with 
-Docker Compose containerization, wrapping them in a strict 
+	Long: `Derrick unites the absolute reproducibility of Nix with
+Docker Compose containerization, wrapping them in a strict
 state validation and hook execution system.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		v, _ := cmd.Flags().GetBool("version")
@@ -21,6 +22,7 @@ state validation and hook execution system.`,
 	},
 }
 
+// Execute runs the root command and handles errors.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {

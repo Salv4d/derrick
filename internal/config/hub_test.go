@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestLoadGlobalHub verifies that the global hub configuration can be loaded
+// and that project aliases are resolved correctly.
 func TestLoadGlobalHub(t *testing.T) {
 	tempHome := t.TempDir()
 	os.Setenv("HOME", tempHome)
@@ -45,6 +47,8 @@ projects:
 	assert.Contains(t, err.Error(), "not found")
 }
 
+// TestLoadGlobalHub_MissingFile verifies that loading a non-existent hub config
+// returns an empty hub structure rather than an error.
 func TestLoadGlobalHub_MissingFile(t *testing.T) {
 	tempHome := t.TempDir()
 	os.Setenv("HOME", tempHome)

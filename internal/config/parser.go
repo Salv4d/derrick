@@ -27,6 +27,7 @@ func init() {
 	})
 }
 
+// ParseConfig reads and validates a derrick.yaml file, optionally applying a profile.
 func ParseConfig(filename string, profileName string) (*ProjectConfig, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
@@ -115,10 +116,8 @@ func mergeProfileToConfig(cfg *ProjectConfig, p Profile) {
 		if p.EnvManagement.BaseFile != "" {
 			cfg.EnvManagement.BaseFile = p.EnvManagement.BaseFile
 		}
-		// If profile forcefully defines it, override the root. Wait, how do we handle false? 
-		// Actually, standard bool merging means true applies over false, but false might not apply over true.
-		// Since we want simple behavior, let's just do an override if it's set to true.
-		if p.EnvManagement.PromptMissing {
+		 
+						if p.EnvManagement.PromptMissing {
 			cfg.EnvManagement.PromptMissing = true
 		}
 	}

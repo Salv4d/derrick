@@ -9,6 +9,7 @@ import (
 	"github.com/Salv4d/derrick/internal/ui"
 )
 
+// UpdateYAMLPackage replaces a Nix package name in derrick.yaml.
 func UpdateYAMLPackage(configPath, oldPkg, newPkg string) error {
 	content, err := os.ReadFile(configPath)
 	if err != nil {
@@ -63,6 +64,7 @@ func UpdateYAMLPackage(configPath, oldPkg, newPkg string) error {
 	return nil
 }
 
+// UpdateYAMLRegistry replaces the nix_registry in derrick.yaml.
 func UpdateYAMLRegistry(configPath, newRegistry string) error {
 	content, err := os.ReadFile(configPath)
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// doctorCmd audits the environment and reports missing dependencies.
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Audits the environment and reports missing dependencies",

@@ -1,5 +1,6 @@
 package engine
 
+// LegacyRegistryMap provides fallback Nix registries for removed packages.
 var LegacyRegistryMap = map[string]string{
 	"python36":    "github:NixOS/nixpkgs/nixos-19.09",
 	"python37":    "github:NixOS/nixpkgs/nixos-20.03",

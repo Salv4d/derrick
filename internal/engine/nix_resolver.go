@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/huh"
 )
 
+// NixSearchRecord represents a package from nix search.
 type NixSearchRecord struct {
 	PName       string `json:"pname"`
 	Version     string `json:"version"`
@@ -22,6 +23,7 @@ type NixSearchRecord struct {
 
 var undefinedRegex = regexp.MustCompile(`undefined variable '(.*?)'`)
 
+// ValidateAndResolve ensures all Nix packages exist and interactively resolves missing ones.
 func ValidateAndResolve(configPath string, packages []config.NixPackage, registryURL string, outDir string) ([]config.NixPackage, error) {
 	if outDir == "" {
 		outDir = ".derrick"

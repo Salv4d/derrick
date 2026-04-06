@@ -10,10 +10,12 @@ import (
 	"github.com/Salv4d/derrick/internal/ui"
 )
 
+// DependencyResolver resolves project dependencies from the global hub and clones them.
 type DependencyResolver struct {
 	Hub *config.HubConfig
 }
 
+// NewDependencyResolver loads the global hub configuration.
 func NewDependencyResolver() (*DependencyResolver, error) {
 	hub, err := config.LoadGlobalHub()
 	if err != nil {
@@ -22,6 +24,7 @@ func NewDependencyResolver() (*DependencyResolver, error) {
 	return &DependencyResolver{Hub: hub}, nil
 }
 
+// ResolveAndClone resolves and clones each required dependency.
 func (r *DependencyResolver) ResolveAndClone(projectRoot string, requiredAliases []string) error {
 	parentDir := filepath.Dir(projectRoot)
 

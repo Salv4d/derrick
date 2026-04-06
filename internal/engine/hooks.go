@@ -7,6 +7,7 @@ import (
 	"github.com/Salv4d/derrick/internal/ui"
 )
 
+// ExecuteHook runs a series of commands for a given lifecycle stage.
 func ExecuteHook(stage string, commands []string, useNix bool) {
 	if len(commands) == 0 {
 		return

@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestParseConfig verifies that derrick.yaml configuration files are parsed correctly
+// including valid configs, custom registries, malformed YAML, missing files, and profile extensions.
 func TestParseConfig(t *testing.T) {
 	tempDir := t.TempDir()
 

@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// RunUpdate checks for a newer release and prints the download command.
 func RunUpdate() {
 	ui.Taskf("Checking for latest releases on GitHub...")
 
@@ -30,8 +31,8 @@ func RunUpdate() {
 			if release.TagName != Version && release.TagName != "v"+Version {
 				ui.Warningf("A new version is available: %s!", release.TagName)
 				fmt.Println("\nTo flawlessly update your binary instantly, run:")
-				fmt.Printf("\033[1;33mcurl -L -o derrick https://github.com/Salv4d/derrick/releases/latest/download/derrick-linux-amd64\033[0m\n")
-				fmt.Printf("\033[1;33mchmod +x derrick && sudo mv derrick /usr/local/bin/\033[0m\n\n")
+				fmt.Printf("curl -L -o derrick https://github.com/Salv4d/derrick/releases/latest/download/derrick-linux-amd64\n")
+				fmt.Printf("chmod +x derrick && sudo mv derrick /usr/local/bin/\n\n")
 			} else {
 				ui.Successf("You are already on the latest version (%s). No update required!", Version)
 			}
@@ -41,6 +42,7 @@ func RunUpdate() {
 	}
 }
 
+// UpdateCmd is the cobra command for "derrick update".
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Check for updates and elegantly retrieve the upgrade script",

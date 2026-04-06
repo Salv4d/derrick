@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestCLI verifies the command-line interface behavior, including help output
+// and error handling when derrick.yaml is missing.
 func TestCLI(t *testing.T) {
 	t.Run("Root Command (--help)", func(t *testing.T) {
 		cmd := exec.Command("go", "run", "../cmd/derrick", "--help")

@@ -9,10 +9,12 @@ import (
 	"strings"
 )
 
+// ProjectMetadata holds information about a detected project.
 type ProjectMetadata struct {
 	Name     string
 	Version  string
-	Language string // e.g. "node", "go", "python" — set by the detector
+	// Language is the detected programming language (e.g. "node", "go", "python").
+	Language string
 }
 
 // LanguageNixSuggestions maps a detected language to a recommended set of Nix packages.
@@ -48,10 +50,12 @@ func SuggestedPackages(lang string) []string {
 	return []string{}
 }
 
+// Detector defines the contract for project type detectors.
 type Detector interface {
 	Detect(dir string) (*ProjectMetadata, bool)
 }
 
+// DiscoverProject runs all detectors to identify the project type and metadata.
 func DiscoverProject(dir string) *ProjectMetadata {
 	detectors := []Detector{
 		&NodeDetector{},
@@ -106,7 +110,7 @@ func extractRegex(content string, pattern string) string {
 	return ""
 }
 
-// 1. Node.js
+// NodeDetector identifies Node.js projects via package.json.
 type NodeDetector struct{}
 
 func (d *NodeDetector) Detect(dir string) (*ProjectMetadata, bool) {
@@ -122,7 +126,7 @@ func (d *NodeDetector) Detect(dir string) (*ProjectMetadata, bool) {
 	return &ProjectMetadata{Name: pkg.Name, Version: pkg.Version, Language: "node"}, true
 }
 
-// 2. Go
+// GoDetector identifies Go projects via go.mod.
 type GoDetector struct{}
 
 func (d *GoDetector) Detect(dir string) (*ProjectMetadata, bool) {
@@ -138,7 +142,7 @@ func (d *GoDetector) Detect(dir string) (*ProjectMetadata, bool) {
 	return &ProjectMetadata{Name: name, Version: "0.1.0", Language: "go"}, true
 }
 
-// 3. Python
+// PythonDetector identifies Python projects via pyproject.toml.
 type PythonDetector struct{}
 
 func (d *PythonDetector) Detect(dir string) (*ProjectMetadata, bool) {
@@ -157,7 +161,7 @@ func (d *PythonDetector) Detect(dir string) (*ProjectMetadata, bool) {
 	return nil, false
 }
 
-// 4. Rust
+// RustDetector identifies Rust projects via Cargo.toml.
 type RustDetector struct{}
 
 func (d *RustDetector) Detect(dir string) (*ProjectMetadata, bool) {
@@ -170,7 +174,7 @@ func (d *RustDetector) Detect(dir string) (*ProjectMetadata, bool) {
 	return &ProjectMetadata{Name: name, Version: version, Language: "rust"}, true
 }
 
-// 5. PHP
+// PHPDetector identifies PHP projects via composer.json.
 type PHPDetector struct{}
 
 func (d *PHPDetector) Detect(dir string) (*ProjectMetadata, bool) {
@@ -190,7 +194,7 @@ func (d *PHPDetector) Detect(dir string) (*ProjectMetadata, bool) {
 	return &ProjectMetadata{Name: pkg.Name, Version: pkg.Version, Language: "php"}, true
 }
 
-// 6. Java (Maven)
+// JavaMavenDetector identifies Java Maven projects via pom.xml.
 type JavaMavenDetector struct{}
 
 func (d *JavaMavenDetector) Detect(dir string) (*ProjectMetadata, bool) {
@@ -203,11 +207,10 @@ func (d *JavaMavenDetector) Detect(dir string) (*ProjectMetadata, bool) {
 	return &ProjectMetadata{Name: name, Version: version, Language: "java"}, true
 }
 
-// 7. Java (Gradle)
+// JavaGradleDetector identifies Java Gradle projects via build.gradle or build.gradle.kts.
 type JavaGradleDetector struct{}
 
 func (d *JavaGradleDetector) Detect(dir string) (*ProjectMetadata, bool) {
-	// Try build.gradle and build.gradle.kts
 	b, err := os.ReadFile(filepath.Join(dir, "build.gradle"))
 	if err != nil {
 		b, err = os.ReadFile(filepath.Join(dir, "build.gradle.kts"))
@@ -216,7 +219,6 @@ func (d *JavaGradleDetector) Detect(dir string) (*ProjectMetadata, bool) {
 		}
 	}
 	version := extractRegex(string(b), `(?m)version\s*=?\s*["']([^"']+)["']`)
-	// Name in gradle is often in settings.gradle
 	name := ""
 	s, err := os.ReadFile(filepath.Join(dir, "settings.gradle"))
 	if err == nil {
@@ -230,14 +232,13 @@ func (d *JavaGradleDetector) Detect(dir string) (*ProjectMetadata, bool) {
 	return &ProjectMetadata{Name: name, Version: version, Language: "java"}, true
 }
 
-// 8. Ruby
+// RubyDetector identifies Ruby projects via Gemfile and gemspec.
 type RubyDetector struct{}
 
 func (d *RubyDetector) Detect(dir string) (*ProjectMetadata, bool) {
 	if _, err := os.Stat(filepath.Join(dir, "Gemfile")); err != nil {
 		return nil, false
 	}
-	// Try to find a gemspec
 	var name, version string
 	_ = filepath.WalkDir(dir, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
@@ -259,7 +260,7 @@ func (d *RubyDetector) Detect(dir string) (*ProjectMetadata, bool) {
 	return &ProjectMetadata{Name: name, Version: version, Language: "ruby"}, true
 }
 
-// 9. C#
+// CSharpDetector identifies C# projects via .csproj files.
 type CSharpDetector struct{}
 
 func (d *CSharpDetector) Detect(dir string) (*ProjectMetadata, bool) {
@@ -291,7 +292,7 @@ func (d *CSharpDetector) Detect(dir string) (*ProjectMetadata, bool) {
 	return nil, false
 }
 
-// 10. C/C++ Extractor
+// CppCMakeDetector identifies C/C++ projects with CMake via CMakeLists.txt.
 type CppCMakeDetector struct{}
 
 func (d *CppCMakeDetector) Detect(dir string) (*ProjectMetadata, bool) {
@@ -300,11 +301,11 @@ func (d *CppCMakeDetector) Detect(dir string) (*ProjectMetadata, bool) {
 		return nil, false
 	}
 	name := extractRegex(string(b), `(?i)project\s*\(\s*([^ \)]+)`)
-	version := extractRegex(string(b), `(?i)VERSION\s+([^\s\)]+)`) // Some basic matching for PROJECT(NAME VERSION 1.0)
+	version := extractRegex(string(b), `(?i)VERSION\s+([^\s\)]+)`)
 	return &ProjectMetadata{Name: name, Version: version, Language: "cpp"}, true
 }
 
-// 11. Swift
+// SwiftDetector identifies Swift projects via Package.swift.
 type SwiftDetector struct{}
 
 func (d *SwiftDetector) Detect(dir string) (*ProjectMetadata, bool) {

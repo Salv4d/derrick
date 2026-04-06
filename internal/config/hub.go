@@ -8,11 +8,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// HubConfig stores global hub configuration for registries and projects.
 type HubConfig struct {
 	Registries []string          `yaml:"registries,omitempty"`
 	Projects   map[string]string `yaml:"projects,omitempty"`
 }
 
+// LoadGlobalHub loads the global hub configuration from the user's home directory.
 func LoadGlobalHub() (*HubConfig, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {

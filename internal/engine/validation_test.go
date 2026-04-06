@@ -6,6 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestExecuteCommand verifies that shell commands are executed correctly,
+// including handling of valid commands, non-existent commands, and failing commands.
 func TestExecuteCommand(t *testing.T) {
 	t.Run("Valid Bash Command", func(t *testing.T) {
 		err := executeCommand("true", false)

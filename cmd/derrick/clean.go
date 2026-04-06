@@ -19,6 +19,7 @@ var (
 	cleanNets    bool
 )
 
+// cleanCmd cleans up unused tools, packages, and docker assets.
 var cleanCmd = &cobra.Command{
 	Use:   "clean",
 	Short: "Clean up unused tools, packages, and docker assets",
@@ -77,8 +78,7 @@ var cleanCmd = &cobra.Command{
 			}
 		}
 
-		// Execute specialized docker pruning
-		if cleanAll || cleanDocker || cleanVolumes || cleanImages || cleanConts || cleanNets {
+				if cleanAll || cleanDocker || cleanVolumes || cleanImages || cleanConts || cleanNets {
 			ui.Section("Docker Engine")
 
 			if cleanAll || cleanDocker || (cleanImages && cleanVolumes) {
@@ -102,8 +102,7 @@ var cleanCmd = &cobra.Command{
 				return
 			}
 
-			// Individual granular pruning if not doing full system prune
-			if cleanConts {
+						if cleanConts {
 				runDockerPrune("container")
 			}
 			if cleanNets {

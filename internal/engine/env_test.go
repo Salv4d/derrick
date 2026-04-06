@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestValidateAndLoadEnv_AllSet verifies that environment validation and loading
+// succeeds when all required environment variables are already set.
 func TestValidateAndLoadEnv_AllSet(t *testing.T) {
 	tempDir := t.TempDir()
 
@@ -43,6 +45,8 @@ func TestValidateAndLoadEnv_AllSet(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// TestValidateAndLoadEnv_Validation verifies behavior when environment variables
+// fail validation, including abort, skip, and update user choices.
 func TestValidateAndLoadEnv_Validation(t *testing.T) {
 	tempDir := t.TempDir()
 
@@ -140,6 +144,8 @@ func TestValidateAndLoadEnv_Validation(t *testing.T) {
 	})
 }
 
+// TestValidateAndLoadEnv_Default verifies that default values are written to
+// the .env file when environment variables are not set.
 func TestValidateAndLoadEnv_Default(t *testing.T) {
 	tempDir := t.TempDir()
 	envPath := filepath.Join(tempDir, ".env")
@@ -160,6 +166,8 @@ func TestValidateAndLoadEnv_Default(t *testing.T) {
 	assert.Equal(t, "my-default-value", os.Getenv("DEFAULT_VAR"))
 }
 
+// TestUpdateEnvFile verifies that the .env file is correctly updated with new
+// variable values while preserving existing content and comments.
 func TestUpdateEnvFile(t *testing.T) {
 	tempDir := t.TempDir()
 	envPath := filepath.Join(tempDir, ".env")
@@ -187,6 +195,8 @@ func TestUpdateEnvFile(t *testing.T) {
 	assert.Contains(t, contentStr, `KEY2="VALUE2 \"WITH QUOTES\""`)
 }
 
+// TestValidateAndLoadEnv_AutoDiscover verifies that environment variables are
+// discovered from a base file (e.g., .env.example) and prompts for missing values.
 func TestValidateAndLoadEnv_AutoDiscover(t *testing.T) {
 	tempDir := t.TempDir()
 

@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestWrapWithNix verifies that shell commands are correctly wrapped with
+// nix develop arguments for different command patterns.
 func TestWrapWithNix(t *testing.T) {
 	absPath, err := filepath.Abs(".derrick")
 	require.NoError(t, err, "Failed to resolve absolute path")
@@ -48,6 +50,8 @@ func TestWrapWithNix(t *testing.T) {
 	}
 }
 
+// TestEnsureNixEnvironment verifies that a Nix flake is generated with the
+// correct packages and custom registry in the .derrick directory.
 func TestEnsureNixEnvironment(t *testing.T) {
 	tempDir := t.TempDir()
 

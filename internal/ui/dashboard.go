@@ -26,6 +26,7 @@ var (
 			Foreground(lipgloss.Color("240"))
 )
 
+// DashboardModel is the Bubble Tea model for the interactive TUI dashboard.
 type DashboardModel struct {
 	activeTab  int
 	tabs       []string
@@ -36,6 +37,7 @@ type DashboardModel struct {
 	logScanner *bufio.Scanner
 }
 
+// Container represents a Docker container for display in the dashboard.
 type Container struct {
 	Names  string `json:"Names"`
 	Status string `json:"Status"`
@@ -44,6 +46,7 @@ type Container struct {
 
 type dockerStatusMsg []Container
 
+// NewDashboardModel creates a new dashboard model with default values.
 func NewDashboardModel() DashboardModel {
 	return DashboardModel{
 		activeTab: 0,
@@ -52,6 +55,7 @@ func NewDashboardModel() DashboardModel {
 	}
 }
 
+// Init initializes the dashboard model and starts background commands.
 func (m DashboardModel) Init() tea.Cmd {
 	return tea.Batch(fetchDocker, startLogStream)
 }
@@ -116,6 +120,7 @@ func tickDockerStatus() tea.Cmd {
 	})
 }
 
+// Update handles incoming messages and updates the model state.
 func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -139,7 +144,7 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case logLineMsg:
 		m.logs = append(m.logs, string(msg))
 		if len(m.logs) > m.height-10 {
-			m.logs = m.logs[1:] // Keep buffer clamped
+			m.logs = m.logs[1:]
 		}
 		if m.logScanner != nil {
 			return m, waitForNextLog(m.logScanner)
@@ -149,6 +154,7 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// View renders the dashboard UI.
 func (m DashboardModel) View() string {
 	doc := strings.Builder{}
 
@@ -164,8 +170,7 @@ func (m DashboardModel) View() string {
 	doc.WriteString(row)
 	doc.WriteString("\n\n")
 
-	// Render Content
-	content := ""
+		content := ""
 	switch m.activeTab {
 	case 0:
 		if len(m.containers) == 0 {
@@ -175,9 +180,9 @@ func (m DashboardModel) View() string {
 			sb.WriteString(lipgloss.NewStyle().Bold(true).Render("Running Containers:"))
 			sb.WriteString("\n\n")
 			for _, c := range m.containers {
-				statusColor := "42" // Green
+				statusColor := "42"
 				if c.State != "running" {
-					statusColor = "196" // Red
+					statusColor = "196"
 				}
 				statusTag := lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor)).Render(fmt.Sprintf("[%s]", c.State))
 				sb.WriteString(fmt.Sprintf("%s %s - %s\n", statusTag, lipgloss.NewStyle().Bold(true).Render(c.Names), c.Status))

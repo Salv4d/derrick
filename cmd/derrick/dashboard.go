@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// dashboardCmd opens the interactive TUI dashboard.
 var dashboardCmd = &cobra.Command{
 	Use:   "dashboard",
 	Short: "Open the interactive TUI dashboard",
