@@ -92,13 +92,6 @@ derrick shell
 $EDITOR .    # or e.g. code ., nvim ., etc.
 ```
 
-**Ephemeral AI Agents:**
-Run terminal-based AI coding agents inside a verified sandbox:
-```bash
-derrick run claude-code
-# Your AI terminal is now isolated and executing with locked tooling!
-```
-
 ---
 
 ## 📖 Deep-Dive Documentation

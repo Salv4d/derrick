@@ -78,11 +78,14 @@ $EDITOR .    # or e.g. code ., nvim ., etc.
 
 *Your editor inherits the Nix PATH, so anything requiring `node`, `go`, or `python` resolves to the isolated sandbox dependencies while preserving your global user settings (like `~/.config/nvim/` or `~/.vscode/`).*
 
-**Ephemeral AI Agents:**
-You can also securely run terminal-based AI coding agents inside verified sandboxes using the ephemeral `run` tool:
+**Quick Tools — No Config Needed:**
+If you need to evaluate a tool once without a `derrick.yaml`:
 ```bash
-derrick run claude-code
-# Your AI terminal is now isolated and executing with locked tooling!
+# Instant sandbox with jq and yq for quick data parsing
+derrick run jq yq
+
+# Need a specific Python version to test a migration?
+derrick run python3_11
 ```
 
 ## 5. Cross-Project Clustering 🌐
