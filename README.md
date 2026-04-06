@@ -83,22 +83,17 @@ derrick clean
 
 ### 3. IDE Integration & AI Coding Agents ✨
 
-One of the most powerful features of Derrick is **Hermetic IDE Mapping**. You can securely launch modern IDEs (like **Cursor** or **VSCode**) alongside your favorite AI coding agents (like **Claude Code** or **Antigravity**) directly from the verified sandbox. 
+After running `derrick start`, you can open your project in any editor from within the hermetic sandbox. All dependencies (Language Servers, Linters, Compilers) are available on the PATH without polluting your Host OS.
 
-They will seamlessly inherit all the locked dependencies (Language Servers, DB drivers, Linters) without touching your Host OS.
-
-**Launch a Zero-Install IDE instantly:**
+**Open your project from the sandbox:**
 ```bash
-# Auto-detects $EDITOR or prompts an interactive selection
-derrick code
-
-# Force a specific IDE to boot targeting the current environment:
-derrick code neovim
-derrick code cursor
+# Enter the sandbox, then launch your editor
+derrick shell
+$EDITOR .    # or e.g. code ., nvim ., etc.
 ```
 
-**Run an AI coding assistant in an ephemeral sandbox:**
-Need Claude or a specialized coding agent loaded with dependencies securely?
+**Ephemeral AI Agents:**
+Run terminal-based AI coding agents inside a verified sandbox:
 ```bash
 derrick run claude-code
 # Your AI terminal is now isolated and executing with locked tooling!
@@ -124,7 +119,7 @@ Derrick is currently in **Alpha**. It is stable for Linux/WSL environments.
 - [x] Interactive Environment Validation & `.env` Setup
 - [x] Custom Config YAML Support (`-f` flag)
 - [x] **TUI Dashboard:** A live BubbleTea-powered container and lifecycle log viewer (`derrick dashboard`).
-- [x] **Ephemeral IDE Sandboxing:** Zero-install evaluation of IDE environments (`derrick code`).
+- [x] **Project Clustering:** Docker & Host-native global network bridging.
 - [x] **Project Clustering:** Docker & Host-native global network bridging.
 - [ ] **Remote Config Extensions:** Inherit base YAML settings from remote URLs securely.
 - [ ] **Cloud Workspace Provisioning:** Sync your local sandbox state directly to cloud VMs.

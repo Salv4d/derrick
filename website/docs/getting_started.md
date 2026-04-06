@@ -68,30 +68,21 @@ node -v
 
 ## 4. IDE Integration & AI Coding Agents ✨
 
-To access your dependencies (like Language Servers, Linters, or Compilers) in your favorite IDE without polluting your host OS, simply launch your IDE directly using the `derrick code` command.
+After running `derrick start`, you can open your project in any editor from within the hermetic sandbox. All dependencies (Language Servers, Linters, Compilers) are available on the PATH without polluting your Host OS.
 
-**Using your default Editor:**
+**Open your project from the sandbox:**
 ```bash
-# Automatically detects your $VISUAL or $EDITOR OS variable, or prompts you!
-derrick code 
+derrick shell
+$EDITOR .    # or e.g. code ., nvim ., etc.
 ```
 
-**Using an explicit IDE (e.g. Neovim, Cursor, VSCode, Emacs):**
-```bash
-derrick code neovim
-```
-
-If you don't want the IDE lockfile to persist cleanly, simply pass the `--rm` flag for an ephemeral evaluation:
-```bash
-derrick code --rm helix
-```
-
-*The IDE will launch securely infused with the Nix PATH! Any extension requiring `node`, `go`, or `python` will automatically resolve to the isolated sandbox dependencies while simultaneously preserving your global user settings (like `~/.config/nvim/` or `~/.vscode/`).*
+*Your editor inherits the Nix PATH, so anything requiring `node`, `go`, or `python` resolves to the isolated sandbox dependencies while preserving your global user settings (like `~/.config/nvim/` or `~/.vscode/`).*
 
 **Ephemeral AI Agents:**
 You can also securely run terminal-based AI coding agents inside verified sandboxes using the ephemeral `run` tool:
 ```bash
 derrick run claude-code
+# Your AI terminal is now isolated and executing with locked tooling!
 ```
 
 ## 5. Cross-Project Clustering 🌐
