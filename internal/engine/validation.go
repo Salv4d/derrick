@@ -1,13 +1,6 @@
 package engine
 
 import (
-	"bytes"
-	"fmt"
-	"io"
-	"os"
-	"os/exec"
-	"strings"
-
 	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/ui"
 )
@@ -50,39 +43,4 @@ func RunValidations(checks []config.ValidationCheck, useNix bool) {
 
 		ui.Success("OK (Fixed)")
 	}
-}
-
-func executeCommand(command string, useNix bool) error {
-	var cmd *exec.Cmd
-	if useNix {
-		nixArgs := WrapWithNix(command, "")
-		ui.Debugf("Executing Nix command: %v", nixArgs)
-		cmd = exec.Command(nixArgs[0], nixArgs[1:]...)
-	} else {
-		ui.Debugf("Executing Bash command: bash -c %q", command)
-		cmd = exec.Command("bash", "-c", command)
-	}
-
-	var stderr bytes.Buffer
-
-	if useNix {
-		cmd.Env = NixEnv()
-	}
-
-	if ui.DebugMode {
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
-	} else {
-		cmd.Stderr = &stderr
-	}
-
-	err := cmd.Run()
-	if err != nil {
-		errMsg := strings.TrimSpace(stderr.String())
-		if errMsg != "" {
-			return fmt.Errorf("%s", errMsg)
-		}
-		return err
-	}
-	return nil
 }
