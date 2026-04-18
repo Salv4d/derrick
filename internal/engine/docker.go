@@ -20,7 +20,6 @@ type ComposeMap struct {
 // OverrideMap represents the docker-compose.override.yml structure.
 type OverrideMap struct {
 	Services map[string]ServiceOverride `yaml:"services"`
-	Networks map[string]NetworkOverride `yaml:"networks"`
 }
 
 // ServiceOverride defines service-specific overrides for docker-compose.
@@ -28,13 +27,10 @@ type ServiceOverride struct {
 	ExtraHosts []string `yaml:"extra_hosts,omitempty"`
 }
 
-// NetworkOverride defines network configuration for overrides.
-type NetworkOverride struct {
-	Name     string `yaml:"name"`
-	External bool   `yaml:"external"`
-}
-
-// GenerateNetworkOverride creates a docker-compose.override.yml that attaches containers to the derrick-net.
+// GenerateNetworkOverride creates a docker-compose.override.yml that injects
+// host.docker.internal into every service's extra_hosts. The project's default
+// network is left to Docker Compose so it remains scoped to this project and
+// never conflicts with other Derrick projects.
 func GenerateNetworkOverride(composeFile string, outDir string) (string, error) {
 	data, err := os.ReadFile(composeFile)
 	if err != nil {
@@ -48,12 +44,6 @@ func GenerateNetworkOverride(composeFile string, outDir string) (string, error) 
 
 	override := OverrideMap{
 		Services: make(map[string]ServiceOverride),
-		Networks: map[string]NetworkOverride{
-			"default": {
-				Name:     "derrick-net",
-				External: true,
-			},
-		},
 	}
 
 	for svcName := range base.Services {
@@ -91,19 +81,11 @@ func IsDockerInstalled() bool {
 	return err == nil
 }
 
-// EnsureGlobalNetwork creates the derrick-net bridge network if it doesn't exist.
-func EnsureGlobalNetwork() {
-	cmd := exec.Command("docker", "network", "create", "derrick-net")
-	_ = cmd.Run()
-}
-
 // StartContainers brings up the docker-compose project.
 func StartContainers(composeFile string, profiles []string) error {
 	if composeFile == "" {
 		return nil
 	}
-
-	EnsureGlobalNetwork()
 
 	ui.Taskf("Starting Docker containers from [%s]", composeFile)
 
