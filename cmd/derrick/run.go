@@ -22,7 +22,19 @@ var (
 // runCmd creates an ephemeral environment loaded with specific Nix packages.
 var runCmd = &cobra.Command{
 	Use:   "run [packages...] [-- command args...]",
-	Short: "Creates an ephemeral environment loaded with specific Nix packages",
+	Short: "Run a command in an ephemeral Nix environment with ad-hoc packages",
+	Long: `derrick run creates a temporary Nix environment with the specified packages
+and either executes a command or opens an interactive shell.
+
+Key differences from 'derrick shell':
+- 'run' uses packages specified on the command line (no derrick.yaml needed)
+- 'run' is ephemeral by default (use --save to persist)
+- 'shell' uses packages from your project's derrick.yaml
+
+Examples:
+  derrick run nodejs -- npm test
+  derrick run python3 -- python -c "print('hello')"
+  derrick run --save go git nodejs  # creates a saved environment directory`,
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		var packages []string
@@ -42,6 +54,10 @@ var runCmd = &cobra.Command{
 
 		if len(packages) == 0 {
 			ui.FailFast(fmt.Errorf("at least one package is required"))
+		}
+
+		if saveEnv && rmFiles {
+			ui.FailFast(fmt.Errorf("flags --save and --rm-files cannot be used together"))
 		}
 
 		cwd, err := os.Getwd()
@@ -108,8 +124,8 @@ var runCmd = &cobra.Command{
 			var cfg config.ProjectConfig
 			cfg.Name = filepath.Base(workDir)
 			cfg.Version = "0.1.0"
-			cfg.Dependencies.NixPackages = nixPkgs
-			cfg.Dependencies.NixRegistry = config.DefaultNixRegistry
+			cfg.Nix.Packages = nixPkgs
+			cfg.Nix.Registry = config.DefaultNixRegistry
 
 			data, err := yaml.Marshal(&cfg)
 			if err != nil {
@@ -129,6 +145,9 @@ var runCmd = &cobra.Command{
 		}())
 		if isolateDir {
 			ui.Warning("NOTE: Any files created here will be permanently deleted on exit (--rm-files is active).")
+		} else if !saveEnv {
+			ui.Warning("NOTE: This is an ephemeral environment. Nix packages will be discarded on exit.")
+			ui.Info("Use --save to persist the environment in a directory.")
 		}
 
 		eng := engine.NewShellEngine()
@@ -137,6 +156,7 @@ var runCmd = &cobra.Command{
 				ui.FailFast(fmt.Errorf("command execution failed: %v", err))
 			}
 		} else {
+			ui.Info("For a persistent project environment, use 'derrick shell' instead.")
 			ui.Success("Sandbox ready. Use Ctrl+D to exit.")
 			if err := eng.EnterSandbox(flakeOutDir, nil); err != nil {
 				ui.Warningf("Sandbox session ended: %v", err)

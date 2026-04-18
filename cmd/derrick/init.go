@@ -185,10 +185,10 @@ var initCmd = &cobra.Command{
 			Version: projectVersion,
 		}
 
-		cfg.Dependencies.NixPackages = nixPackages
+		cfg.Nix.Packages = nixPackages
 
 		if useDockerCompose {
-			cfg.Dependencies.DockerCompose = dockerComposeFile
+			cfg.Docker.Compose = dockerComposeFile
 		}
 
 		if useEnvFile {

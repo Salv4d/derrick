@@ -12,7 +12,7 @@ func RunAudit(cfg *config.ProjectConfig) {
 	ui.Section("Environment Audit")
 	issues := 0
 
-	useNix := len(cfg.Dependencies.NixPackages) > 0
+	useNix := cfg.ActiveProvider() == "nix"
 	if useNix {
 		ui.SubTask("Checking Nix package manager")
 		if IsNixInstalled() {
@@ -24,7 +24,7 @@ func RunAudit(cfg *config.ProjectConfig) {
 		}
 	}
 
-	if cfg.Dependencies.DockerCompose != "" {
+	if cfg.Docker.Compose != "" {
 		ui.SubTask("Checking Docker daemon")
 		if IsDockerInstalled() {
 			ui.Success("OK")
@@ -38,10 +38,10 @@ func RunAudit(cfg *config.ProjectConfig) {
 	canUseNixBubble := useNix && IsNixInstalled()
 
 	if canUseNixBubble {
-		ui.SubTask("Bootstrapping dry-run Nix Sandbox for validations")
-		err := BootEnvironment("derrick.yaml", cfg.Dependencies.NixPackages, cfg.Dependencies.NixRegistry, "")
+		ui.SubTask("Bootstrapping dry-run Nix sandbox for validations")
+		err := BootEnvironment("derrick.yaml", cfg.Nix.Packages, cfg.Nix.Registry, "")
 		if err != nil {
-			ui.Warningf("  -> Failed to cleanly bootstrap Nix evaluation sandbox: %v", err)
+			ui.Warningf("  -> Failed to bootstrap Nix evaluation sandbox: %v", err)
 			canUseNixBubble = false
 		} else {
 			ui.Success("OK")
@@ -58,9 +58,8 @@ func RunAudit(cfg *config.ProjectConfig) {
 			} else {
 				ui.Error("FAILED")
 				ui.Errorf("     Error: %v", err)
-
 				if check.AutoFix != "" {
-					ui.Warningf("     Fix available: The 'start' command will run '%s' to attempt recovery.", check.AutoFix)
+					ui.Warningf("     Fix available: 'start' will run '%s' to attempt recovery.", check.AutoFix)
 				}
 				issues++
 			}
@@ -69,8 +68,8 @@ func RunAudit(cfg *config.ProjectConfig) {
 
 	fmt.Println()
 	if issues == 0 {
-		ui.Success("Your environment is perfectly healthy! You are ready to run 'derrick start'.")
+		ui.Success("Environment is healthy. Ready to run 'derrick start'.")
 	} else {
-		ui.Warningf("Found %d issue(s) in your environment. Please fix them before starting.", issues)
+		ui.Warningf("Found %d issue(s). Please fix them before starting.", issues)
 	}
 }
