@@ -74,6 +74,9 @@ derrick shell
 # Need an ad-hoc throwaway sandbox with specific tools?
 derrick run python3 jq
 
+# Or execute a command directly without entering a shell:
+derrick run python3 -- python -c "print('hello')"
+
 # Audits if your project meets the strict derrick.yaml constraints
 derrick doctor
 

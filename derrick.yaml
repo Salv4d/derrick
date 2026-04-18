@@ -1,23 +1,31 @@
----
 name: "derrick"
 version: "0.1.0"
 
-dependencies:
-  nix_registry: "github:NixOS/nixpkgs/nixos-unstable"
-  nix_packages:
+# "auto" picks Docker if a compose file is present, otherwise Nix.
+provider: nix
+
+nix:
+  registry: "github:NixOS/nixpkgs/nixos-unstable"
+  packages:
     - "go"
     - "golangci-lint"
     - "gofumpt"
 
 hooks:
-  pre_init:
-    - "echo '🔍 Checking dependencies...'"
-  post_init:
-    - "go mod download"
-  pre_start:
-    - "echo '🚀 Starting development environment...'"
-  post_start:
-    - "echo '✨ Environment is ready! (Hint: Run derrick shell to develop islation)'"
+  start:
+    - run: "echo 'Checking dependencies...'"
+      when: always
+    - run: "go mod download"
+      when: first-setup
+    - run: "echo 'Environment is ready!'"
+      when: always
+  stop:
+    - run: "echo 'Goodbye!'"
+      when: always
+
+flags:
+  reset:
+    description: "Rebuild the Nix environment from scratch"
 
 validations:
   - name: "Go Compiler"
