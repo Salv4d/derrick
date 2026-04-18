@@ -72,18 +72,28 @@ func (d *DockerProvider) Stop(cfg *config.ProjectConfig) error {
 	return RunCommand(cmd)
 }
 
-// Shell opens a shell inside the first running service of the Compose project.
+// Shell opens a shell inside the target service of the Compose project.
+// The service is resolved in priority order: docker.shell in derrick.yaml,
+// then the first service declared in the compose file.
 func (d *DockerProvider) Shell(cfg *config.ProjectConfig) error {
 	if cfg.Docker.Compose == "" {
 		return fmt.Errorf("no docker.compose file specified in derrick.yaml")
 	}
 
-	args := []string{"compose", "-f", cfg.Docker.Compose, "exec"}
-	if len(cfg.Docker.Profiles) > 0 {
-		args = append(args, "--profile", cfg.Docker.Profiles[0])
+	service := cfg.Docker.Shell
+	if service == "" {
+		var err error
+		service, err = FirstService(cfg.Docker.Compose)
+		if err != nil {
+			return fmt.Errorf("could not determine shell target service: %w", err)
+		}
 	}
-	// Open a shell in the first service by convention — users can override via flags.
-	args = append(args, "app", "sh", "-c", "bash || sh")
+
+	args := []string{"compose", "-f", cfg.Docker.Compose, "exec"}
+	for _, p := range cfg.Docker.Profiles {
+		args = append(args, "--profile", p)
+	}
+	args = append(args, service, "sh", "-c", "bash || sh")
 
 	cmd := exec.Command("docker", args...)
 	return RunCommand(cmd)

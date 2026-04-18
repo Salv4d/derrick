@@ -81,6 +81,35 @@ func IsDockerInstalled() bool {
 	return err == nil
 }
 
+// FirstService returns the name of the first service defined in a compose file,
+// preserving YAML declaration order. Used as the default exec target for `derrick shell`.
+func FirstService(composeFile string) (string, error) {
+	data, err := os.ReadFile(composeFile)
+	if err != nil {
+		return "", err
+	}
+
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return "", fmt.Errorf("failed to parse %s: %w", composeFile, err)
+	}
+	if len(doc.Content) == 0 {
+		return "", fmt.Errorf("empty compose file: %s", composeFile)
+	}
+
+	// Walk the root mapping to find the "services" key.
+	root := doc.Content[0]
+	for i := 0; i+1 < len(root.Content); i += 2 {
+		if root.Content[i].Value == "services" {
+			svcMap := root.Content[i+1]
+			if len(svcMap.Content) >= 2 {
+				return svcMap.Content[0].Value, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no services found in %s", composeFile)
+}
+
 // StartContainers brings up the docker-compose project.
 func StartContainers(composeFile string, profiles []string) error {
 	if composeFile == "" {
