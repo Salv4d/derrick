@@ -1,47 +1,79 @@
 package engine
 
 import (
-	"os"
-	"os/exec"
+	"fmt"
+	"strings"
 
+	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/ui"
 )
 
-// ExecuteHook runs a series of commands for a given lifecycle stage.
-func ExecuteHook(stage string, commands []string, useNix bool) {
-	if len(commands) == 0 {
-		return
+// HookOpts carries the context that determines which hooks should fire.
+type HookOpts struct {
+	// SetupCompleted is true when this is not the first `derrick start`.
+	SetupCompleted bool
+	// ActiveFlags maps custom flag names to whether the user passed them.
+	ActiveFlags map[string]bool
+	// UseNix controls whether commands run inside a Nix dev shell.
+	UseNix bool
+}
+
+// ExecuteHooks runs the hooks for a lifecycle stage, skipping any whose when:
+// condition is not satisfied by the current execution context.
+func ExecuteHooks(stage string, hooks []config.Hook, opts HookOpts) error {
+	if len(hooks) == 0 {
+		return nil
 	}
 
-	ui.Sectionf("Executing Lifecycle: %s", stage)
-
-	for i, command := range commands {
-		if command == "" {
-			continue
+	eligible := make([]config.Hook, 0, len(hooks))
+	for _, h := range hooks {
+		if shouldRun(h.When, opts) {
+			eligible = append(eligible, h)
 		}
+	}
 
-		ui.SubTaskf("Step %d/%d", i+1, len(commands))
+	if len(eligible) == 0 {
+		return nil
+	}
 
-		var cmd *exec.Cmd
-		if useNix {
-			nixArgs := WrapWithNix(command, "")
-			ui.Debugf("Executing hook via Nix: %v", nixArgs)
-			cmd = exec.Command(nixArgs[0], nixArgs[1:]...)
-		} else {
-			ui.Debugf("Executing hook via Bash: bash -c %q", command)
-			cmd = exec.Command("bash", "-c", command)
-		}
+	ui.Sectionf("Lifecycle: %s", stage)
 
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+	for i, hook := range eligible {
+		ui.SubTaskf("Step %d/%d: %s", i+1, len(eligible), hook.Run)
 
-		err := cmd.Run()
-		if err != nil {
+		if err := executeCommand(hook.Run, opts.UseNix); err != nil {
 			ui.Error("FAILED")
-			ui.FailFastf("Lifecycle hook [%s] failed at step %d.\nCommand: %s\nError: %v", stage, i+1, command, err)
+			return fmt.Errorf("hook [%s] step %d failed\n  command: %s\n  error: %w", stage, i+1, hook.Run, err)
 		}
 		ui.Success("DONE")
 	}
 
-	ui.Successf("[%s] completed successfully.", stage)
+	ui.Successf("[%s] completed", stage)
+	return nil
+}
+
+// shouldRun evaluates a hook's when: condition against the current execution context.
+func shouldRun(when string, opts HookOpts) bool {
+	switch {
+	case when == "" || when == "always":
+		return true
+	case when == "first-setup":
+		return !opts.SetupCompleted
+	case strings.HasPrefix(when, "flag:"):
+		flagName := strings.TrimPrefix(when, "flag:")
+		return opts.ActiveFlags[flagName]
+	default:
+		return true
+	}
+}
+
+// ExecuteHook is the legacy hook executor for code that passes plain string slices.
+func ExecuteHook(stage string, commands []string, useNix bool) {
+	hooks := make([]config.Hook, 0, len(commands))
+	for _, cmd := range commands {
+		if cmd != "" {
+			hooks = append(hooks, config.Hook{Run: cmd, When: "always"})
+		}
+	}
+	_ = ExecuteHooks(stage, hooks, HookOpts{UseNix: useNix, SetupCompleted: true})
 }
