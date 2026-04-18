@@ -24,3 +24,15 @@ tmp
 # AI coding tool session files (Aider, Claude, etc.)
 .aider*
 .claude/
+
+# Research repositories cloned for architecture analysis
+.derrick-research/
+
+# Ephemeral temp sandboxes created by `derrick run`
+.derrick-tmp-*/
+
+# Claude Code task and planning artifacts
+.tasks/
+CODEBASE_REPORT.md
+TEST_PLAN.md
+run-command-improvements.md
