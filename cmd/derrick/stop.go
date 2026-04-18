@@ -27,6 +27,15 @@ any defined stop lifecycle hooks.`,
 
 		cwd, _ := os.Getwd()
 
+		// Load persisted state first so stop hooks can see the flags the user
+		// passed to `derrick start`. Without this, hooks with when: flag:<name>
+		// never fire on stop.
+		projectState, _ := state.Load(cwd)
+		activeFlags := make(map[string]bool)
+		for _, f := range projectState.FlagsUsed {
+			activeFlags[f] = true
+		}
+
 		provider := engine.ResolveProvider(cfg)
 		ui.Infof("Stopping %s environment: %s", provider.Name(), cfg.Name)
 
@@ -36,14 +45,13 @@ any defined stop lifecycle hooks.`,
 
 		hookOpts := engine.HookOpts{
 			SetupCompleted: true,
+			ActiveFlags:    activeFlags,
 			UseNix:         cfg.ActiveProvider() == "nix",
 		}
 		if err := engine.ExecuteHooks("stop", cfg.Hooks.Stop, hookOpts); err != nil {
 			ui.FailFast(err)
 		}
 
-		// Update persisted state.
-		projectState, _ := state.Load(cwd)
 		projectState.Status = state.StatusStopped
 		projectState.StoppedAt = time.Now()
 		_ = state.Save(cwd, projectState)

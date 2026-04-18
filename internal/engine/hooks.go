@@ -66,14 +66,3 @@ func shouldRun(when string, opts HookOpts) bool {
 		return true
 	}
 }
-
-// ExecuteHook is the legacy hook executor for code that passes plain string slices.
-func ExecuteHook(stage string, commands []string, useNix bool) {
-	hooks := make([]config.Hook, 0, len(commands))
-	for _, cmd := range commands {
-		if cmd != "" {
-			hooks = append(hooks, config.Hook{Run: cmd, When: "always"})
-		}
-	}
-	_ = ExecuteHooks(stage, hooks, HookOpts{UseNix: useNix, SetupCompleted: true})
-}
