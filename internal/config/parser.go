@@ -19,7 +19,6 @@ var validate = validator.New()
 func init() {
 	validate.RegisterTagNameFunc(func(fld reflect.StructField) string {
 		name := strings.SplitN(fld.Tag.Get("yaml"), ",", 2)[0]
-
 		if name == "-" {
 			return ""
 		}
@@ -27,42 +26,41 @@ func init() {
 	})
 }
 
-// ParseConfig reads and validates a derrick.yaml file, optionally applying a profile.
+// ParseConfig reads and validates a derrick.yaml file, optionally applying a named profile.
 func ParseConfig(filename string, profileName string) (*ProjectConfig, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read %s: %w", filename, err)
 	}
 
-	var config ProjectConfig
+	var cfg ProjectConfig
 
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
 
-	err = decoder.Decode(&config)
-	if err != nil {
+	if err = decoder.Decode(&cfg); err != nil {
 		return nil, enhanceYAMLError(data, err)
 	}
 
-	err = validate.Struct(config)
-	if err != nil {
+	if err = validate.Struct(cfg); err != nil {
 		return nil, formatValidationError(err)
 	}
 
 	if profileName != "" {
-		err = applyProfile(&config, profileName)
-		if err != nil {
+		if err = applyProfile(&cfg, profileName); err != nil {
 			return nil, err
 		}
 	}
 
-	if config.Dependencies.NixRegistry == "" {
-		config.Dependencies.NixRegistry = DefaultNixRegistry
+	// Apply defaults.
+	if cfg.Nix.Registry == "" {
+		cfg.Nix.Registry = DefaultNixRegistry
+	}
+	if cfg.Docker.Network == "" {
+		cfg.Docker.Network = "derrick-net"
 	}
 
-
-
-	return &config, nil
+	return &cfg, nil
 }
 
 func applyProfile(cfg *ProjectConfig, profileName string) error {
@@ -72,40 +70,38 @@ func applyProfile(cfg *ProjectConfig, profileName string) error {
 	}
 
 	if profile.Extend != "" {
-		err := applyProfile(cfg, profile.Extend)
-		if err != nil {
+		if err := applyProfile(cfg, profile.Extend); err != nil {
 			return fmt.Errorf("failed to extend profile '%s': %w", profile.Extend, err)
 		}
 	}
 
 	mergeProfileToConfig(cfg, profile)
-
 	return nil
 }
 
 func mergeProfileToConfig(cfg *ProjectConfig, p Profile) {
-	if p.Dependencies != nil {
-		if len(p.Dependencies.NixPackages) > 0 {
-			cfg.Dependencies.NixPackages = append(cfg.Dependencies.NixPackages, p.Dependencies.NixPackages...)
+	if p.Docker != nil {
+		if p.Docker.Compose != "" {
+			cfg.Docker.Compose = p.Docker.Compose
 		}
-		if p.Dependencies.NixRegistry != "" {
-			cfg.Dependencies.NixRegistry = p.Dependencies.NixRegistry
+		if len(p.Docker.Profiles) > 0 {
+			cfg.Docker.Profiles = append(cfg.Docker.Profiles, p.Docker.Profiles...)
 		}
-		if p.Dependencies.DockerCompose != "" {
-			cfg.Dependencies.DockerCompose = p.Dependencies.DockerCompose
+	}
+
+	if p.Nix != nil {
+		if len(p.Nix.Packages) > 0 {
+			cfg.Nix.Packages = append(cfg.Nix.Packages, p.Nix.Packages...)
 		}
-		if len(p.Dependencies.DockerComposeProfiles) > 0 {
-			cfg.Dependencies.DockerComposeProfiles = append(cfg.Dependencies.DockerComposeProfiles, p.Dependencies.DockerComposeProfiles...)
+		if p.Nix.Registry != "" {
+			cfg.Nix.Registry = p.Nix.Registry
 		}
 	}
 
 	if p.Hooks != nil {
-		cfg.Hooks.PreInit = append(cfg.Hooks.PreInit, p.Hooks.PreInit...)
-		cfg.Hooks.PostInit = append(cfg.Hooks.PostInit, p.Hooks.PostInit...)
-		cfg.Hooks.PreStart = append(cfg.Hooks.PreStart, p.Hooks.PreStart...)
-		cfg.Hooks.PostStart = append(cfg.Hooks.PostStart, p.Hooks.PostStart...)
-		cfg.Hooks.PreBuild = append(cfg.Hooks.PreBuild, p.Hooks.PreBuild...)
-		cfg.Hooks.PostStop = append(cfg.Hooks.PostStop, p.Hooks.PostStop...)
+		cfg.Hooks.Start = append(cfg.Hooks.Start, p.Hooks.Start...)
+		cfg.Hooks.Stop = append(cfg.Hooks.Stop, p.Hooks.Stop...)
+		cfg.Hooks.Restart = append(cfg.Hooks.Restart, p.Hooks.Restart...)
 	}
 
 	if len(p.Validations) > 0 {
@@ -116,8 +112,7 @@ func mergeProfileToConfig(cfg *ProjectConfig, p Profile) {
 		if p.EnvManagement.BaseFile != "" {
 			cfg.EnvManagement.BaseFile = p.EnvManagement.BaseFile
 		}
-		 
-						if p.EnvManagement.PromptMissing {
+		if p.EnvManagement.PromptMissing {
 			cfg.EnvManagement.PromptMissing = true
 		}
 	}
@@ -133,15 +128,15 @@ func mergeProfileToConfig(cfg *ProjectConfig, p Profile) {
 }
 
 func formatValidationError(err error) error {
-	var builder strings.Builder
-	builder.WriteString("Invalid configuration contract in derrick.yaml:\n\n")
+	var sb strings.Builder
+	sb.WriteString("Invalid configuration in derrick.yaml:\n\n")
 
 	if validationErrors, ok := err.(validator.ValidationErrors); ok {
 		for _, e := range validationErrors {
 			yamlPath := strings.TrimPrefix(e.Namespace(), "ProjectConfig.")
-			fmt.Fprintf(&builder, "  ✖ Field '%s' failed validation: must be '%s'\n", yamlPath, e.Tag())
+			fmt.Fprintf(&sb, "  ✖ Field '%s' failed validation: must satisfy '%s'\n", yamlPath, e.Tag())
 		}
-		return errors.New(builder.String())
+		return errors.New(sb.String())
 	}
 
 	return err
@@ -152,7 +147,6 @@ func enhanceYAMLError(fileData []byte, originalErr error) error {
 
 	re := regexp.MustCompile(`line (\d+)`)
 	matches := re.FindStringSubmatch(errMsg)
-
 	if len(matches) < 2 {
 		return originalErr
 	}
@@ -163,28 +157,23 @@ func enhanceYAMLError(fileData []byte, originalErr error) error {
 	}
 
 	lines := strings.Split(string(fileData), "\n")
-
 	if lineNum < 1 || lineNum > len(lines) {
 		return originalErr
 	}
 
 	errorLine := lines[lineNum-1]
+	trimmed := strings.TrimSpace(errorLine)
+	indent := len(errorLine) - len(trimmed)
+	indicator := strings.Repeat(" ", indent) + strings.Repeat("^", len(trimmed))
 
-	trimmedLine := strings.TrimSpace(errorLine)
-	indentLength := len(errorLine) - len(trimmedLine)
-	indicator := strings.Repeat(" ", indentLength) + strings.Repeat("^", len(trimmedLine))
-
-	var builder strings.Builder
-	fmt.Fprintf(&builder, "Syntax error in derrick.yaml at line %d: \n\n", lineNum)
-
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Syntax error in derrick.yaml at line %d:\n\n", lineNum)
 	if lineNum > 1 {
-		fmt.Fprintf(&builder, "  %3d | %s\n", lineNum-1, lines[lineNum-2])
+		fmt.Fprintf(&sb, "  %3d | %s\n", lineNum-1, lines[lineNum-2])
 	}
+	fmt.Fprintf(&sb, "  %3d | %s\n", lineNum, errorLine)
+	fmt.Fprintf(&sb, "       %s\n\n", indicator)
+	fmt.Fprintf(&sb, "Detail: %s", errMsg)
 
-	fmt.Fprintf(&builder, "  %3d | %s\n", lineNum, errorLine)
-	fmt.Fprintf(&builder, "       %s\n\n", indicator)
-
-	fmt.Fprintf(&builder, "Detail: %s", errMsg)
-
-	return errors.New(builder.String())
+	return errors.New(sb.String())
 }

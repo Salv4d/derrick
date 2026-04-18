@@ -9,132 +9,166 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestParseConfig verifies that derrick.yaml configuration files are parsed correctly
-// including valid configs, custom registries, malformed YAML, missing files, and profile extensions.
 func TestParseConfig(t *testing.T) {
 	tempDir := t.TempDir()
 
 	validYAML := []byte(`
 name: "test-project"
 version: "1.0.0"
-dependencies:
-  nix_packages:
+provider: docker
+docker:
+  compose: "docker-compose.yml"
+nix:
+  packages:
     - "go"
     - "nodejs"
-  docker_compose: "docker-compose.yml"
 hooks:
-  pre_init:
-    - "echo 'Starting'"
+  start:
+    - run: "echo 'Starting'"
+      when: always
 validations:
   - name: "Check Env"
     command: "test -f .env"
 `)
-	validFilePath := filepath.Join(tempDir, "valid.yaml")
-	err := os.WriteFile(validFilePath, validYAML, 0o644)
-
-	require.NoError(t, err, "Failed to write valid YAML test file")
+	validPath := filepath.Join(tempDir, "valid.yaml")
+	require.NoError(t, os.WriteFile(validPath, validYAML, 0o644))
 
 	t.Run("Valid Config", func(t *testing.T) {
-		cfg, err := ParseConfig(validFilePath, "")
-		require.NoError(t, err, "Parsing a valid YAML file should not return an error")
+		cfg, err := ParseConfig(validPath, "")
+		require.NoError(t, err)
 
-		assert.Equal(t, "test-project", cfg.Name, "Project name should match")
-		assert.Equal(t, "1.0.0", cfg.Version, "Project version should match")
+		assert.Equal(t, "test-project", cfg.Name)
+		assert.Equal(t, "1.0.0", cfg.Version)
+		assert.Equal(t, "docker", cfg.Provider)
 
-		assert.Len(t, cfg.Dependencies.NixPackages, 2, "Should parse exactly 2 nix packages")
-		assert.Equal(t, "go", cfg.Dependencies.NixPackages[0].Name, "First nix package should be 'go'")
+		assert.Len(t, cfg.Nix.Packages, 2)
+		assert.Equal(t, "go", cfg.Nix.Packages[0].Name)
+		assert.Equal(t, DefaultNixRegistry, cfg.Nix.Registry)
+		assert.Equal(t, "docker-compose.yml", cfg.Docker.Compose)
 
-		assert.Equal(t, DefaultNixRegistry, cfg.Dependencies.NixRegistry, "Should use default nix registry when missing")
-		assert.Equal(t, "docker-compose.yml", cfg.Dependencies.DockerCompose, "Should use default docker-compose.yml when missing")
+		assert.Len(t, cfg.Hooks.Start, 1)
+		assert.Equal(t, "echo 'Starting'", cfg.Hooks.Start[0].Run)
+		assert.Equal(t, "always", cfg.Hooks.Start[0].When)
 
-		assert.Len(t, cfg.Hooks.PreInit, 1, "Should parse exactly 1 pre_init hook")
-		assert.Equal(t, "echo 'Starting'", cfg.Hooks.PreInit[0], "The hook command should match")
-
-		assert.Len(t, cfg.Validations, 1, "Should parse exactly 1 validation")
-		assert.Equal(t, "Check Env", cfg.Validations[0].Name, "Validation name should match")
+		assert.Len(t, cfg.Validations, 1)
+		assert.Equal(t, "Check Env", cfg.Validations[0].Name)
 	})
 
-	t.Run("Custom Registry", func(t *testing.T) {
-		customYAML := []byte(`
+	t.Run("Plain string hook", func(t *testing.T) {
+		yamlData := []byte(`
+name: "hook-test"
+version: "1.0.0"
+hooks:
+  start:
+    - "echo hello"
+`)
+		p := filepath.Join(tempDir, "hook.yaml")
+		require.NoError(t, os.WriteFile(p, yamlData, 0o644))
+
+		cfg, err := ParseConfig(p, "")
+		require.NoError(t, err)
+		assert.Len(t, cfg.Hooks.Start, 1)
+		assert.Equal(t, "echo hello", cfg.Hooks.Start[0].Run)
+		assert.Equal(t, "always", cfg.Hooks.Start[0].When)
+	})
+
+	t.Run("Custom Nix registry", func(t *testing.T) {
+		yamlData := []byte(`
 name: "custom-registry"
 version: "1.0.0"
-dependencies:
-  nix_registry: "github:NixOS/nixpkgs/nixos-22.11"
-  nix_packages: ["go"]
+nix:
+  registry: "github:NixOS/nixpkgs/nixos-22.11"
+  packages:
+    - "go"
 `)
-		customPath := filepath.Join(tempDir, "custom.yaml")
-		err := os.WriteFile(customPath, customYAML, 0o644)
-		require.NoError(t, err)
+		p := filepath.Join(tempDir, "custom.yaml")
+		require.NoError(t, os.WriteFile(p, yamlData, 0o644))
 
-		cfg, err := ParseConfig(customPath, "")
+		cfg, err := ParseConfig(p, "")
 		require.NoError(t, err)
-
-		assert.Equal(t, "github:NixOS/nixpkgs/nixos-22.11", cfg.Dependencies.NixRegistry)
+		assert.Equal(t, "github:NixOS/nixpkgs/nixos-22.11", cfg.Nix.Registry)
 	})
 
-	invalidYAML := []byte(`
+	t.Run("Malformed Config", func(t *testing.T) {
+		badYAML := []byte(`
 name: "test-project"
 version: "1.0.0"
-dependencies:
-	nix_packages:
+nix:
+	packages:
 	- "go"
-		- "bad-identation"
+		- "bad-indentation"
 `)
+		p := filepath.Join(tempDir, "invalid.yaml")
+		require.NoError(t, os.WriteFile(p, badYAML, 0o644))
 
-	invalidFilePath := filepath.Join(tempDir, "invalid.yaml")
-	err = os.WriteFile(invalidFilePath, invalidYAML, 0o644)
-	require.NoError(t, err, "Failed to write invalid yaml test file")
-
-	t.Run("Malformed Config", func(t *testing.T) {
-		_, err := ParseConfig(invalidFilePath, "")
-
-		assert.Error(t, err, "Parsing a malformed YAML file should return an error")
+		_, err := ParseConfig(p, "")
+		assert.Error(t, err)
 	})
 
 	t.Run("Missing File", func(t *testing.T) {
-		missingFilePath := filepath.Join(tempDir, "does_not_exist.yaml")
-		_, err := ParseConfig(missingFilePath, "")
-
-		assert.Error(t, err, "Attempting to parse a non-existing file should return an error")
+		_, err := ParseConfig(filepath.Join(tempDir, "does_not_exist.yaml"), "")
+		assert.Error(t, err)
 	})
+
 	t.Run("Profile Extension", func(t *testing.T) {
 		profileYAML := []byte(`
 name: "profile-test"
 version: "1.0.0"
-dependencies:
-  nix_packages:
+nix:
+  packages:
     - "go"
 profiles:
   base-worker:
-    dependencies:
-      docker_compose_profiles: ["cache"]
-      nix_packages:
+    docker:
+      profiles: ["cache"]
+    nix:
+      packages:
         - "redis"
   advanced-worker:
     extend: "base-worker"
-    dependencies:
-      docker_compose_profiles: ["worker"]
-      nix_packages:
+    docker:
+      profiles: ["worker"]
+    nix:
+      packages:
         - "python3"
     hooks:
-      pre_start:
-        - "echo 'Starting advanced'"
+      start:
+        - run: "echo 'Starting advanced'"
+          when: always
 `)
-		profilePath := filepath.Join(tempDir, "profile.yaml")
-		err := os.WriteFile(profilePath, profileYAML, 0o644)
+		p := filepath.Join(tempDir, "profile.yaml")
+		require.NoError(t, os.WriteFile(p, profileYAML, 0o644))
+
+		cfg, err := ParseConfig(p, "advanced-worker")
 		require.NoError(t, err)
 
-		cfg, err := ParseConfig(profilePath, "advanced-worker")
-		require.NoError(t, err, "Should parse extended profile perfectly")
+		assert.Len(t, cfg.Nix.Packages, 3, "Should merge root + base + advanced")
+		expected := []NixPackage{{Name: "go"}, {Name: "redis"}, {Name: "python3"}}
+		assert.ElementsMatch(t, expected, cfg.Nix.Packages)
 
-		assert.Len(t, cfg.Dependencies.NixPackages, 3, "Should merge Root + Base + Advanced")
-		expectedPkgs := []NixPackage{{Name: "go"}, {Name: "redis"}, {Name: "python3"}}
-		assert.ElementsMatch(t, expectedPkgs, cfg.Dependencies.NixPackages)
+		assert.ElementsMatch(t, []string{"cache", "worker"}, cfg.Docker.Profiles)
 
-		assert.Len(t, cfg.Dependencies.DockerComposeProfiles, 2, "Should accumulate compose profiles")
-		assert.ElementsMatch(t, []string{"cache", "worker"}, cfg.Dependencies.DockerComposeProfiles)
-
-		assert.Len(t, cfg.Hooks.PreStart, 1)
-		assert.Equal(t, "echo 'Starting advanced'", cfg.Hooks.PreStart[0])
+		assert.Len(t, cfg.Hooks.Start, 1)
+		assert.Equal(t, "echo 'Starting advanced'", cfg.Hooks.Start[0].Run)
 	})
+}
+
+func TestActiveProvider(t *testing.T) {
+	tests := []struct {
+		name     string
+		cfg      ProjectConfig
+		expected string
+	}{
+		{"explicit docker", ProjectConfig{Provider: "docker"}, "docker"},
+		{"explicit nix", ProjectConfig{Provider: "nix"}, "nix"},
+		{"auto with compose", ProjectConfig{Provider: "auto", Docker: DockerConfig{Compose: "docker-compose.yml"}}, "docker"},
+		{"auto with nix packages", ProjectConfig{Provider: "auto", Nix: NixConfig{Packages: []NixPackage{{Name: "go"}}}}, "nix"},
+		{"empty defaults to nix", ProjectConfig{}, "nix"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, tc.cfg.ActiveProvider())
+		})
+	}
 }
