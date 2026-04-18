@@ -132,8 +132,6 @@ type ProjectConfig struct {
 	Docker DockerConfig `yaml:"docker,omitempty"`
 	Nix    NixConfig    `yaml:"nix,omitempty"`
 
-	Ports []int `yaml:"ports,omitempty"`
-
 	Hooks     LifecycleHooks     `yaml:"hooks,omitempty"`
 	Flags     map[string]FlagDef `yaml:"flags,omitempty"`
 	Requires  []string           `yaml:"requires,omitempty"`

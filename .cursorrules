@@ -41,9 +41,8 @@ Current top-level keys and their Go struct fields:
 name:            ProjectConfig.Name
 version:         ProjectConfig.Version
 provider:        ProjectConfig.Provider       # docker | nix | auto
-docker:          ProjectConfig.Docker         # DockerConfig{Compose, Profiles, Network}
+docker:          ProjectConfig.Docker         # DockerConfig{Compose, Profiles, Network, Shell}
 nix:             ProjectConfig.Nix            # NixConfig{Registry, Packages}
-ports:           ProjectConfig.Ports
 hooks:           ProjectConfig.Hooks          # LifecycleHooks{Start, Stop, Restart}
 flags:           ProjectConfig.Flags          # map[string]FlagDef
 requires:        ProjectConfig.Requires
