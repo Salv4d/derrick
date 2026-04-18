@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Salv4d/derrick/internal/ui"
+	"github.com/google/shlex"
 )
 
 // DerrickError is a structured error with an actionable fix message.
@@ -63,8 +64,29 @@ var known = []struct {
 	},
 }
 
+// shellMetaRe detects characters that require bash interpretation.
+// Piped commands, redirects, subshells, logical operators, and variable expansions
+// all need a real shell; plain argument lists do not.
+var shellMetaRe = regexp.MustCompile(`[|><;&$` + "`" + `]|\|\||&&`)
+
+// buildCmd converts a command string into an *exec.Cmd, choosing the safest
+// possible execution path:
+//   - No shell metacharacters → shlex split + direct exec (no injection surface)
+//   - Shell metacharacters detected  → bash -c (required for pipes, redirects, etc.)
+func buildCmd(command string) (*exec.Cmd, error) {
+	if shellMetaRe.MatchString(command) {
+		return exec.Command("bash", "-c", command), nil
+	}
+	args, err := shlex.Split(command)
+	if err != nil || len(args) == 0 {
+		return nil, fmt.Errorf("invalid command string: %q: %w", command, err)
+	}
+	return exec.Command(args[0], args[1:]...), nil
+}
+
 // translateError checks a raw stderr string against known patterns and returns a
 // DerrickError when a match is found, or falls back to a plain error.
+// It always preserves stderr content so callers never face a blind failure.
 func translateError(stderr string, original error) error {
 	for _, k := range known {
 		if k.pattern.MatchString(stderr) {
@@ -74,27 +96,38 @@ func translateError(stderr string, original error) error {
 	if stderr != "" {
 		return fmt.Errorf("%s", strings.TrimSpace(stderr))
 	}
-	return original
+	// Wrap so callers see the exit code rather than a raw exec.ExitError.
+	return fmt.Errorf("command failed: %w", original)
 }
 
 // Run executes a shell command, capturing stderr for error translation.
-// stdout is streamed directly to the terminal. Use RunSilent when output must
-// be suppressed.
+// stdout is streamed directly to the terminal.
 func Run(command string) error {
-	return runCmd(exec.Command("bash", "-c", command), false)
+	cmd, err := buildCmd(command)
+	if err != nil {
+		return err
+	}
+	return runCmd(cmd, false)
 }
 
 // RunInEnv executes a command with a custom environment appended to the
 // current process environment.
 func RunInEnv(command string, env []string) error {
-	cmd := exec.Command("bash", "-c", command)
+	cmd, err := buildCmd(command)
+	if err != nil {
+		return err
+	}
 	cmd.Env = append(os.Environ(), env...)
 	return runCmd(cmd, false)
 }
 
 // RunSilent executes a command, discarding stdout but still translating errors.
 func RunSilent(command string) error {
-	return runCmd(exec.Command("bash", "-c", command), true)
+	cmd, err := buildCmd(command)
+	if err != nil {
+		return err
+	}
+	return runCmd(cmd, true)
 }
 
 // RunCommand executes a pre-built *exec.Cmd with error translation.
@@ -124,7 +157,9 @@ func runCmd(cmd *exec.Cmd, silent bool) error {
 }
 
 // executeCommand is the internal helper for hooks and validations.
-// It wraps either bash or nix-develop depending on useNix.
+// Hook commands come from user YAML and may contain arbitrary shell syntax,
+// so we always use bash. When useNix is true the command runs inside the
+// project's nix develop environment instead.
 func executeCommand(command string, useNix bool) error {
 	var cmd *exec.Cmd
 	if useNix {
