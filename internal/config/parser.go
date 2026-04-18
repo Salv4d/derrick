@@ -64,14 +64,26 @@ func ParseConfig(filename string, profileName string) (*ProjectConfig, error) {
 }
 
 func applyProfile(cfg *ProjectConfig, profileName string) error {
+	return applyProfileChain(cfg, profileName, make(map[string]bool))
+}
+
+// applyProfileChain walks the extend: chain while tracking visited profiles so
+// A extends B extends A (or any longer cycle) aborts with a clear error instead
+// of stack-overflowing.
+func applyProfileChain(cfg *ProjectConfig, profileName string, visited map[string]bool) error {
+	if visited[profileName] {
+		return fmt.Errorf("circular profile extension detected at '%s'", profileName)
+	}
+	visited[profileName] = true
+
 	profile, exists := cfg.Profiles[profileName]
 	if !exists {
 		return fmt.Errorf("profile '%s' is not defined in derrick.yaml", profileName)
 	}
 
 	if profile.Extend != "" {
-		if err := applyProfile(cfg, profile.Extend); err != nil {
-			return fmt.Errorf("failed to extend profile '%s': %w", profile.Extend, err)
+		if err := applyProfileChain(cfg, profile.Extend, visited); err != nil {
+			return err
 		}
 	}
 

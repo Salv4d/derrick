@@ -56,34 +56,15 @@ func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix boo
 
 	_ = godotenv.Load(envPath)
 
-	unifiedEnv := make(map[string]config.EnvVar)
-	if cfg.Env != nil {
-		for k, v := range cfg.Env {
-			unifiedEnv[k] = v
-		}
-	}
-
-	if cfg.EnvManagement.PromptMissing {
-		fileEnv, err := godotenv.Read(envPath)
-		if err == nil {
-			for k, v := range fileEnv {
-				if v == "" {
-					if val, exists := unifiedEnv[k]; exists {
-						val.Required = true
-						unifiedEnv[k] = val
-					} else {
-						unifiedEnv[k] = config.EnvVar{
-							Required: true,
-						}
-					}
-				}
-			}
-		}
-	}
-
+	// Iterate over cfg.Env directly. When prompt_missing is set, treat every
+	// declared variable as required — regardless of whether it appears in .env
+	// on disk or is just missing from the runtime environment.
 	newEnvValues := make(map[string]string)
 
-	for key, rules := range unifiedEnv {
+	for key, rules := range cfg.Env {
+		if cfg.EnvManagement.PromptMissing {
+			rules.Required = true
+		}
 		val, exists := os.LookupEnv(key)
 
 		if !exists || val == "" {
@@ -195,9 +176,15 @@ func updateEnvFile(path string, vars map[string]string) error {
 
 	output = strings.TrimLeft(output, "\n")
 
-	err := os.WriteFile(path, []byte(output), 0o600)
-	if err != nil {
-		return fmt.Errorf("failed to write to %s: %v", path, err)
+	// Atomic write: write to a temp file in the same directory, then rename.
+	// This prevents a partially-written .env if the process is interrupted.
+	tmpPath := path + ".tmp"
+	if err := os.WriteFile(tmpPath, []byte(output), 0o600); err != nil {
+		return fmt.Errorf("failed to write temp env file: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("failed to replace %s: %w", path, err)
 	}
 
 	ui.Successf("Updated %s with %d variables", path, len(vars))

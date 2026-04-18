@@ -37,14 +37,12 @@ func (d *DockerProvider) Start(cfg *config.ProjectConfig, _ Flags) error {
 		return fmt.Errorf("no docker.compose file specified in derrick.yaml")
 	}
 
-	overridePath, overrideErr := GenerateNetworkOverride(cfg.Docker.Compose, ".derrick")
-
-	args := []string{"compose", "-f", cfg.Docker.Compose}
-	if overrideErr == nil && overridePath != "" {
-		args = append(args, "-f", overridePath)
-	} else {
-		ui.Warningf("Network overlay skipped: %v", overrideErr)
+	overridePath, err := GenerateNetworkOverride(cfg.Docker.Compose, ".derrick")
+	if err != nil {
+		return fmt.Errorf("failed to generate docker network overlay: %w", err)
 	}
+
+	args := []string{"compose", "-f", cfg.Docker.Compose, "-f", overridePath}
 	for _, p := range cfg.Docker.Profiles {
 		args = append(args, "--profile", p)
 	}

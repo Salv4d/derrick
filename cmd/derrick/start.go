@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/Salv4d/derrick/internal/config"
@@ -13,6 +14,11 @@ import (
 	"github.com/Salv4d/derrick/internal/ui"
 	"github.com/spf13/cobra"
 )
+
+// startChainEnv carries the list of project names already booting in the
+// current recursive `derrick start` chain. Each child inherits it via its
+// process environment, so cycles abort instead of fork-bombing.
+const startChainEnv = "DERRICK_START_CHAIN"
 
 var (
 	startReset      bool
@@ -63,6 +69,12 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 		}
 		ui.Successf("Project: %s  v%s  [%s]", cfg.Name, cfg.Version, cfg.ActiveProvider())
 
+		// ── Cycle detection (requires:) ────────────────────────────────────────
+		chain := parseStartChain(os.Getenv(startChainEnv))
+		if chain[cfg.Name] {
+			ui.FailFast(fmt.Errorf("circular dependency detected: '%s' is already booting in this chain [%s]", cfg.Name, os.Getenv(startChainEnv)))
+		}
+
 		// ── Custom flags ───────────────────────────────────────────────────────
 		activeFlags := resolveCustomFlags(cfg, cmd, startCustomFlags)
 		if startReset {
@@ -84,6 +96,7 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 			}
 
 			parentDir := filepath.Dir(cwd)
+			childChain := appendStartChain(os.Getenv(startChainEnv), cfg.Name)
 			for _, dep := range cfg.Requires {
 				depPath := filepath.Join(parentDir, dep)
 				ui.Infof("Booting dependency: %s", dep)
@@ -96,6 +109,7 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 				depCmd.Stdout = os.Stdout
 				depCmd.Stderr = os.Stderr
 				depCmd.Stdin = os.Stdin
+				depCmd.Env = append(os.Environ(), startChainEnv+"="+childChain)
 				if err := depCmd.Run(); err != nil {
 					ui.FailFast(fmt.Errorf("dependency '%s' failed to start: %w", dep, err))
 				}
@@ -213,6 +227,28 @@ func resolveCustomFlags(cfg *config.ProjectConfig, cmd *cobra.Command, rawFlags 
 		active[name] = true
 	}
 	return active
+}
+
+// parseStartChain deserializes DERRICK_START_CHAIN into a set for membership checks.
+func parseStartChain(raw string) map[string]bool {
+	chain := make(map[string]bool)
+	if raw == "" {
+		return chain
+	}
+	for _, name := range strings.Split(raw, ",") {
+		if name = strings.TrimSpace(name); name != "" {
+			chain[name] = true
+		}
+	}
+	return chain
+}
+
+// appendStartChain returns a new chain string with the given project name appended.
+func appendStartChain(raw, name string) string {
+	if raw == "" {
+		return name
+	}
+	return raw + "," + name
 }
 
 func init() {
