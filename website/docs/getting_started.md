@@ -3,26 +3,32 @@ layout: default
 title: Getting Started
 ---
 
-# 🚀 Getting Started
+# Getting Started
 
 ## 1. Prerequisites
 
-You must have the following installed on your host OS:
-* [Nix](https://nixos.org/download) (The package manager itself)
-* (Optional) [Docker](https://docs.docker.com/engine/install/) & Docker Compose
+You need at least one of the following on your host OS:
+
+* [Nix](https://nixos.org/download) — for `provider: nix` projects
+* [Docker](https://docs.docker.com/engine/install/) & Docker Compose — for `provider: docker` projects
+
+Derrick itself requires neither at install time: `derrick init` generates a config, then `derrick start` pulls in whichever tool the project declares.
 
 ## 2. Installation
 
-**Option A: Download Pre-compiled Binary (Recommended)**
+**Download the pre-compiled binary (recommended)**
 ```bash
 curl -L -o derrick https://github.com/Salv4d/derrick/releases/latest/download/derrick-linux-amd64
 chmod +x derrick
 sudo mv derrick /usr/local/bin/
 ```
 
-**Option B: Build from Source**
-If you have Go installed, you can compile it manually:
+**Using Go**
+```bash
+go install github.com/Salv4d/derrick/cmd/derrick@latest
+```
 
+**Build from source**
 ```bash
 git clone https://github.com/Salv4d/derrick.git
 cd derrick
@@ -30,92 +36,131 @@ go build -o derrick ./cmd/derrick
 sudo mv derrick /usr/local/bin/
 ```
 
-## 3. The "Hello World" Project
+## 3. Your First Project
 
-Create a new directory for your microservice and run the initialization wizard:
+Create a new directory and run the initialization wizard:
 
 ```bash
 mkdir my-service && cd my-service
 derrick init
 ```
 
-The smart wizard will auto-detect your project’s language natively (Node, Go, Python, etc.) and seamlessly prompt you to optionally attach environment files or a Docker Compose stack. 
-
-Here is an example structure it could generate:
+The wizard auto-detects your project language and generates a `derrick.yaml`. Here is a typical result:
 
 ```yaml
-name: "hello-world"
+name: "my-service"
 version: "0.1.0"
+provider: nix
 
-dependencies:
-  nix_packages:
-    - "nodejs_20"
-  # docker_compose is entirely optional!
+nix:
+  packages:
+    - "nodejs_22"
 ```
 
-Start the Derrick engine:
+Boot the environment:
 ```bash
 derrick start
 ```
 
-Drop into the hermetic sandbox. Notice how `node` is available even if uninstalled on the Host OS:
+Drop into the isolated shell — `node` is available even without being installed on the host:
 ```bash
 derrick shell
 
-# inside the sandbox prompt:
+# inside the sandbox:
 node -v
 ```
 
-## 4. IDE Integration & AI Coding Agents ✨
+## 4. Lifecycle Hooks & Custom Flags
 
-After running `derrick start`, you can open your project in any editor from within the hermetic sandbox. All dependencies (Language Servers, Linters, Compilers) are available on the PATH without polluting your Host OS.
+Hooks let you automate setup tasks that run at specific moments. The `when:` condition controls when each hook fires:
 
-**Open your project from the sandbox:**
-```bash
-derrick shell
-$EDITOR .    # or e.g. code ., nvim ., etc.
+```yaml
+hooks:
+  start:
+    - run: "npm install"
+      when: first-setup    # only on the very first boot
+    - run: "npm run build"
+      when: always
+    - run: "npm run seed"
+      when: flag:seed-db   # only when --flag seed-db is passed
+
+flags:
+  seed-db:
+    description: "Populate the database with development seed data"
 ```
 
-*Your editor inherits the Nix PATH, so anything requiring `node`, `go`, or `python` resolves to the isolated sandbox dependencies while preserving your global user settings (like `~/.config/nvim/` or `~/.vscode/`).*
-
-**Quick Tools — No Config Needed:**
-If you need to evaluate a tool once without a `derrick.yaml`:
 ```bash
-# Instant sandbox with jq and yq for quick data parsing
-derrick run jq yq
+# Normal start — runs npm install (first time only) and npm run build
+derrick start
 
-# Need a specific Python version to test a migration?
-derrick run python3_11
+# Start with seed data
+derrick start --flag seed-db
 ```
 
-## 5. Cross-Project Clustering 🌐
+Derrick persists state in `.derrick/state.json` to track whether first-setup has already completed, so `when: first-setup` hooks never run twice accidentally.
 
-If you use `derrick` across multiple microservices (e.g., a Backend API and a separate Frontend Web app), **they instantly know how to communicate with zero configuration.**
+## 5. Provider Selection
 
-Wait, what is the "easiest way to do it?" 
-**Just boot them!** Run `derrick start` in Project A, and `derrick start` in Project B. Derrick automatically injects the `derrick-net` global Docker bridge into your projects behind the scenes without modifying your file states!
+Derrick selects the isolation backend automatically with `provider: auto` (the default):
 
-Here is how the magic works in practice:
+| Config | Backend chosen |
+| :--- | :--- |
+| `docker.compose` is set | Docker Compose |
+| Only `nix.packages` set | Nix dev shell |
+| Both set, `provider: auto` | Docker |
 
-### Example A: Container to Container (Across Projects)
-Imagine your Backend API (`api/docker-compose.yml`) defines a service named `payment-worker`. 
-Your separate Frontend Web app (`web/docker-compose.yml`) can immediately speak to it via standard DNS!
+Override it explicitly when you need to be unambiguous:
+
+```yaml
+provider: docker   # always Docker
+provider: nix      # always Nix
+provider: auto     # Derrick decides (default)
+```
+
+## 6. Starting a Hub Project
+
+If a project alias is registered in `~/.derrick/config.yaml`, you can clone and boot it in one command:
+
+```bash
+# Clones the repo and runs `derrick start` inside it
+derrick start auth-service
+```
+
+Register aliases globally:
+```yaml
+# ~/.derrick/config.yaml
+projects:
+  auth-service: https://github.com/your-org/auth-service.git
+  payment-api: https://github.com/your-org/payment-api.git
+```
+
+## 7. Cross-Project Clustering
+
+Run `derrick start` in multiple microservice directories. Derrick automatically attaches all Docker Compose projects to a shared `derrick-net` bridge network, so containers across projects can resolve each other by service name:
+
 ```javascript
-// Inside your Frontend Web app
+// Frontend container talking to a backend service in another project
 const response = await fetch("http://payment-worker:8080/charge");
 ```
 
-### Example B: Container to Host Sandbox
-What if your Frontend Web app isn't running in Docker, but is simply running natively in your `derrick shell` (Host OS) on `localhost:3000`? 
-Historically, Docker containers struggle to route traffic backwards to the Host OS on Linux. Derrick solves this automatically:
-```yaml
-# Inside your Backend API docker-compose.yml
-services:
-  nginx-gateway:
-    image: nginx:latest
+Containers can also reach host-native processes (running in your Nix shell) via `host.docker.internal`, which Derrick injects automatically.
+
+## 8. IDE Integration
+
+After `derrick start`, open your editor from inside the sandbox so it inherits the exact Nix PATH:
+
+```bash
+derrick shell
+code .    # or nvim ., $EDITOR ., etc.
 ```
-```nginx
-# Wait! How does the nginx gateway reach your native Host OS React App?
-# Simply reference the globally injected host.docker.internal!
-proxy_pass http://host.docker.internal:3000;
+
+Language servers, linters, and compilers resolve to the sandboxed versions without polluting the host OS.
+
+**Quick throwaway sandboxes** — no `derrick.yaml` needed:
+```bash
+# Interactive shell with jq and python
+derrick run jq python3
+
+# Run a command directly without entering a shell
+derrick run python3 -- python -c "print('hello')"
 ```
