@@ -19,35 +19,54 @@ type GithubRelease struct {
 	TagName string `json:"tag_name"`
 }
 
+type versionReport struct {
+	Version    string `json:"version"`
+	Latest     string `json:"latest,omitempty"`
+	UpToDate   bool   `json:"up_to_date"`
+	CheckError string `json:"check_error,omitempty"`
+}
+
 // RunVersion prints the current version and checks for updates.
 func RunVersion() {
-	ui.PrintHeader()
-	fmt.Printf("Derrick CLI version %s\n\n", Version)
+	report := versionReport{Version: Version, UpToDate: true}
 
-	ui.Taskf("Checking for latest releases on GitHub...")
-
-	client := http.Client{
-		Timeout: 3 * time.Second,
-	}
-
+	client := http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Get("https://api.github.com/repos/Salv4d/derrick/releases/latest")
 	if err != nil {
-		ui.Warningf("Could not reach GitHub to check for updates: %v", err)
+		report.CheckError = err.Error()
+	} else {
+		defer resp.Body.Close()
+		if resp.StatusCode == 200 {
+			var release GithubRelease
+			if err := json.NewDecoder(resp.Body).Decode(&release); err == nil {
+				report.Latest = release.TagName
+				report.UpToDate = release.TagName == Version || release.TagName == "v"+Version
+			} else {
+				report.CheckError = err.Error()
+			}
+		} else {
+			report.CheckError = fmt.Sprintf("github returned status %d", resp.StatusCode)
+		}
+	}
+
+	if jsonOutput {
+		out, _ := json.MarshalIndent(report, "", "  ")
+		fmt.Println(string(out))
 		return
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode == 200 {
-		var release GithubRelease
-		if err := json.NewDecoder(resp.Body).Decode(&release); err == nil {
-			if release.TagName != Version && release.TagName != "v"+Version {
-				ui.Warningf("A new version is available: %s! Run 'derrick update' to efficiently upgrade.", release.TagName)
-			} else {
-				ui.Successf("Your version is exactly up to date!")
-			}
-		}
+	ui.PrintHeader()
+	fmt.Printf("Derrick CLI version %s\n\n", Version)
+	ui.Taskf("Checking for latest releases on GitHub...")
+
+	if report.CheckError != "" {
+		ui.Warningf("Could not check for updates: %v", report.CheckError)
+		return
+	}
+	if report.UpToDate {
+		ui.Successf("Your version is exactly up to date!")
 	} else {
-		ui.Successf("No standard release tags found on remote repository.")
+		ui.Warningf("A new version is available: %s! Run 'derrick update' to efficiently upgrade.", report.Latest)
 	}
 }
 

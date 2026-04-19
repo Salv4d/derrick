@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -10,6 +11,15 @@ import (
 	"github.com/Salv4d/derrick/internal/ui"
 	"github.com/spf13/cobra"
 )
+
+type statusReport struct {
+	Project   string `json:"project"`
+	Version   string `json:"version"`
+	Provider  string `json:"provider"`
+	Running   bool   `json:"running"`
+	Details   string `json:"details,omitempty"`
+	LastKnown string `json:"last_known,omitempty"`
+}
 
 // statusCmd reports whether the project's environment is currently running.
 var statusCmd = &cobra.Command{
@@ -30,19 +40,35 @@ var statusCmd = &cobra.Command{
 			ui.FailFast(err)
 		}
 
-		fmt.Printf("project:  %s (v%s)\n", cfg.Name, cfg.Version)
-		fmt.Printf("provider: %s\n", provider.Name())
+		report := statusReport{
+			Project:  cfg.Name,
+			Version:  cfg.Version,
+			Provider: provider.Name(),
+			Running:  status.Running,
+			Details:  status.Details,
+		}
+		if projectState != nil {
+			report.LastKnown = string(projectState.Status)
+		}
 
-		if status.Running {
+		if jsonOutput {
+			out, _ := json.MarshalIndent(report, "", "  ")
+			fmt.Println(string(out))
+			return
+		}
+
+		fmt.Printf("project:  %s (v%s)\n", report.Project, report.Version)
+		fmt.Printf("provider: %s\n", report.Provider)
+		if report.Running {
 			ui.Successf("running")
 		} else {
 			ui.Warning("not running")
 		}
-		if status.Details != "" {
-			fmt.Printf("details:  %s\n", status.Details)
+		if report.Details != "" {
+			fmt.Printf("details:  %s\n", report.Details)
 		}
-		if projectState != nil && projectState.Status != "" {
-			fmt.Printf("last known: %s\n", projectState.Status)
+		if report.LastKnown != "" {
+			fmt.Printf("last known: %s\n", report.LastKnown)
 		}
 	},
 }

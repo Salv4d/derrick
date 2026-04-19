@@ -32,10 +32,17 @@ func Execute() {
 
 var configFile string
 var profileName string
+var jsonOutput bool
 
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&ui.DebugMode, "debug", false, "Enable verbose debug output and stream raw command logs")
 	rootCmd.PersistentFlags().StringVarP(&configFile, "file", "f", "derrick.yaml", "Custom configuration file path")
 	rootCmd.PersistentFlags().StringVarP(&profileName, "profile", "p", "", "Derrick profile to execute")
+	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Emit machine-readable JSON instead of decorated output (status, doctor, version)")
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		if jsonOutput {
+			ui.Quiet = true
+		}
+	}
 	rootCmd.Flags().BoolP("version", "v", false, "Print the version number and seamlessly check for updates")
 }

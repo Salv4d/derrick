@@ -10,6 +10,11 @@ import (
 // DebugMode enables verbose debug output and raw command logs.
 var DebugMode bool
 
+// Quiet suppresses decorative output (headers, sections, info, success,
+// warning) so machine-readable formats like --json remain pure. Errors
+// and FailFast still print since they are diagnostically essential.
+var Quiet bool
+
 var (
 	colorSuccess = lipgloss.Color("46")
 	colorError   = lipgloss.Color("196")
@@ -37,11 +42,17 @@ var (
 
 // PrintHeader prints the Derrick CLI header.
 func PrintHeader() {
+	if Quiet {
+		return
+	}
 	fmt.Println(styleHeader.Render("DERRICK CLI"))
 }
 
 // Section prints a section header.
 func Section(msg string) {
+	if Quiet {
+		return
+	}
 	fmt.Println(styleSection.Render("━━ " + msg))
 }
 
@@ -52,6 +63,9 @@ func Sectionf(format string, args ...any) {
 
 // Task prints a task indicator.
 func Task(msg string) {
+	if Quiet {
+		return
+	}
 	fmt.Printf("  %s\n", styleTask.Render(msg+"..."))
 }
 
@@ -62,6 +76,9 @@ func Taskf(format string, args ...any) {
 
 // SubTask prints a subtask indicator.
 func SubTask(msg string) {
+	if Quiet {
+		return
+	}
 	fmt.Printf("    %s ", styleSubTask.Render(msg+"..."))
 }
 
@@ -71,13 +88,28 @@ func SubTaskf(format string, args ...any) {
 }
 
 // Info prints an informational message.
-func Info(msg string) { fmt.Println(styleInfo.Render("ℹ  " + msg)) }
+func Info(msg string) {
+	if Quiet {
+		return
+	}
+	fmt.Println(styleInfo.Render("ℹ  " + msg))
+}
 
 // Success prints a success message.
-func Success(msg string) { fmt.Println(styleSuccess.Render("✓  " + msg)) }
+func Success(msg string) {
+	if Quiet {
+		return
+	}
+	fmt.Println(styleSuccess.Render("✓  " + msg))
+}
 
 // Warning prints a warning message.
-func Warning(msg string) { fmt.Println(styleWarning.Render("⚠  " + msg)) }
+func Warning(msg string) {
+	if Quiet {
+		return
+	}
+	fmt.Println(styleWarning.Render("⚠  " + msg))
+}
 
 // Error prints an error message.
 func Error(msg string) { fmt.Println(styleError.Render("✖  " + msg)) }
@@ -91,16 +123,25 @@ func Debug(msg string) {
 
 // Infof prints a formatted informational message.
 func Infof(format string, args ...any) {
+	if Quiet {
+		return
+	}
 	fmt.Println(styleInfo.Render("ℹ  " + fmt.Sprintf(format, args...)))
 }
 
 // Successf prints a formatted success message.
 func Successf(format string, args ...any) {
+	if Quiet {
+		return
+	}
 	fmt.Println(styleSuccess.Render("✓  " + fmt.Sprintf(format, args...)))
 }
 
 // Warningf prints a formatted warning message.
 func Warningf(format string, args ...any) {
+	if Quiet {
+		return
+	}
 	fmt.Println(styleWarning.Render("⚠  " + fmt.Sprintf(format, args...)))
 }
 

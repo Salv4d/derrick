@@ -138,16 +138,19 @@ func RunCommand(cmd *exec.Cmd) error {
 func runCmd(cmd *exec.Cmd, silent bool) error {
 	var stderr bytes.Buffer
 
-	if silent {
+	switch {
+	case silent:
 		cmd.Stderr = &stderr
-	} else {
-		if ui.DebugMode {
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
-		} else {
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = &stderr
-		}
+	case ui.Quiet:
+		// Machine-readable callers (e.g. --json) must not see subcommand stdout.
+		cmd.Stdout = io.Discard
+		cmd.Stderr = &stderr
+	case ui.DebugMode:
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
+	default:
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = &stderr
 	}
 
 	if err := cmd.Run(); err != nil {
