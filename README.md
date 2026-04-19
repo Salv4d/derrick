@@ -114,8 +114,6 @@ Derrick is currently in **Alpha**. It is stable for Linux/WSL environments.
 - [x] Nix + Docker Compose Orchestration
 - [x] Interactive Environment Validation & `.env` Setup
 - [x] Custom Config YAML Support (`-f` flag)
-- [x] **TUI Dashboard:** A live BubbleTea-powered container and lifecycle log viewer (`derrick dashboard`).
-- [x] **Project Clustering:** Docker & Host-native global network bridging.
 - [x] **Project Clustering:** Docker & Host-native global network bridging.
 - [ ] **Remote Config Extensions:** Inherit base YAML settings from remote URLs securely.
 - [ ] **Cloud Workspace Provisioning:** Sync your local sandbox state directly to cloud VMs.

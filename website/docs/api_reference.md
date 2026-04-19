@@ -19,7 +19,7 @@ This guide covers the complete Derrick CLI surface and every field in `derrick.y
 | `run [packages...] [-- cmd]` | Spawn a throwaway Nix environment with ad-hoc packages. |
 | `init` | Interactive wizard that generates `derrick.yaml` for a new project. |
 | `doctor` | Audit the environment against `derrick.yaml` without booting it. |
-| `dashboard` | Open the BubbleTea TUI dashboard. |
+| `status` | Print the current project's runtime state (provider, hooks, env files). |
 | `clean` | Garbage-collect orphaned Nix derivatives and unused Docker assets. |
 | `update` | Replace the local binary with the latest GitHub release. |
 | `version` | Print version and check for updates. |
