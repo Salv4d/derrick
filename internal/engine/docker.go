@@ -24,8 +24,13 @@ type OverrideMap struct {
 
 // ServiceOverride defines service-specific overrides for docker-compose.
 type ServiceOverride struct {
-	ExtraHosts []string `yaml:"extra_hosts,omitempty"`
+	ExtraHosts []string          `yaml:"extra_hosts,omitempty"`
+	Labels     map[string]string `yaml:"labels,omitempty"`
 }
+
+// DerrickManagedLabel is applied to every derrick-managed docker resource so
+// `derrick clean` can scope prune operations and never touch unrelated assets.
+const DerrickManagedLabel = "com.derrick.managed=true"
 
 // GenerateNetworkOverride creates a docker-compose.override.yml that injects
 // host.docker.internal into every service's extra_hosts. The project's default
@@ -49,6 +54,7 @@ func GenerateNetworkOverride(composeFile string, outDir string) (string, error) 
 	for svcName := range base.Services {
 		override.Services[svcName] = ServiceOverride{
 			ExtraHosts: []string{"host.docker.internal:host-gateway"},
+			Labels:     map[string]string{"com.derrick.managed": "true"},
 		}
 	}
 

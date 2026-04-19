@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/Salv4d/derrick/internal/engine"
 	"github.com/Salv4d/derrick/internal/ui"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
@@ -80,54 +81,36 @@ var cleanCmd = &cobra.Command{
 
 		if cleanAll || cleanDocker || cleanVolumes || cleanImages || cleanConts || cleanNets {
 			ui.Section("Docker Engine")
+			ui.Infof("Scoped to resources labeled %s", engine.DerrickManagedLabel)
 
-			if cleanAll || cleanDocker || (cleanImages && cleanVolumes) {
-				args := []string{"system", "prune", "-f"}
-				if cleanAll || cleanImages {
-					args = append(args, "-a")
-				}
-				if cleanAll || cleanVolumes {
-					args = append(args, "--volumes")
-				}
-
-				ui.Task("Running full docker system prune...")
-				c := exec.Command("docker", args...)
-				c.Stdout = os.Stdout
-				c.Stderr = os.Stderr
-				if err := c.Run(); err != nil {
-					ui.Warningf("Docker prune failed: %v", err)
-				} else {
-					ui.Success("Docker system cleaned.")
-				}
-				return
-			}
-
-			if cleanConts {
+			if cleanAll || cleanDocker || cleanConts {
 				runDockerPrune("container")
 			}
-			if cleanNets {
+			if cleanAll || cleanNets {
 				runDockerPrune("network")
 			}
-			if cleanImages {
+			if cleanAll || cleanImages {
 				runDockerPrune("image", "-a")
 			}
-			if cleanVolumes {
+			if cleanAll || cleanVolumes {
 				runDockerPrune("volume")
 			}
 		}
 	},
 }
 
+// runDockerPrune prunes a docker resource restricted to derrick-managed
+// assets via the label filter — never touches other projects' resources.
 func runDockerPrune(resource string, flags ...string) {
-	ui.Taskf("Running 'docker %s prune'...", resource)
-	cmdArgs := append([]string{resource, "prune", "-f"}, flags...)
+	ui.Taskf("Pruning derrick-managed %ss", resource)
+	cmdArgs := append([]string{resource, "prune", "-f", "--filter", "label=" + engine.DerrickManagedLabel}, flags...)
 	c := exec.Command("docker", cmdArgs...)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	if err := c.Run(); err != nil {
 		ui.Warningf("Docker %s prune failed: %v", resource, err)
 	} else {
-		ui.Successf("Docker %s pruned successfully.", resource)
+		ui.Successf("Derrick-managed %ss pruned.", resource)
 	}
 }
 
