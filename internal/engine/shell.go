@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 )
 
@@ -36,8 +37,26 @@ func (e *ShellEngine) EnterSandbox(flakeDir string, args []string) error {
 		cmdArgs = append(cmdArgs, args...)
 		cmd = exec.Command(nixPath, cmdArgs...)
 	} else {
-		customPrompt := "export PS1='\\e[34m(derrick-sandbox)\\e[0m \\w > '; bash --norc"
-		cmd = exec.Command(nixPath, "develop", "--impure", flakePath, "-c", "sh", "-c", customPrompt)
+		histFile := filepath.Join(flakeDir, "shell_history")
+		initContent := fmt.Sprintf(
+			"export PS1='\\e[34m(derrick-sandbox)\\e[0m \\w > '\n"+
+				"export HISTFILE=%q\n"+
+				"export HISTSIZE=10000\n"+
+				"export HISTFILESIZE=10000\n"+
+				"export HISTCONTROL=ignoredups:erasedups\n",
+			histFile,
+		)
+		tmpRC, err := os.CreateTemp("", "derrick-bashrc-*")
+		if err != nil {
+			return fmt.Errorf("failed to create shell init file: %w", err)
+		}
+		defer os.Remove(tmpRC.Name())
+		if _, err := tmpRC.WriteString(initContent); err != nil {
+			tmpRC.Close()
+			return fmt.Errorf("failed to write shell init file: %w", err)
+		}
+		tmpRC.Close()
+		cmd = exec.Command(nixPath, "develop", "--impure", flakePath, "-c", "bash", "--init-file", tmpRC.Name())
 	}
 
 	cmd.Env = NixEnv()
