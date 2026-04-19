@@ -58,6 +58,64 @@ func UpdateYAMLPackage(configPath, oldPkg, newPkg string) error {
 	return nil
 }
 
+// UpdateYAMLPackagePin converts a scalar package entry under nix.packages
+// into its structured form with a per-package `registry` override. This is
+// how the legacy-package flow pins ONE entry to an older channel without
+// dragging every other package in the project back with it.
+func UpdateYAMLPackagePin(configPath, oldPkg, newPkg, registry string) error {
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("could not read %s for auto-update: %w", configPath, err)
+	}
+
+	re := regexp.MustCompile(fmt.Sprintf(`^(\s*)-\s*["']?%s["']?\s*$`, regexp.QuoteMeta(oldPkg)))
+
+	lines := strings.Split(string(content), "\n")
+	var out []string
+	inNix, inPkgs, replaced := false, false, false
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		topLevel := len(line) > 0 && line[0] != ' ' && line[0] != '\t'
+
+		switch {
+		case trimmed == "nix:":
+			inNix, inPkgs = true, false
+		case inNix && topLevel && trimmed != "":
+			inNix, inPkgs = false, false
+		case inNix && trimmed == "packages:":
+			inPkgs = true
+		case inNix && inPkgs && trimmed != "" && !strings.HasPrefix(trimmed, "-") && !strings.HasPrefix(trimmed, "#"):
+			inPkgs = false
+		}
+
+		if inPkgs && !replaced {
+			if m := re.FindStringSubmatch(line); m != nil {
+				indent := m[1]
+				out = append(out,
+					fmt.Sprintf(`%s- package: "%s"`, indent, newPkg),
+					fmt.Sprintf(`%s  registry: "%s"`, indent, registry),
+				)
+				replaced = true
+				continue
+			}
+		}
+
+		out = append(out, line)
+	}
+
+	if !replaced {
+		ui.Warningf("Could not pin '%s' in %s. Please update it manually.", oldPkg, configPath)
+		return nil
+	}
+
+	if err := os.WriteFile(configPath, []byte(strings.Join(out, "\n")), 0o644); err != nil {
+		return fmt.Errorf("failed to write updated %s: %w", configPath, err)
+	}
+	ui.Successf("Pinned %s → %s (registry: %s)", oldPkg, newPkg, registry)
+	return nil
+}
+
 // UpdateYAMLRegistry sets or inserts nix.registry in derrick.yaml.
 func UpdateYAMLRegistry(configPath, newRegistry string) error {
 	content, err := os.ReadFile(configPath)

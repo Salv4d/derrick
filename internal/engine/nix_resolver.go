@@ -58,26 +58,21 @@ func ValidateAndResolve(configPath string, packages []config.NixPackage, registr
 					),
 				)
 				if err := form.Run(); err == nil && useTimeMachine {
-					_ = UpdateYAMLRegistry(configPath, entry.Registry)
-
-					// When the canonical attribute name differs (e.g. nodejs_16 → nodejs-16_x),
-					// rename the package in the YAML and in the in-memory slice so the
-					// regenerated flake uses the name the pinned channel actually exports.
 					resolvedName := missingPkg
 					if entry.Attribute != "" {
 						resolvedName = entry.Attribute
-						for i, p := range packages {
-							if p.Name == missingPkg {
-								packages[i].Name = resolvedName
-								break
-							}
-						}
-						_ = UpdateYAMLPackage(configPath, missingPkg, resolvedName)
 					}
-					ui.Successf("Pinned registry to legacy snapshot for '%s'.", resolvedName)
+					for i, p := range packages {
+						if p.Name == missingPkg {
+							packages[i].Name = resolvedName
+							packages[i].Registry = entry.Registry
+							break
+						}
+					}
+					_ = UpdateYAMLPackagePin(configPath, missingPkg, resolvedName, entry.Registry)
 
-					EnsureNixEnvironment(configPath, packages, entry.Registry, outDir)
-					return ValidateAndResolve(configPath, packages, entry.Registry, outDir)
+					EnsureNixEnvironment(configPath, packages, registryURL, outDir)
+					return ValidateAndResolve(configPath, packages, registryURL, outDir)
 				}
 			}
 
