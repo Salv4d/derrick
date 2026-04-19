@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"text/template"
 
 	"github.com/Salv4d/derrick/internal/config"
@@ -23,7 +24,7 @@ const nixFlakeTemplate = `
 
 	outputs = { self, nixpkgs{{ range $name, $url := .ExtraRegistries }}, {{ $name }}{{ end }}, ... }:
 	let
-		system = "x86_64-linux";
+		system = "{{ .System }}";
 		pkgs = nixpkgs.legacyPackages.${system};{{ range $name, $url := .ExtraRegistries }}
 		{{ $name }}_pkgs = {{ $name }}.legacyPackages.${system};{{ end }}
 	in
@@ -42,8 +43,22 @@ const nixFlakeTemplate = `
 // NixTemplateData holds data for rendering the Nix flake template.
 type NixTemplateData struct {
 	Registry        string
+	System          string
 	Packages        []string
 	ExtraRegistries map[string]string
+}
+
+// nixSystem returns the nixpkgs system string for the current host,
+// e.g. "x86_64-linux", "aarch64-darwin".
+func nixSystem() string {
+	arch := runtime.GOARCH
+	switch arch {
+	case "amd64":
+		arch = "x86_64"
+	case "arm64":
+		arch = "aarch64"
+	}
+	return fmt.Sprintf("%s-%s", arch, runtime.GOOS)
 }
 
 // BootEnvironment initializes and validates the Nix sandbox.
@@ -95,6 +110,7 @@ func EnsureNixEnvironment(configPath string, packages []config.NixPackage, custo
 
 	data := NixTemplateData{
 		Registry:        registry,
+		System:          nixSystem(),
 		ExtraRegistries: make(map[string]string),
 	}
 
