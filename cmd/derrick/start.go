@@ -23,6 +23,7 @@ const startChainEnv = "DERRICK_START_CHAIN"
 var (
 	startReset       bool
 	startCustomFlags []string
+	startDryRun      bool
 )
 
 // startCmd boots the local development environment defined in derrick.yaml.
@@ -172,6 +173,12 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 		flags.Env = resolvedEnv
 		ui.Success("Environment variables loaded")
 
+		// ── Dry-run plan ──────────────────────────────────────────────────────
+		if startDryRun {
+			printStartPlan(cfg, provider.Name(), hookOpts.ActiveFlags)
+			return
+		}
+
 		// ── Pre-start hooks ───────────────────────────────────────────────────
 		if err := engine.ExecuteHooks("start (pre)", cfg.Hooks.Start, hookOpts); err != nil {
 			ui.FailFast(err)
@@ -207,6 +214,54 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 			ui.Successf("%s is ready!", cfg.Name)
 		}
 	},
+}
+
+// printStartPlan describes what `derrick start` would do without
+// executing hooks, validations, or provider commands.
+func printStartPlan(cfg *config.ProjectConfig, providerName string, activeFlags map[string]bool) {
+	ui.Section("Dry-run plan")
+	ui.Infof("Project:  %s v%s", cfg.Name, cfg.Version)
+	ui.Infof("Provider: %s", providerName)
+
+	if len(activeFlags) > 0 {
+		flagNames := make([]string, 0, len(activeFlags))
+		for name := range activeFlags {
+			flagNames = append(flagNames, name)
+		}
+		ui.Infof("Flags:    %s", strings.Join(flagNames, ", "))
+	}
+
+	if len(cfg.Hooks.Start) > 0 {
+		ui.Info("Pre-start hooks:")
+		for _, h := range cfg.Hooks.Start {
+			when := h.When
+			if when == "" {
+				when = "always"
+			}
+			fmt.Printf("    [%s] %s\n", when, h.Run)
+		}
+	}
+
+	if len(cfg.Validations) > 0 {
+		ui.Info("Validations:")
+		for _, v := range cfg.Validations {
+			fmt.Printf("    %-30s  %s\n", v.Name, v.Command)
+		}
+	}
+
+	if cfg.ActiveProvider() == "docker" && cfg.Docker.Compose != "" {
+		ui.Infof("Docker:   would run `docker compose -f %s up -d`", cfg.Docker.Compose)
+	}
+	if cfg.ActiveProvider() == "nix" && len(cfg.Nix.Packages) > 0 {
+		names := make([]string, len(cfg.Nix.Packages))
+		for i, p := range cfg.Nix.Packages {
+			names[i] = p.Name
+		}
+		ui.Infof("Nix:      would build flake with packages [%s]", strings.Join(names, ", "))
+	}
+
+	fmt.Println()
+	ui.Success("Dry-run complete. No side effects.")
 }
 
 // resolveAlias looks up an alias in the Derrick Hub and returns the local path
@@ -280,5 +335,6 @@ func appendStartChain(raw, name string) string {
 func init() {
 	startCmd.Flags().BoolVar(&startReset, "reset", false, "Rebuild the environment from scratch")
 	startCmd.Flags().StringSliceVar(&startCustomFlags, "flag", nil, "Custom project flags (e.g. --flag seed-db)")
+	startCmd.Flags().BoolVar(&startDryRun, "dry-run", false, "Print what would happen without executing hooks or starting the provider")
 	rootCmd.AddCommand(startCmd)
 }

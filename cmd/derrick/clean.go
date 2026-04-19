@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/Salv4d/derrick/internal/engine"
 	"github.com/Salv4d/derrick/internal/ui"
@@ -18,6 +19,7 @@ var (
 	cleanImages  bool
 	cleanConts   bool
 	cleanNets    bool
+	cleanDryRun  bool
 )
 
 // cleanCmd cleans up unused tools, packages, and docker assets.
@@ -68,14 +70,18 @@ var cleanCmd = &cobra.Command{
 
 		if cleanAll || cleanNix {
 			ui.Section("Nix Store")
-			ui.Task("Executing 'nix-collect-garbage -d' (Clearing all unreachable packages & old profiles)...")
-			c := exec.Command("nix-collect-garbage", "-d")
-			c.Stdout = os.Stdout
-			c.Stderr = os.Stderr
-			if err := c.Run(); err != nil {
-				ui.Warningf("Nix GC failed: %v", err)
+			if cleanDryRun {
+				ui.Infof("[dry-run] would run: nix-collect-garbage -d")
 			} else {
-				ui.Success("Nix Garbage Collection complete.")
+				ui.Task("Executing 'nix-collect-garbage -d' (Clearing all unreachable packages & old profiles)...")
+				c := exec.Command("nix-collect-garbage", "-d")
+				c.Stdout = os.Stdout
+				c.Stderr = os.Stderr
+				if err := c.Run(); err != nil {
+					ui.Warningf("Nix GC failed: %v", err)
+				} else {
+					ui.Success("Nix Garbage Collection complete.")
+				}
 			}
 		}
 
@@ -102,8 +108,12 @@ var cleanCmd = &cobra.Command{
 // runDockerPrune prunes a docker resource restricted to derrick-managed
 // assets via the label filter — never touches other projects' resources.
 func runDockerPrune(resource string, flags ...string) {
-	ui.Taskf("Pruning derrick-managed %ss", resource)
 	cmdArgs := append([]string{resource, "prune", "-f", "--filter", "label=" + engine.DerrickManagedLabel}, flags...)
+	if cleanDryRun {
+		ui.Infof("[dry-run] would run: docker %s", strings.Join(cmdArgs, " "))
+		return
+	}
+	ui.Taskf("Pruning derrick-managed %ss", resource)
 	c := exec.Command("docker", cmdArgs...)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
@@ -122,6 +132,7 @@ func init() {
 	cleanCmd.Flags().BoolVar(&cleanImages, "images", false, "Clean ALL unused Docker Images (not just dangling)")
 	cleanCmd.Flags().BoolVar(&cleanConts, "containers", false, "Clean unused Docker Containers")
 	cleanCmd.Flags().BoolVar(&cleanNets, "networks", false, "Clean unused Docker Networks")
+	cleanCmd.Flags().BoolVar(&cleanDryRun, "dry-run", false, "Print actions without executing them")
 
 	rootCmd.AddCommand(cleanCmd)
 }
