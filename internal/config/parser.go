@@ -56,9 +56,6 @@ func ParseConfig(filename string, profileName string) (*ProjectConfig, error) {
 	if cfg.Nix.Registry == "" {
 		cfg.Nix.Registry = DefaultNixRegistry
 	}
-	if cfg.Docker.Network == "" {
-		cfg.Docker.Network = "derrick-net"
-	}
 
 	return &cfg, nil
 }

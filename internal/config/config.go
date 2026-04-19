@@ -89,7 +89,6 @@ type LifecycleHooks struct {
 type DockerConfig struct {
 	Compose  string   `yaml:"compose,omitempty" validate:"omitempty,filepath"`
 	Profiles []string `yaml:"profiles,omitempty"`
-	Network  string   `yaml:"network,omitempty"`
 	// Shell is the service to exec into when running `derrick shell`.
 	// Defaults to the first service defined in the compose file.
 	Shell string `yaml:"shell,omitempty"`
