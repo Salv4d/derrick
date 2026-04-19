@@ -68,13 +68,13 @@ Used when `provider` is `docker` or `auto`.
 | :--- | :--- | :--- |
 | `docker.compose` | `string` | Path to the Docker Compose file. |
 | `docker.profiles` | `[]string` | Compose profiles to activate. |
-| `docker.network` | `string` | Shared Docker network name (default: `derrick-net`). |
+| `docker.shell` | `string` | Service to exec into for `derrick shell`. Defaults to the first service in the compose file. |
 
 ```yaml
 docker:
   compose: ./docker-compose.yml
   profiles: [dev, worker]
-  network: derrick-net
+  shell: app
 ```
 
 ---
@@ -255,10 +255,6 @@ nix:
   packages:
     - "go"
     - "golangci-lint"
-
-ports:
-  - 8080
-  - 5432
 
 hooks:
   start:
