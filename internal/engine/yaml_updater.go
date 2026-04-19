@@ -9,44 +9,41 @@ import (
 	"github.com/Salv4d/derrick/internal/ui"
 )
 
-// UpdateYAMLPackage replaces a Nix package name in derrick.yaml.
+// UpdateYAMLPackage replaces a Nix package name under nix.packages in derrick.yaml.
 func UpdateYAMLPackage(configPath, oldPkg, newPkg string) error {
 	content, err := os.ReadFile(configPath)
 	if err != nil {
-		return fmt.Errorf("Could not read %s for auto-update: %w", configPath, err)
+		return fmt.Errorf("could not read %s for auto-update: %w", configPath, err)
 	}
 
+	re := regexp.MustCompile(fmt.Sprintf(`^(\s*-\s*)["']?%s["']?\s*$`, regexp.QuoteMeta(oldPkg)))
+
 	lines := strings.Split(string(content), "\n")
-	var newLines []string
-
-	pattern := fmt.Sprintf(`^(\s*-\s*)["']?%s["']?(.*)$`, regexp.QuoteMeta(oldPkg))
-	re := regexp.MustCompile(pattern)
-
-	inTargetBlock := false
-	replaced := false
+	var out []string
+	inNix, inPkgs, replaced := false, false, false
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
+		topLevel := len(line) > 0 && line[0] != ' ' && line[0] != '\t'
 
-		if strings.HasPrefix(trimmed, "nix_packages:") {
-			inTargetBlock = true
-			newLines = append(newLines, line)
-			continue
+		switch {
+		case trimmed == "nix:":
+			inNix, inPkgs = true, false
+		case inNix && topLevel && trimmed != "":
+			inNix, inPkgs = false, false
+		case inNix && trimmed == "packages:":
+			inPkgs = true
+		case inNix && inPkgs && trimmed != "" && !strings.HasPrefix(trimmed, "-") && !strings.HasPrefix(trimmed, "#"):
+			inPkgs = false
 		}
 
-		if inTargetBlock && trimmed != "" && !strings.HasPrefix(trimmed, "-") && !strings.HasPrefix(trimmed, "#") {
-			inTargetBlock = false
-		}
-
-		if inTargetBlock && !replaced {
-			newLine := re.ReplaceAllString(line, fmt.Sprintf(`${1}"%s"${2}`, newPkg))
-			if newLine != line {
-				line = newLine
-				replaced = true
+		if inPkgs && !replaced {
+			if m := re.ReplaceAllString(line, fmt.Sprintf(`${1}"%s"`, newPkg)); m != line {
+				line, replaced = m, true
 			}
 		}
 
-		newLines = append(newLines, line)
+		out = append(out, line)
 	}
 
 	if !replaced {
@@ -54,72 +51,60 @@ func UpdateYAMLPackage(configPath, oldPkg, newPkg string) error {
 		return nil
 	}
 
-	newContent := strings.Join(newLines, "\n")
-	err = os.WriteFile(configPath, []byte(newContent), 0o644)
-	if err != nil {
+	if err := os.WriteFile(configPath, []byte(strings.Join(out, "\n")), 0o644); err != nil {
 		return fmt.Errorf("failed to write updated %s: %w", configPath, err)
 	}
-
 	ui.Successf("Auto-updated %s: %s → %s", configPath, oldPkg, newPkg)
 	return nil
 }
 
-// UpdateYAMLRegistry replaces the nix_registry in derrick.yaml.
+// UpdateYAMLRegistry sets or inserts nix.registry in derrick.yaml.
 func UpdateYAMLRegistry(configPath, newRegistry string) error {
 	content, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("could not read %s for auto-update: %w", configPath, err)
 	}
 
+	registryRe := regexp.MustCompile(`^\s+registry:.*$`)
+
 	lines := strings.Split(string(content), "\n")
-	var newLines []string
+	var out []string
+	inNix, replaced := false, false
+	nixIdx := -1
 
-	re := regexp.MustCompile(`^(\s*nix_registry:\s*)["']?[^"'\s#]+["']?(.*)$`)
-
-	inDependencies := false
-	registryReplaced := false
-	dependenciesIdx := -1
-
-	for i, line := range lines {
+	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
+		topLevel := len(line) > 0 && line[0] != ' ' && line[0] != '\t'
 
-		if strings.HasPrefix(trimmed, "dependencies:") {
-			inDependencies = true
-			dependenciesIdx = i
-			newLines = append(newLines, line)
+		if trimmed == "nix:" {
+			inNix = true
+			nixIdx = len(out)
+		} else if inNix && topLevel && trimmed != "" {
+			inNix = false
+		}
+
+		if inNix && registryRe.MatchString(line) && !replaced {
+			out = append(out, fmt.Sprintf(`  registry: "%s"`, newRegistry))
+			replaced = true
 			continue
 		}
 
-		if inDependencies && trimmed != "" && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") && !strings.HasPrefix(trimmed, "#") {
-			inDependencies = false
-		}
-
-		if inDependencies && strings.HasPrefix(trimmed, "nix_registry:") && !registryReplaced {
-			newLine := re.ReplaceAllString(line, fmt.Sprintf(`${1}"%s"${2}`, newRegistry))
-			newLines = append(newLines, newLine)
-			registryReplaced = true
-			continue
-		}
-
-		newLines = append(newLines, line)
+		out = append(out, line)
 	}
 
-	if !registryReplaced {
-		if dependenciesIdx == -1 {
-			return fmt.Errorf("could not find 'dependencies:' block in %s", configPath)
+	if !replaced {
+		if nixIdx == -1 {
+			out = append(out, "nix:")
+			out = append(out, fmt.Sprintf(`  registry: "%s"`, newRegistry))
+		} else {
+			insert := []string{fmt.Sprintf(`  registry: "%s"`, newRegistry)}
+			out = append(out[:nixIdx+1], append(insert, out[nixIdx+1:]...)...)
 		}
-
-		injectedLine := fmt.Sprintf(`  nix_registry: "%s"`, newRegistry)
-
-		newLines = append(newLines[:dependenciesIdx+1], append([]string{injectedLine}, newLines[dependenciesIdx+1:]...)...)
 	}
 
-	newContent := strings.Join(newLines, "\n")
-	err = os.WriteFile(configPath, []byte(newContent), 0o644)
-	if err != nil {
+	if err := os.WriteFile(configPath, []byte(strings.Join(out, "\n")), 0o644); err != nil {
 		return fmt.Errorf("failed to write updated %s: %w", configPath, err)
 	}
-
-	ui.Successf("Pinned Derrick to legacy Nix registry in %s: %s", configPath, newRegistry)
+	ui.Successf("Pinned nix.registry in %s: %s", configPath, newRegistry)
 	return nil
 }

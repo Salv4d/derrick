@@ -21,7 +21,10 @@ type NixSearchRecord struct {
 	Description string `json:"description"`
 }
 
-var undefinedRegex = regexp.MustCompile(`undefined variable '(.*?)'`)
+// missingPkgRegex matches both Nix error forms for an unresolvable package:
+//   - attribute 'nodejs_16' missing   (pkgs.nodejs_16 attribute access)
+//   - undefined variable 'nodejs_16'  (bare variable reference)
+var missingPkgRegex = regexp.MustCompile(`(?:attribute|undefined variable) '([^']+)'`)
 
 // ValidateAndResolve ensures all Nix packages exist and interactively resolves missing ones.
 func ValidateAndResolve(configPath string, packages []config.NixPackage, registryURL string, outDir string) ([]config.NixPackage, error) {
@@ -38,28 +41,43 @@ func ValidateAndResolve(configPath string, packages []config.NixPackage, registr
 
 	if err := cmd.Run(); err != nil {
 		errStr := stderr.String()
-		matches := undefinedRegex.FindStringSubmatch(errStr)
+		matches := missingPkgRegex.FindStringSubmatch(errStr)
 
 		if len(matches) > 1 {
 			missingPkg := matches[1]
 
-			if legacyRegistry, found := LegacyRegistryMap[missingPkg]; found {
+			if entry, found := LegacyPackages[missingPkg]; found {
 				ui.Warningf("'%s' was removed from the unstable registry.", missingPkg)
 
 				var useTimeMachine bool
 				form := huh.NewForm(
 					huh.NewGroup(
 						huh.NewConfirm().
-							Title(fmt.Sprintf("Derrick found it in a legacy snapshot. Pin registry to %s?", legacyRegistry)).
+							Title(fmt.Sprintf("Derrick found it in a legacy snapshot. Pin registry to %s?", entry.Registry)).
 							Value(&useTimeMachine),
 					),
 				)
 				if err := form.Run(); err == nil && useTimeMachine {
-					_ = UpdateYAMLRegistry(configPath, legacyRegistry)
-					ui.Successf("Pinned registry to legacy snapshot for '%s'.", missingPkg)
+					_ = UpdateYAMLRegistry(configPath, entry.Registry)
 
-					EnsureNixEnvironment(configPath, packages, legacyRegistry, outDir)
-					return ValidateAndResolve(configPath, packages, legacyRegistry, outDir)
+					// When the canonical attribute name differs (e.g. nodejs_16 → nodejs-16_x),
+					// rename the package in the YAML and in the in-memory slice so the
+					// regenerated flake uses the name the pinned channel actually exports.
+					resolvedName := missingPkg
+					if entry.Attribute != "" {
+						resolvedName = entry.Attribute
+						for i, p := range packages {
+							if p.Name == missingPkg {
+								packages[i].Name = resolvedName
+								break
+							}
+						}
+						_ = UpdateYAMLPackage(configPath, missingPkg, resolvedName)
+					}
+					ui.Successf("Pinned registry to legacy snapshot for '%s'.", resolvedName)
+
+					EnsureNixEnvironment(configPath, packages, entry.Registry, outDir)
+					return ValidateAndResolve(configPath, packages, entry.Registry, outDir)
 				}
 			}
 
