@@ -71,13 +71,16 @@ func SubTaskf(format string, args ...any) {
 }
 
 // Info prints an informational message.
-func Info(msg string)    { fmt.Println(styleInfo.Render("ℹ  " + msg)) }
+func Info(msg string) { fmt.Println(styleInfo.Render("ℹ  " + msg)) }
+
 // Success prints a success message.
 func Success(msg string) { fmt.Println(styleSuccess.Render("✓  " + msg)) }
+
 // Warning prints a warning message.
 func Warning(msg string) { fmt.Println(styleWarning.Render("⚠  " + msg)) }
+
 // Error prints an error message.
-func Error(msg string)   { fmt.Println(styleError.Render("✖  " + msg)) }
+func Error(msg string) { fmt.Println(styleError.Render("✖  " + msg)) }
 
 // Debug prints a debug message if DebugMode is enabled.
 func Debug(msg string) {

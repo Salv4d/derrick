@@ -78,7 +78,7 @@ var cleanCmd = &cobra.Command{
 			}
 		}
 
-				if cleanAll || cleanDocker || cleanVolumes || cleanImages || cleanConts || cleanNets {
+		if cleanAll || cleanDocker || cleanVolumes || cleanImages || cleanConts || cleanNets {
 			ui.Section("Docker Engine")
 
 			if cleanAll || cleanDocker || (cleanImages && cleanVolumes) {
@@ -89,7 +89,7 @@ var cleanCmd = &cobra.Command{
 				if cleanAll || cleanVolumes {
 					args = append(args, "--volumes")
 				}
-				
+
 				ui.Task("Running full docker system prune...")
 				c := exec.Command("docker", args...)
 				c.Stdout = os.Stdout
@@ -102,7 +102,7 @@ var cleanCmd = &cobra.Command{
 				return
 			}
 
-						if cleanConts {
+			if cleanConts {
 				runDockerPrune("container")
 			}
 			if cleanNets {
@@ -139,6 +139,6 @@ func init() {
 	cleanCmd.Flags().BoolVar(&cleanImages, "images", false, "Clean ALL unused Docker Images (not just dangling)")
 	cleanCmd.Flags().BoolVar(&cleanConts, "containers", false, "Clean unused Docker Containers")
 	cleanCmd.Flags().BoolVar(&cleanNets, "networks", false, "Clean unused Docker Networks")
-	
+
 	rootCmd.AddCommand(cleanCmd)
 }

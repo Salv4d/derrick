@@ -218,7 +218,7 @@ func TestValidateAndLoadEnv_AutoDiscover(t *testing.T) {
 
 	origInput := promptInput
 	defer func() { promptInput = origInput }()
-	
+
 	promptCount := 0
 	promptInput = func(title, description string) (string, error) {
 		promptCount++
@@ -231,12 +231,12 @@ func TestValidateAndLoadEnv_AutoDiscover(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, promptCount, "Should prompt once for DISCOVERED_VAR")
-	
+
 	envPath := filepath.Join(tempDir, ".env")
 	content, err := os.ReadFile(envPath)
 	require.NoError(t, err)
 	contentStr := string(content)
-	
+
 	assert.Contains(t, contentStr, `EXISTING_VAR=exists`)
 	assert.Contains(t, contentStr, `DISCOVERED_VAR="magic-value"`)
 }

@@ -131,10 +131,10 @@ type ProjectConfig struct {
 	Docker DockerConfig `yaml:"docker,omitempty"`
 	Nix    NixConfig    `yaml:"nix,omitempty"`
 
-	Hooks     LifecycleHooks     `yaml:"hooks,omitempty"`
-	Flags     map[string]FlagDef `yaml:"flags,omitempty"`
-	Requires  []string           `yaml:"requires,omitempty"`
-	Env       map[string]EnvVar  `yaml:"env,omitempty"`
+	Hooks    LifecycleHooks     `yaml:"hooks,omitempty"`
+	Flags    map[string]FlagDef `yaml:"flags,omitempty"`
+	Requires []string           `yaml:"requires,omitempty"`
+	Env      map[string]EnvVar  `yaml:"env,omitempty"`
 
 	// Validation checks run during `derrick start` after the environment boots.
 	Validations []ValidationCheck `yaml:"validations,omitempty" validate:"dive"`

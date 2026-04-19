@@ -11,8 +11,8 @@ import (
 
 // ProjectMetadata holds information about a detected project.
 type ProjectMetadata struct {
-	Name     string
-	Version  string
+	Name    string
+	Version string
 	// Language is the detected programming language (e.g. "node", "go", "python").
 	Language string
 }

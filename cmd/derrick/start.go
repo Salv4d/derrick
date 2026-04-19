@@ -21,7 +21,7 @@ import (
 const startChainEnv = "DERRICK_START_CHAIN"
 
 var (
-	startReset      bool
+	startReset       bool
 	startCustomFlags []string
 )
 

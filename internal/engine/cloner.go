@@ -51,7 +51,7 @@ func (r *DependencyResolver) ResolveAndClone(projectRoot string, requiredAliases
 			ui.Error("FAILED")
 			return fmt.Errorf("failed to clone '%s': %w", alias, err)
 		}
-		
+
 		ui.Success("DONE")
 	}
 

@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	stateFile    = ".derrick/state.json"
+	stateFile     = ".derrick/state.json"
 	stateLockFile = ".derrick/state.lock"
 )
 

@@ -49,6 +49,6 @@ func (h *HubConfig) ResolveAlias(alias string) (string, error) {
 	if url, exists := h.Projects[alias]; exists {
 		return url, nil
 	}
-	
+
 	return "", fmt.Errorf("project alias '%s' not found in local Derrick hub", alias)
 }

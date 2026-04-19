@@ -35,7 +35,7 @@ Examples:
   derrick run nodejs -- npm test
   derrick run python3 -- python -c "print('hello')"
   derrick run --save go git nodejs  # creates a saved environment directory`,
-	Args:  cobra.MinimumNArgs(1),
+	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		var packages []string
 		var execArgs []string

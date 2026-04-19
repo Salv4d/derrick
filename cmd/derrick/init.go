@@ -60,7 +60,7 @@ var initCmd = &cobra.Command{
 			extraPackages     string
 		)
 
-				for _, f := range []string{"docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"} {
+		for _, f := range []string{"docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"} {
 			if _, err := os.Stat(filepath.Join(cwd, f)); err == nil {
 				dockerComposeFile = f
 				useDockerCompose = true
@@ -68,7 +68,7 @@ var initCmd = &cobra.Command{
 			}
 		}
 
-				if matches, _ := filepath.Glob(filepath.Join(cwd, ".env*")); len(matches) > 0 {
+		if matches, _ := filepath.Glob(filepath.Join(cwd, ".env*")); len(matches) > 0 {
 			useEnvFile = true
 			envBaseFile = filepath.Base(matches[0])
 		} else {

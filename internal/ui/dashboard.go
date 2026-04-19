@@ -15,7 +15,7 @@ import (
 var (
 	baseStyle = lipgloss.NewStyle().
 			Padding(1, 2)
-	
+
 	activeTabStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("205")).
@@ -23,7 +23,7 @@ var (
 			BorderForeground(lipgloss.Color("205"))
 
 	inactiveTabStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240"))
+				Foreground(lipgloss.Color("240"))
 )
 
 // DashboardModel is the Bubble Tea model for the interactive TUI dashboard.
@@ -170,7 +170,7 @@ func (m DashboardModel) View() string {
 	doc.WriteString(row)
 	doc.WriteString("\n\n")
 
-		content := ""
+	content := ""
 	switch m.activeTab {
 	case 0:
 		if len(m.containers) == 0 {
