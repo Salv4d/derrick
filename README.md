@@ -37,7 +37,12 @@ Experience a fully hermetic environment in seconds.
 
 ### 1. Installation
 
-**Download Pre-compiled Binary (Recommended)**
+**One-line install (Recommended — Linux & macOS, amd64/arm64)**
+```bash
+curl -fsSL https://raw.githubusercontent.com/Salv4d/derrick/main/install.sh | bash
+```
+
+**Download Pre-compiled Binary**
 ```bash
 curl -L -o derrick https://github.com/Salv4d/derrick/releases/latest/download/derrick-linux-amd64
 chmod +x derrick
