@@ -39,16 +39,18 @@ any defined stop lifecycle hooks.`,
 		provider := engine.ResolveProvider(cfg)
 		ui.Infof("Stopping %s environment: %s", provider.Name(), cfg.Name)
 
-		if err := provider.Stop(cfg); err != nil {
-			ui.FailFast(err)
-		}
-
+		// Stop hooks run BEFORE teardown so they can still reach the live
+		// service (db dumps, graceful drain, cache flush, etc.).
 		hookOpts := engine.HookOpts{
 			SetupCompleted: true,
 			ActiveFlags:    activeFlags,
 			UseNix:         cfg.ActiveProvider() == "nix",
 		}
 		if err := engine.ExecuteHooks("stop", cfg.Hooks.Stop, hookOpts); err != nil {
+			ui.FailFast(err)
+		}
+
+		if err := provider.Stop(cfg); err != nil {
 			ui.FailFast(err)
 		}
 
