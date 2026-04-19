@@ -42,6 +42,10 @@ func ParseConfig(filename string, profileName string) (*ProjectConfig, error) {
 		return nil, enhanceYAMLError(data, err)
 	}
 
+	if err = checkSchema(&cfg); err != nil {
+		return nil, err
+	}
+
 	if err = validate.Struct(cfg); err != nil {
 		return nil, formatValidationError(err)
 	}
@@ -58,6 +62,24 @@ func ParseConfig(filename string, profileName string) (*ProjectConfig, error) {
 	}
 
 	return &cfg, nil
+}
+
+// checkSchema validates that the file's declared schema is one this binary
+// can handle. A missing/zero schema is accepted as legacy and upgraded in
+// memory; a future schema fails fast with a hint to update derrick.
+func checkSchema(cfg *ProjectConfig) error {
+	switch {
+	case cfg.Schema == 0:
+		cfg.Schema = CurrentSchema
+		return nil
+	case cfg.Schema == CurrentSchema:
+		return nil
+	case cfg.Schema > CurrentSchema:
+		return fmt.Errorf("derrick.yaml schema v%d is newer than this binary (v%d). Run 'derrick update'", cfg.Schema, CurrentSchema)
+	default:
+		// No older schemas yet. When one is retired, run its migration here.
+		return fmt.Errorf("derrick.yaml schema v%d is no longer supported (current: v%d)", cfg.Schema, CurrentSchema)
+	}
 }
 
 func applyProfile(cfg *ProjectConfig, profileName string) error {

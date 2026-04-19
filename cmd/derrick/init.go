@@ -181,6 +181,7 @@ var initCmd = &cobra.Command{
 		}
 
 		cfg := config.ProjectConfig{
+			Schema:  config.CurrentSchema,
 			Name:    projectName,
 			Version: projectVersion,
 		}

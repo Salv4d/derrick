@@ -5,6 +5,11 @@ import "gopkg.in/yaml.v3"
 // DefaultNixRegistry is the default Nix registry URL.
 const DefaultNixRegistry = "github:NixOS/nixpkgs/nixos-unstable"
 
+// CurrentSchema is the derrick.yaml schema version this binary understands.
+// Bump when introducing a backwards-incompatible change to ProjectConfig and
+// add a migration in parser.go.
+const CurrentSchema = 1
+
 // NixPackage represents a Nix package dependency.
 type NixPackage struct {
 	Name     string `yaml:"package"`
@@ -134,6 +139,11 @@ type Profile struct {
 //   - "nix"        — Nix flake dev shell
 //   - "auto"       — Docker if available, otherwise Nix
 type ProjectConfig struct {
+	// Schema is the derrick.yaml schema version. Files written before
+	// schema versioning was introduced omit it; the parser treats 0 as
+	// "legacy, accept and upgrade in memory".
+	Schema int `yaml:"schema,omitempty"`
+
 	Name     string `yaml:"name" validate:"required,lowercase"`
 	Version  string `yaml:"version" validate:"required"`
 	Provider string `yaml:"provider,omitempty"` // docker | nix | auto

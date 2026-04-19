@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -151,6 +152,45 @@ profiles:
 
 		assert.Len(t, cfg.Hooks.Start, 1)
 		assert.Equal(t, "echo 'Starting advanced'", cfg.Hooks.Start[0].Run)
+	})
+}
+
+func TestSchemaVersioning(t *testing.T) {
+	tempDir := t.TempDir()
+
+	t.Run("missing schema accepted as legacy", func(t *testing.T) {
+		p := filepath.Join(tempDir, "legacy.yaml")
+		require.NoError(t, os.WriteFile(p, []byte(`name: "legacy"
+version: "1.0.0"
+`), 0o644))
+
+		cfg, err := ParseConfig(p, "")
+		require.NoError(t, err)
+		assert.Equal(t, CurrentSchema, cfg.Schema, "legacy schema should be upgraded in memory")
+	})
+
+	t.Run("matching schema accepted", func(t *testing.T) {
+		p := filepath.Join(tempDir, "current.yaml")
+		require.NoError(t, os.WriteFile(p, []byte(fmt.Sprintf(`schema: %d
+name: "current"
+version: "1.0.0"
+`, CurrentSchema)), 0o644))
+
+		cfg, err := ParseConfig(p, "")
+		require.NoError(t, err)
+		assert.Equal(t, CurrentSchema, cfg.Schema)
+	})
+
+	t.Run("future schema rejected", func(t *testing.T) {
+		p := filepath.Join(tempDir, "future.yaml")
+		require.NoError(t, os.WriteFile(p, []byte(fmt.Sprintf(`schema: %d
+name: "future"
+version: "1.0.0"
+`, CurrentSchema+1)), 0o644))
+
+		_, err := ParseConfig(p, "")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "newer than this binary")
 	})
 }
 
