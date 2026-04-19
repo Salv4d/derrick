@@ -165,9 +165,15 @@ func runCmd(cmd *exec.Cmd, silent bool) error {
 // duplicate keys are present Go's exec package keeps the last value, so extras
 // deliberately override matching entries in os.Environ()/NixEnv().
 func executeCommand(command string, useNix bool, extraEnv []string) error {
+	return executeCommandIn(command, useNix, "", extraEnv)
+}
+
+// executeCommandIn runs a command optionally wrapped with `nix develop` from a
+// specific flake directory. An empty flakeDir defaults to ".derrick".
+func executeCommandIn(command string, useNix bool, flakeDir string, extraEnv []string) error {
 	var cmd *exec.Cmd
 	if useNix {
-		nixArgs := WrapWithNix(command, "")
+		nixArgs := WrapWithNix(command, flakeDir)
 		ui.Debugf("Executing via Nix: %v", nixArgs)
 		cmd = exec.Command(nixArgs[0], nixArgs[1:]...)
 		cmd.Env = append(NixEnv(), extraEnv...)

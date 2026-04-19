@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/ui"
@@ -37,14 +38,24 @@ func RunAudit(cfg *config.ProjectConfig) {
 
 	canUseNixBubble := useNix && IsNixInstalled()
 
+	var auditSandbox string
 	if canUseNixBubble {
 		ui.SubTask("Bootstrapping dry-run Nix sandbox for validations")
-		err := BootEnvironment("derrick.yaml", cfg.Nix.Packages, cfg.Nix.Registry, "")
+		// Doctor is documented read-only: generate the flake in a temp
+		// directory and clean up, so .derrick/ is never mutated.
+		tmp, err := os.MkdirTemp("", "derrick-doctor-*")
 		if err != nil {
-			ui.Warningf("  -> Failed to bootstrap Nix evaluation sandbox: %v", err)
+			ui.Warningf("  -> Failed to create audit sandbox: %v", err)
 			canUseNixBubble = false
 		} else {
-			ui.Success("OK")
+			defer os.RemoveAll(tmp)
+			if err := BootEnvironment("derrick.yaml", cfg.Nix.Packages, cfg.Nix.Registry, tmp); err != nil {
+				ui.Warningf("  -> Failed to bootstrap Nix evaluation sandbox: %v", err)
+				canUseNixBubble = false
+			} else {
+				auditSandbox = tmp
+				ui.Success("OK")
+			}
 		}
 	}
 
@@ -52,7 +63,7 @@ func RunAudit(cfg *config.ProjectConfig) {
 		ui.Section("State Validations")
 		for _, check := range cfg.Validations {
 			ui.SubTaskf("Checking %s", check.Name)
-			err := executeCommand(check.Command, canUseNixBubble, nil)
+			err := executeCommandIn(check.Command, canUseNixBubble, auditSandbox, nil)
 			if err == nil {
 				ui.Success("OK")
 			} else {
