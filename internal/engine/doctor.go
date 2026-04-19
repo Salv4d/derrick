@@ -52,7 +52,7 @@ func RunAudit(cfg *config.ProjectConfig) {
 		ui.Section("State Validations")
 		for _, check := range cfg.Validations {
 			ui.SubTaskf("Checking %s", check.Name)
-			err := executeCommand(check.Command, canUseNixBubble)
+			err := executeCommand(check.Command, canUseNixBubble, nil)
 			if err == nil {
 				ui.Success("OK")
 			} else {

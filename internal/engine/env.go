@@ -40,8 +40,22 @@ var (
 	}
 )
 
-// ValidateAndLoadEnv ensures the .env file exists and loads environment variables.
-func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix bool) error {
+// envSlice converts a KEY→VALUE map into the KEY=VALUE slice expected by exec.Cmd.Env.
+func envSlice(m map[string]string) []string {
+	out := make([]string, 0, len(m))
+	for k, v := range m {
+		out = append(out, k+"="+v)
+	}
+	return out
+}
+
+// ValidateAndLoadEnv resolves every variable declared in cfg.Env, prompting
+// or applying defaults as needed. It returns the resolved KEY=VALUE pairs so
+// callers can inject them explicitly into subprocesses via cmd.Env.
+//
+// The function does NOT mutate os.Environ: values from .env on disk are read
+// into a local map, and new values are propagated via the returned slice.
+func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix bool) ([]string, error) {
 	envPath := filepath.Join(projectDir, ".env")
 
 	if cfg.EnvManagement.BaseFile != "" {
@@ -54,32 +68,45 @@ func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix boo
 		}
 	}
 
-	_ = godotenv.Load(envPath)
+	// Read .env into a local map instead of loading it into the process env.
+	resolved := make(map[string]string)
+	if fileEnv, err := godotenv.Read(envPath); err == nil {
+		for k, v := range fileEnv {
+			resolved[k] = v
+		}
+	}
 
-	// Iterate over cfg.Env directly. When prompt_missing is set, treat every
-	// declared variable as required — regardless of whether it appears in .env
-	// on disk or is just missing from the runtime environment.
 	newEnvValues := make(map[string]string)
 
 	for key, rules := range cfg.Env {
 		if cfg.EnvManagement.PromptMissing {
 			rules.Required = true
 		}
-		val, exists := os.LookupEnv(key)
+
+		val, exists := resolved[key]
+		if !exists || val == "" {
+			// Fall back to the caller's shell env, but never persist that
+			// fallback back to disk — it's just a runtime value.
+			if shellVal := os.Getenv(key); shellVal != "" {
+				val = shellVal
+				exists = true
+				resolved[key] = val
+			}
+		}
 
 		if !exists || val == "" {
 			if rules.Default != "" {
 				val = rules.Default
 				ui.Infof("Using default value for %s: %s", key, val)
 				newEnvValues[key] = val
-				os.Setenv(key, val)
+				resolved[key] = val
 			} else if rules.Required {
 				ui.Section("Environment Configuration")
 				ui.Warningf("Required variable %s is missing.", key)
 
 				input, err := promptInput(fmt.Sprintf("Enter value for %s", key), rules.Description)
 				if err != nil {
-					return fmt.Errorf("configuration aborted by user")
+					return nil, fmt.Errorf("configuration aborted by user")
 				}
 
 				input = strings.TrimSpace(input)
@@ -88,7 +115,7 @@ func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix boo
 				} else {
 					val = input
 					newEnvValues[key] = val
-					os.Setenv(key, val)
+					resolved[key] = val
 				}
 			}
 		}
@@ -99,7 +126,7 @@ func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix boo
 			}
 
 			ui.Taskf("Validating %s value", key)
-			err := executeCommand(rules.Validation, useNix)
+			err := executeCommand(rules.Validation, useNix, envSlice(resolved))
 			if err == nil {
 				ui.Success("OK")
 				break
@@ -115,7 +142,7 @@ func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix boo
 			})
 
 			if err != nil || choice == "abort" {
-				return fmt.Errorf("configuration aborted for %s", key)
+				return nil, fmt.Errorf("configuration aborted for %s", key)
 			}
 
 			if choice == "skip" {
@@ -126,22 +153,23 @@ func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix boo
 			if choice == "update" {
 				input, err := promptInput(fmt.Sprintf("Enter new value for %s", key), rules.Description)
 				if err != nil {
-					return fmt.Errorf("configuration aborted")
+					return nil, fmt.Errorf("configuration aborted")
 				}
 
 				val = strings.TrimSpace(input)
-				os.Setenv(key, val)
+				resolved[key] = val
 				newEnvValues[key] = val
-
 			}
 		}
 	}
 
 	if len(newEnvValues) > 0 {
-		return updateEnvFile(envPath, newEnvValues)
+		if err := updateEnvFile(envPath, newEnvValues); err != nil {
+			return nil, err
+		}
 	}
 
-	return nil
+	return envSlice(resolved), nil
 }
 
 func updateEnvFile(path string, vars map[string]string) error {

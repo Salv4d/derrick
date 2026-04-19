@@ -45,12 +45,35 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 			ui.FailFastf("Failed to get working directory: %v", err)
 		}
 
-		// If an alias was given, resolve it via the Hub and change into that directory.
+		// If an alias was given, resolve it via the Hub and delegate to a
+		// subprocess running inside the target directory. This replaces the
+		// old os.Chdir call and keeps the parent process's working directory
+		// untouched — which matters because relative paths in derrick.yaml
+		// (compose files, env base files, etc.) are resolved against the
+		// process cwd.
 		if len(args) == 1 {
 			alias := args[0]
-			cwd = resolveAlias(alias, cwd)
-			if err := os.Chdir(cwd); err != nil {
-				ui.FailFastf("Failed to enter project directory: %v", err)
+			targetPath := resolveAlias(alias, cwd)
+			if targetPath != cwd {
+				childArgs := []string{"start"}
+				if profileName != "" {
+					childArgs = append(childArgs, "--profile", profileName)
+				}
+				for _, f := range startCustomFlags {
+					childArgs = append(childArgs, "--flag", f)
+				}
+				if startReset {
+					childArgs = append(childArgs, "--reset")
+				}
+				child := exec.Command(os.Args[0], childArgs...)
+				child.Dir = targetPath
+				child.Stdout = os.Stdout
+				child.Stderr = os.Stderr
+				child.Stdin = os.Stdin
+				if err := child.Run(); err != nil {
+					ui.FailFast(fmt.Errorf("start failed for alias '%s': %w", alias, err))
+				}
+				return
 			}
 		}
 
@@ -141,9 +164,12 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 		// ── Environment variables ──────────────────────────────────────────────
 		ui.Section("Environment")
 		ui.Task("Validating environment variables")
-		if err := engine.ValidateAndLoadEnv(cwd, cfg, hookOpts.UseNix); err != nil {
+		resolvedEnv, err := engine.ValidateAndLoadEnv(cwd, cfg, hookOpts.UseNix)
+		if err != nil {
 			ui.FailFast(err)
 		}
+		hookOpts.Env = resolvedEnv
+		flags.Env = resolvedEnv
 		ui.Success("Environment variables loaded")
 
 		// ── Pre-start hooks ───────────────────────────────────────────────────
@@ -152,8 +178,8 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 		}
 
 		// ── Validations ───────────────────────────────────────────────────────
-		if len(cfg.Validations) > 0 {
-			engine.RunValidations(cfg.Validations, hookOpts.UseNix)
+		if err := engine.RunValidations(cfg.Validations, hookOpts.UseNix, resolvedEnv); err != nil {
+			ui.FailFast(err)
 		}
 
 		// ── Provider start ────────────────────────────────────────────────────

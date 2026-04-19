@@ -75,7 +75,7 @@ var shellMetaRe = regexp.MustCompile(`[|><;&$` + "`" + `]|\|\||&&`)
 //   - Shell metacharacters detected  → bash -c (required for pipes, redirects, etc.)
 func buildCmd(command string) (*exec.Cmd, error) {
 	if shellMetaRe.MatchString(command) {
-		return exec.Command("bash", "-c", command), nil
+		return exec.Command("/bin/sh", "-c", command), nil
 	}
 	args, err := shlex.Split(command)
 	if err != nil || len(args) == 0 {
@@ -158,18 +158,23 @@ func runCmd(cmd *exec.Cmd, silent bool) error {
 
 // executeCommand is the internal helper for hooks and validations.
 // Hook commands come from user YAML and may contain arbitrary shell syntax,
-// so we always use bash. When useNix is true the command runs inside the
-// project's nix develop environment instead.
-func executeCommand(command string, useNix bool) error {
+// so we always use a POSIX shell. When useNix is true the command runs inside
+// the project's nix develop environment instead.
+//
+// extraEnv is appended to the process environment as KEY=VALUE pairs. When
+// duplicate keys are present Go's exec package keeps the last value, so extras
+// deliberately override matching entries in os.Environ()/NixEnv().
+func executeCommand(command string, useNix bool, extraEnv []string) error {
 	var cmd *exec.Cmd
 	if useNix {
 		nixArgs := WrapWithNix(command, "")
 		ui.Debugf("Executing via Nix: %v", nixArgs)
 		cmd = exec.Command(nixArgs[0], nixArgs[1:]...)
-		cmd.Env = NixEnv()
+		cmd.Env = append(NixEnv(), extraEnv...)
 	} else {
-		ui.Debugf("Executing: bash -c %q", command)
-		cmd = exec.Command("bash", "-c", command)
+		ui.Debugf("Executing: /bin/sh -c %q", command)
+		cmd = exec.Command("/bin/sh", "-c", command)
+		cmd.Env = append(os.Environ(), extraEnv...)
 	}
 	return runCmd(cmd, false)
 }

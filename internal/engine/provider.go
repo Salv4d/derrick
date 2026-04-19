@@ -4,9 +4,8 @@ import "github.com/Salv4d/derrick/internal/config"
 
 // EnvironmentStatus describes the live state of a managed environment.
 type EnvironmentStatus struct {
-	Running      bool
-	ContainerIDs []string
-	Details      string
+	Running bool
+	Details string
 }
 
 // Flags carries the resolved set of custom and built-in flags for a command.
@@ -15,6 +14,9 @@ type Flags struct {
 	Active map[string]bool
 	// Reset indicates --reset was passed: providers should rebuild from scratch.
 	Reset bool
+	// Env holds resolved KEY=VALUE pairs injected into the provider's child
+	// processes (compose up, nix develop, etc.).
+	Env []string
 }
 
 // Provider abstracts an environment backend.

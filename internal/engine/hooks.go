@@ -16,6 +16,9 @@ type HookOpts struct {
 	ActiveFlags map[string]bool
 	// UseNix controls whether commands run inside a Nix dev shell.
 	UseNix bool
+	// Env holds resolved KEY=VALUE pairs injected into each hook's process
+	// environment. Prefer this over os.Setenv so execution stays isolated.
+	Env []string
 }
 
 // ExecuteHooks runs the hooks for a lifecycle stage, skipping any whose when:
@@ -41,7 +44,7 @@ func ExecuteHooks(stage string, hooks []config.Hook, opts HookOpts) error {
 	for i, hook := range eligible {
 		ui.SubTaskf("Step %d/%d: %s", i+1, len(eligible), hook.Run)
 
-		if err := executeCommand(hook.Run, opts.UseNix); err != nil {
+		if err := executeCommand(hook.Run, opts.UseNix, opts.Env); err != nil {
 			ui.Error("FAILED")
 			return fmt.Errorf("hook [%s] step %d failed\n  command: %s\n  error: %w", stage, i+1, hook.Run, err)
 		}

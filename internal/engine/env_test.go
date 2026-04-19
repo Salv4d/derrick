@@ -41,7 +41,7 @@ func TestValidateAndLoadEnv_AllSet(t *testing.T) {
 		},
 	}
 
-	err := ValidateAndLoadEnv(tempDir, cfg, false)
+	_, err := ValidateAndLoadEnv(tempDir, cfg, false)
 	assert.NoError(t, err)
 }
 
@@ -72,7 +72,7 @@ func TestValidateAndLoadEnv_Validation(t *testing.T) {
 				},
 			},
 		}
-		err := ValidateAndLoadEnv(tempDir, cfg, false)
+		_, err := ValidateAndLoadEnv(tempDir, cfg, false)
 		assert.NoError(t, err)
 	})
 
@@ -90,7 +90,7 @@ func TestValidateAndLoadEnv_Validation(t *testing.T) {
 			},
 		}
 
-		err := ValidateAndLoadEnv(tempDir, cfgFail, false)
+		_, err := ValidateAndLoadEnv(tempDir, cfgFail, false)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "configuration aborted")
 	})
@@ -109,7 +109,7 @@ func TestValidateAndLoadEnv_Validation(t *testing.T) {
 			},
 		}
 
-		err := ValidateAndLoadEnv(tempDir, cfgFail, false)
+		_, err := ValidateAndLoadEnv(tempDir, cfgFail, false)
 		assert.NoError(t, err)
 	})
 
@@ -124,8 +124,6 @@ func TestValidateAndLoadEnv_Validation(t *testing.T) {
 		}
 
 		promptInput = func(title, description string) (string, error) {
-
-			os.Setenv("INVALID_VAR", "new-value")
 			return "new-value", nil
 		}
 
@@ -138,7 +136,7 @@ func TestValidateAndLoadEnv_Validation(t *testing.T) {
 			},
 		}
 
-		err := ValidateAndLoadEnv(tempDir, cfgFail, false)
+		_, err := ValidateAndLoadEnv(tempDir, cfgFail, false)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, selectCount)
 	})
@@ -158,12 +156,13 @@ func TestValidateAndLoadEnv_Default(t *testing.T) {
 		},
 	}
 
-	err := ValidateAndLoadEnv(tempDir, cfg, false)
+	envVars, err := ValidateAndLoadEnv(tempDir, cfg, false)
 	assert.NoError(t, err)
 
 	content, _ := os.ReadFile(envPath)
 	assert.Contains(t, string(content), `DEFAULT_VAR="my-default-value"`)
-	assert.Equal(t, "my-default-value", os.Getenv("DEFAULT_VAR"))
+	assert.Contains(t, envVars, `DEFAULT_VAR=my-default-value`)
+	assert.Empty(t, os.Getenv("DEFAULT_VAR"), "ValidateAndLoadEnv must not mutate os.Environ")
 }
 
 // TestUpdateEnvFile verifies that the .env file is correctly updated with new
@@ -228,7 +227,7 @@ func TestValidateAndLoadEnv_AutoDiscover(t *testing.T) {
 		return "magic-value", nil
 	}
 
-	err = ValidateAndLoadEnv(tempDir, cfg, false)
+	_, err = ValidateAndLoadEnv(tempDir, cfg, false)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, promptCount, "Should prompt once for DISCOVERED_VAR")

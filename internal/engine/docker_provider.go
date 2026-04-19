@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 
 	"github.com/Salv4d/derrick/internal/config"
@@ -32,7 +33,7 @@ func (d *DockerProvider) IsAvailable() error {
 }
 
 // Start brings up the Docker Compose project, creating the shared network first.
-func (d *DockerProvider) Start(cfg *config.ProjectConfig, _ Flags) error {
+func (d *DockerProvider) Start(cfg *config.ProjectConfig, flags Flags) error {
 	if cfg.Docker.Compose == "" {
 		return fmt.Errorf("no docker.compose file specified in derrick.yaml")
 	}
@@ -50,6 +51,9 @@ func (d *DockerProvider) Start(cfg *config.ProjectConfig, _ Flags) error {
 
 	ui.Taskf("Starting containers from [%s]", cfg.Docker.Compose)
 	cmd := exec.Command("docker", args...)
+	// Inject resolved env so compose interpolation (${VAR}) resolves without
+	// polluting the parent process with os.Setenv.
+	cmd.Env = append(os.Environ(), flags.Env...)
 	return RunCommand(cmd)
 }
 
