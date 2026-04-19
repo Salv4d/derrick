@@ -25,6 +25,14 @@ jobs:
             arch: arm64
             asset: derrick-linux-arm64
 
+          - os: darwin
+            arch: amd64
+            asset: derrick-darwin-amd64
+
+          - os: darwin
+            arch: arm64
+            asset: derrick-darwin-arm64
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -123,4 +131,6 @@ jobs:
           files: |
             dist/derrick-linux-amd64
             dist/derrick-linux-arm64
+            dist/derrick-darwin-amd64
+            dist/derrick-darwin-arm64
           fail_on_unmatched_files: true
