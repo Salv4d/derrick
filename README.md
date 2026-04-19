@@ -54,6 +54,13 @@ sudo mv derrick /usr/local/bin/
 go install github.com/Salv4d/derrick/cmd/derrick@latest
 ```
 
+**Using Nix (flake)**
+```bash
+nix run github:Salv4d/derrick -- --help
+# or install into your profile:
+nix profile install github:Salv4d/derrick
+```
+
 **Build from Source**
 ```bash
 git clone https://github.com/Salv4d/derrick.git
