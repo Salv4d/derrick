@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestParseConfig(t *testing.T) {
@@ -150,6 +151,24 @@ profiles:
 
 		assert.Len(t, cfg.Hooks.Start, 1)
 		assert.Equal(t, "echo 'Starting advanced'", cfg.Hooks.Start[0].Run)
+	})
+}
+
+func TestNixPackageMarshal(t *testing.T) {
+	t.Run("plain string when no registry", func(t *testing.T) {
+		pkgs := []NixPackage{{Name: "nodejs_20"}}
+		out, err := yaml.Marshal(pkgs)
+		require.NoError(t, err)
+		assert.Contains(t, string(out), "nodejs_20")
+		assert.NotContains(t, string(out), "package:")
+	})
+
+	t.Run("struct form when registry is set", func(t *testing.T) {
+		pkgs := []NixPackage{{Name: "legacy_tool", Registry: "github:NixOS/nixpkgs/nixos-22.11"}}
+		out, err := yaml.Marshal(pkgs)
+		require.NoError(t, err)
+		assert.Contains(t, string(out), "package: legacy_tool")
+		assert.Contains(t, string(out), "registry:")
 	})
 }
 

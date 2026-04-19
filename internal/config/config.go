@@ -11,6 +11,16 @@ type NixPackage struct {
 	Registry string `yaml:"registry,omitempty"`
 }
 
+// MarshalYAML emits a plain scalar when Registry is empty so that
+// yaml.Marshal produces `- nodejs_20` instead of `- package: nodejs_20`.
+func (n NixPackage) MarshalYAML() (interface{}, error) {
+	if n.Registry == "" {
+		return n.Name, nil
+	}
+	type alias NixPackage
+	return alias(n), nil
+}
+
 // UnmarshalYAML implements custom YAML unmarshaling for NixPackage.
 func (n *NixPackage) UnmarshalYAML(value *yaml.Node) error {
 	if value.Kind == yaml.ScalarNode {
