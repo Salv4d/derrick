@@ -1,0 +1,33 @@
+name: Nightly Integration
+
+# Slow tests that need a real docker daemon. Run nightly so a regression
+# in start/stop is caught within 24h instead of the next release.
+on:
+  schedule:
+    - cron: '0 4 * * *'  # 04:00 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify docker is available
+        run: docker version
+
+      - name: Run integration tests
+        run: go test -tags=integration -count=1 -timeout 15m ./tests/...
