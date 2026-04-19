@@ -145,18 +145,39 @@ const response = await fetch("http://payment-worker:8080/charge");
 
 Containers can also reach host-native processes (running in your Nix shell) via `host.docker.internal`, which Derrick injects automatically.
 
-## 8. IDE Integration
+## 8. IDE & Tool Integration
 
-After `derrick start`, open your editor from inside the sandbox so it inherits the exact Nix PATH:
+### Automatic (recommended): direnv
+
+When `derrick start` runs a Nix project for the first time, it writes a `.envrc` at the project root. With [direnv](https://direnv.net) and [nix-direnv](https://github.com/nix-community/nix-direnv) installed, the Nix environment activates automatically whenever any shell — your editor, Claude Code, a terminal — enters the project directory. No `derrick shell` wrapper needed.
+
+```bash
+# One-time setup per machine
+# Install direnv: https://direnv.net/docs/installation.html
+# Install nix-direnv: https://github.com/nix-community/nix-direnv#installation
+
+# One-time per project, after derrick start writes .envrc:
+direnv allow
+```
+
+After that, tools like Claude Code's Bash tool, VS Code's integrated terminal, and language server processes all see the project's binaries on `PATH` without any manual wrapping. The `.envrc` file is safe to commit so your teammates get the same behaviour.
+
+### Manual: launch from inside the sandbox
+
+If you prefer not to use direnv, launch your editor or AI tool from inside the active environment:
 
 ```bash
 derrick shell
-code .    # or nvim ., $EDITOR ., etc.
+code .       # VS Code
+claude       # Claude Code
+nvim .
 ```
 
 Language servers, linters, and compilers resolve to the sandboxed versions without polluting the host OS.
 
-**Quick throwaway sandboxes** — no `derrick.yaml` needed:
+### Quick throwaway sandboxes
+
+No `derrick.yaml` needed:
 ```bash
 # Interactive shell with jq and python
 derrick run jq python3

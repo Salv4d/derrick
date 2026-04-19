@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 
 	"github.com/Salv4d/derrick/internal/config"
@@ -36,7 +37,21 @@ func (n *NixProvider) Start(cfg *config.ProjectConfig, _ Flags) error {
 	}
 
 	ui.Taskf("Resolving %d Nix packages", len(cfg.Nix.Packages))
-	return BootEnvironment("derrick.yaml", cfg.Nix.Packages, registry, "")
+	if err := BootEnvironment("derrick.yaml", cfg.Nix.Packages, registry, ""); err != nil {
+		return err
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("could not determine project directory: %w", err)
+	}
+	created, err := WriteEnvRC(cwd)
+	if err != nil {
+		ui.Warningf("direnv: %v", err)
+	} else if created {
+		ui.Infof("Created .envrc — run 'direnv allow' to activate automatic environment loading")
+	}
+	return nil
 }
 
 // Stop is a no-op for Nix: the dev shell exits when the process ends.
