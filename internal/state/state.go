@@ -59,26 +59,32 @@ func acquireLock(projectDir string, how int) (release func(), err error) {
 }
 
 // Load reads the state file from the project directory under a shared read lock.
-// Returns a zeroed state (not an error) when no state file exists yet.
+//
+// The returned *EnvironmentState is never nil, even on error — callers that
+// only care about persisted data (e.g. `derrick stop` reading FlagsUsed) can
+// safely ignore the error and fall back to the zero-value StatusUnknown
+// state without risking a nil dereference.
 func Load(projectDir string) (*EnvironmentState, error) {
+	zero := &EnvironmentState{Status: StatusUnknown}
+
 	release, err := acquireLock(projectDir, syscall.LOCK_SH)
 	if err != nil {
-		return nil, err
+		return zero, err
 	}
 	defer release()
 
 	path := filepath.Join(projectDir, stateFile)
 	data, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
-		return &EnvironmentState{Status: StatusUnknown}, nil
+		return zero, nil
 	}
 	if err != nil {
-		return nil, err
+		return zero, err
 	}
 
 	var s EnvironmentState
 	if err := json.Unmarshal(data, &s); err != nil {
-		return nil, err
+		return zero, err
 	}
 	return &s, nil
 }

@@ -47,9 +47,7 @@ var statusCmd = &cobra.Command{
 			Running:  status.Running,
 			Details:  status.Details,
 		}
-		if projectState != nil {
-			report.LastKnown = string(projectState.Status)
-		}
+		report.LastKnown = string(projectState.Status)
 
 		if jsonOutput {
 			out, _ := json.MarshalIndent(report, "", "  ")

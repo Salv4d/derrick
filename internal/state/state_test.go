@@ -70,6 +70,18 @@ func TestLoadCorruptedFile(t *testing.T) {
 	require.NoError(t, os.MkdirAll(stateDir, 0o755))
 	require.NoError(t, os.WriteFile(stateDir+"/state.json", []byte("not json {{{"), 0o644))
 
-	_, err := Load(dir)
-	assert.Error(t, err, "corrupted JSON should return an error")
+	s, err := Load(dir)
+	require.Error(t, err, "corrupted JSON should surface an error")
+	require.NotNil(t, s, "Load must always return a usable state even on error")
+	assert.Equal(t, StatusUnknown, s.Status, "error path should fall back to StatusUnknown")
+}
+
+func TestLoadAlwaysReturnsNonNil(t *testing.T) {
+	// Guard the contract relied on by cmd callers: `projectState, _ := state.Load(cwd)`
+	// must never leave projectState nil.
+	dir := t.TempDir()
+	s, _ := Load(dir)
+	require.NotNil(t, s, "Load returned a nil *EnvironmentState")
+	assert.Equal(t, StatusUnknown, s.Status)
+	assert.Nil(t, s.FlagsUsed, "zero-value state should have a nil FlagsUsed so range-loops are no-ops")
 }
