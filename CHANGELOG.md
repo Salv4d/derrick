@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-04-20
+
+### Fixed
+- CI: bumped golangci-lint from v2.1.6 to v2.11.4 and lowered `go.mod` to `go 1.25.0` so the linter can load the config (v2.1.6 was built with go1.24 and rejects go1.25+ targets).
+
 ## [0.4.0] — 2026-04-20
 
 ### Added
@@ -21,7 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Setup-style hooks (`npm install`, `go mod download`) no longer fail with `path '.derrick/flake.nix' does not exist` on the first boot after deleting `.derrick/`. Provision now runs before any sandbox hook fires.
-- CI: bumped golangci-lint from v2.1.6 to v2.11.4 and lowered `go.mod` to `go 1.25.0` so the linter can load the config (v2.1.6 was built with go1.24 and rejects go1.25+ targets).
 
 ## [0.3.0] — 2026-04-20
 
