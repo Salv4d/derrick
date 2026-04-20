@@ -140,7 +140,7 @@ flags:
     description: "Populate the database with seed data"
 
 hooks:
-  start:
+  after_start:
     - run: "./scripts/seed.sh"
       when: flag:seed-db
 ```

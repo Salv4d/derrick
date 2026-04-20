@@ -74,13 +74,16 @@ node -v
 
 Hooks let you automate setup tasks that run at specific moments. The `when:` condition controls when each hook fires:
 
+Hooks are grouped by *when* in the lifecycle they fire — `setup` runs inside the sandbox before services boot (language toolchain ready), `after_start` runs once everything is up:
+
 ```yaml
 hooks:
-  start:
+  setup:
     - run: "npm install"
       when: first-setup    # only on the very first boot
     - run: "npm run build"
       when: always
+  after_start:
     - run: "npm run seed"
       when: flag:seed-db   # only when --flag seed-db is passed
 
@@ -88,6 +91,8 @@ flags:
   seed-db:
     description: "Populate the database with development seed data"
 ```
+
+See the [hooks reference](./api_reference.md#hooks-block) for all five stages (`before_start`, `setup`, `after_start`, `before_stop`, `after_stop`) and the shell each runs in.
 
 ```bash
 # Normal start — runs npm install (first time only) and npm run build

@@ -8,7 +8,7 @@ title: Grafana
 
 ### The Derrick Solution
 
-Derrick excels at parallel abstractions. By declaring both runtimes inside `nix_packages`, we skip tedious local system installations. We then cleanly segregate the backend builds and the frontend builds utilizing consecutive bootstrap scripts in the `pre_init` hooks.
+Derrick excels at parallel abstractions. By declaring both runtimes inside `nix_packages`, we skip tedious local system installations. We then cleanly segregate the backend builds and the frontend builds utilizing consecutive bootstrap scripts in the `setup` stage.
 
 ### The `derrick.yaml` Implementation
 
@@ -33,13 +33,13 @@ env:
     default: "admin"
 
 hooks:
-  pre_init:
+  setup:
     - "echo 'Bootstrapping Backend...'"
     - "go mod download"
     - "go build -o bin/grafana-server ./pkg/cmd/grafana-server"
     - "echo 'Bootstrapping Frontend...'"
     - "yarn install --immutable"
     - "yarn build"
-  pre_start:
+  after_start:
     - "./bin/grafana-server web" # Runs binary native off the sandbox!
 ```

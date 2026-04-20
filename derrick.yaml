@@ -12,14 +12,15 @@ nix:
     - "gofumpt"
 
 hooks:
-  start:
+  setup:
     - run: "echo 'Checking dependencies...'"
       when: always
     - run: "go mod download"
       when: first-setup
+  after_start:
     - run: "echo 'Environment is ready!'"
       when: always
-  stop:
+  after_stop:
     - run: "echo 'Goodbye!'"
       when: always
 

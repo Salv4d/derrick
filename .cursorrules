@@ -43,7 +43,7 @@ version:         ProjectConfig.Version
 provider:        ProjectConfig.Provider       # docker | nix | auto
 docker:          ProjectConfig.Docker         # DockerConfig{Compose, Profiles, Network, Shell}
 nix:             ProjectConfig.Nix            # NixConfig{Registry, Packages}
-hooks:           ProjectConfig.Hooks          # LifecycleHooks{Start, Stop, Restart}
+hooks:           ProjectConfig.Hooks          # LifecycleHooks{BeforeStart, Setup, AfterStart, BeforeStop, AfterStop}
 flags:           ProjectConfig.Flags          # map[string]FlagDef
 requires:        ProjectConfig.Requires
 env:             ProjectConfig.Env

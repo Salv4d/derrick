@@ -76,6 +76,40 @@ This enables:
 - **`derrick doctor`** — can compare persisted state against live Docker/Nix state to surface drift.
 - **Future web dashboard** — reads state without querying Docker/Nix on every render.
 
+## Lifecycle Stages
+
+`derrick start` and `derrick stop` drive a fixed sequence. Each hook stage runs at a specific point, in a specific shell — host (bare `/bin/sh`) or sandbox (wrapped in `nix develop` when nix is active):
+
+```mermaid
+flowchart TD
+    subgraph Start [derrick start]
+        direction TB
+        S1[before_start<br/><i>host</i>] --> S2[provider.Provision<br/>flake + compose override]
+        S2 --> S3[setup<br/><i>sandbox, services down</i>]
+        S3 --> S4[validations]
+        S4 --> S5[provider.Start<br/>compose up]
+        S5 --> S6[after_start<br/><i>sandbox, services up</i>]
+    end
+
+    subgraph Stop [derrick stop]
+        direction TB
+        T1[before_stop<br/><i>sandbox, services up</i>] --> T2[provider.Stop<br/>compose down]
+        T2 --> T3[after_stop<br/><i>host</i>]
+    end
+```
+
+**Why split Provision from Start?** Setup-style commands (`npm install`, `go mod download`) need the language toolchain on PATH but don't need services running. Putting them in `setup` lets `npm install` use the resolved nix shell without waiting for Postgres, and failures there don't leave half-booted containers behind.
+
+**Per-provider shell matrix:**
+
+| Stage          | nix           | docker       | hybrid                          |
+| :---           | :---          | :---         | :---                            |
+| `before_start` | host          | host         | host                            |
+| `setup`        | nix develop   | host         | nix develop                     |
+| `after_start`  | nix develop   | host         | nix develop + services reachable|
+| `before_stop`  | nix develop   | host         | nix develop + services reachable|
+| `after_stop`   | host          | host         | host                            |
+
 ## The Hook Executor
 
 `ExecuteHooks` evaluates each hook's `when:` condition before running it:
@@ -92,7 +126,7 @@ flowchart LR
     FlagCheck -->|no| Skip
 ```
 
-This allows a single `hooks.start` list to encode the full lifecycle — one-time setup, every-run tasks, and on-demand operations — without separate config sections.
+Combined with stages, the same YAML encodes one-time setup, every-run tasks, and on-demand operations across the full lifecycle without extra config sections.
 
 ## Error Translation Layer
 
@@ -135,7 +169,8 @@ Behavior is explicitly split rather than averaged:
 | Operation       | Docker leg                                  | Nix leg                                     |
 | :---            | :---                                        | :---                                        |
 | `IsAvailable()` | must succeed                                | must succeed (errors are joined, not swallowed) |
-| `Start()`       | `compose up`                                | runs **after** docker succeeds              |
+| `Provision()`   | writes compose override                     | writes + resolves flake (runs **first** — a bad package name aborts before we touch docker) |
+| `Start()`       | `compose up`                                | no-op (no long-running services)            |
 | `Stop()`        | `compose down`                              | no-op (nix shells have no background state) |
 | `Shell()`       | not called                                  | `nix develop` — language tools live here    |
 | `Status()`      | reports running services                    | reports whether `.derrick/flake.nix` exists |

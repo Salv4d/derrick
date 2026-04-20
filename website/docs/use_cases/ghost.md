@@ -39,8 +39,9 @@ validations:
     auto_fix: "kill -9 $(lsof -t -i:2368)"
 
 hooks:
-  post_init:
-    - "ghost install local"
-  post_start:
+  setup:
+    - run: "ghost install local"
+      when: first-setup
+  after_start:
     - "ghost start"
 ```

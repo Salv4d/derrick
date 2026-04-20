@@ -39,8 +39,9 @@ validations:
     command: "php -r \"if (!extension_loaded('swoole')) exit(1);\"" # Instantly verifies the Nix pipeline!
 
 hooks:
-  post_init:
-    - "composer install --ignore-platform-reqs"
-  post_start:
+  setup:
+    - run: "composer install --ignore-platform-reqs"
+      when: first-setup
+  after_start:
     - "php app/worker-http.php" # Spawns the Swoole Worker locally mapped to container DBs
 ```

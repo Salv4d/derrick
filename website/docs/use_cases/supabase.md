@@ -41,7 +41,7 @@ validations:
     command: "! lsof -i :5432"
 
 hooks:
-  post_start:
+  after_start:
     - "echo 'Supabase Core Online: http://localhost:8000'"
 
 profiles:

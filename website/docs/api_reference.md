@@ -110,11 +110,30 @@ nix:
 
 Lifecycle hooks are lists of commands run at each stage. Each entry is either a plain string (runs always) or a structured object with an optional `when:` condition.
 
-| Hook stage | Timing |
-| :--- | :--- |
-| `hooks.start` | After the provider starts the environment. |
-| `hooks.stop` | During `derrick stop`, before teardown. |
-| `hooks.restart` | During a restart cycle (stop + start). |
+Stages are split by *when the environment is ready* and *where the command runs*. Host-stage hooks see your bare shell; sandbox-stage hooks are wrapped in `nix develop` when Nix is active so the language toolchain is on PATH.
+
+```mermaid
+flowchart LR
+    A([derrick start]) --> B[before_start<br/><i>host</i>]
+    B --> C[Provision<br/>flake / override]
+    C --> D[setup<br/><i>sandbox, no services</i>]
+    D --> E[Start<br/>compose up]
+    E --> F[after_start<br/><i>sandbox + services</i>]
+    F --> G([running])
+    G --> H([derrick stop])
+    H --> I[before_stop<br/><i>sandbox + services</i>]
+    I --> J[Stop<br/>compose down]
+    J --> K[after_stop<br/><i>host</i>]
+    K --> L([stopped])
+```
+
+| Hook stage | Timing | Shell |
+| :--- | :--- | :--- |
+| `hooks.before_start` | Before provisioning. Use for preconditions or input generation. | host |
+| `hooks.setup` | After the sandbox is materialized but before services boot. Use for `npm install`, `go mod download`, build steps. | sandbox |
+| `hooks.after_start` | After services are running. Use for DB seeding, warmup, fixtures. | sandbox |
+| `hooks.before_stop` | During `derrick stop`, while services are still reachable. Use for graceful drain, DB dumps. | sandbox |
+| `hooks.after_stop` | After teardown. Use for log shipping or host-level cleanup. | host |
 
 #### `when:` conditions
 
@@ -126,14 +145,21 @@ Lifecycle hooks are lists of commands run at each stage. Each entry is either a 
 
 ```yaml
 hooks:
-  start:
-    - run: "echo 'Booting...'"
+  before_start:
+    - run: "test -f .env || cp .env.example .env"
       when: always
+  setup:
     - run: "go mod download && make migrate"
       when: first-setup
+    - run: "go build ./..."
+      when: always
+  after_start:
     - run: "make seed-db"
       when: flag:seed-db
-  stop:
+  before_stop:
+    - run: "pg_dump > .derrick/last.sql"
+      when: always
+  after_stop:
     - run: "make cleanup"
       when: always
 ```
@@ -230,7 +256,7 @@ profiles:
     nix:
       packages: ["golangci-lint"]
     hooks:
-      start:
+      after_start:
         - run: "go test ./..."
           when: always
   staging:
@@ -263,14 +289,15 @@ nix:
     - "golangci-lint"
 
 hooks:
-  start:
-    - run: "echo 'Starting payment-service...'"
-      when: always
+  setup:
     - run: "go mod download && make migrate"
       when: first-setup
+  after_start:
+    - run: "echo 'Starting payment-service...'"
+      when: always
     - run: "make seed-db"
       when: flag:seed-db
-  stop:
+  after_stop:
     - run: "echo 'Goodbye!'"
       when: always
 

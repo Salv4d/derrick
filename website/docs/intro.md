@@ -23,7 +23,7 @@ Three concepts carry almost everything:
 
 1. **Providers** are the backends. `nix` for toolchains, `docker` for services, `hybrid` for both. The CLI layer is provider-agnostic — `derrick start` delegates to whichever one your `derrick.yaml` names. → [Architecture: Provider interface](./architecture.md#the-provider-interface)
 2. **State** lives in `.derrick/state.json` and is locked per-project. It tracks whether first-setup has run, which flags were active, and which provider owns the environment. → [Architecture: State management](./architecture.md#state-management)
-3. **Hooks** are lifecycle scripts (`start`, `stop`) with a `when:` condition (`always`, `first-setup`, `flag:<name>`). The same YAML encodes "run once on clone" and "run every boot" without separate config sections. → [Architecture: Hook executor](./architecture.md#the-hook-executor)
+3. **Hooks** are lifecycle scripts split across five stages (`before_start`, `setup`, `after_start`, `before_stop`, `after_stop`), each with a `when:` condition (`always`, `first-setup`, `flag:<name>`). Setup-style commands like `npm install` live in `setup` (sandbox ready, services not yet up); DB seeding lives in `after_start`. The same YAML encodes "run once on clone" and "run every boot" without separate config sections. → [Architecture: Hook executor](./architecture.md#the-hook-executor)
 
 Read those three architecture links in order and you have the full mental model.
 

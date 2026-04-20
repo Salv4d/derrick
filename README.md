@@ -39,13 +39,13 @@ docker:
   compose: ./docker-compose.yml
 
 hooks:
-  start:
+  setup:
     - run: "go mod download"
       when: first-setup
 ```
 
 ```bash
-derrick start   # pulls toolchain, starts containers, runs first-setup hooks
+derrick start   # pulls toolchain, runs setup hooks, starts containers, runs after_start
 derrick shell   # drops you into the sealed environment
 # inside: go and node are on PATH — Postgres and Redis are on host.docker.internal
 ```

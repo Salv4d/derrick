@@ -8,7 +8,7 @@ title: Plausible Analytics
 
 ### The Derrick Solution
 
-Erlang bindings break severely between OS versions. By isolating Elixir/OTP strictly inside the `nix_packages` array, Derrick forces all team members to compile ClickHouse handlers on the exact same Erlang layer. We then use `post_start` to guarantee migrations hit the databases safely.
+Erlang bindings break severely between OS versions. By isolating Elixir/OTP strictly inside the `nix_packages` array, Derrick forces all team members to compile ClickHouse handlers on the exact same Erlang layer. We then use `after_start` to guarantee migrations hit the databases safely.
 
 ### The `derrick.yaml` Implementation
 
@@ -36,12 +36,11 @@ validations:
     command: "mix --version" # Enforces the Nix lock worked cleanly before booting.
 
 hooks:
-  pre_init:
+  setup:
     - "mix local.hex --force"
     - "mix local.rebar --force"
-  post_init:
     - "mix deps.get"
-  post_start:
+  after_start:
     - "mix ecto.create"
     - "mix clickhouse.migrate"
     - "echo 'Visit http://localhost:8000'"
