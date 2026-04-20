@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-04-20
+
+### Added
+- `Provider.Provision(cfg)` splits environment materialization (writing `.derrick/flake.nix`, resolving the nix registry, writing the compose override) away from `Start()`, which now only boots long-running services. This is the fix for `flake.nix does not exist` errors when setup hooks ran before the provider had a chance to generate the flake.
+- Five-stage lifecycle hooks: `before_start` (host), `setup` (sandbox, services down), `after_start` (sandbox + services up), `before_stop` (sandbox + services up), `after_stop` (host). Replaces the single `hooks.start` / `hooks.stop` pair.
+- Architecture docs: Lifecycle Stages section with start/stop flowchart and a per-provider shell matrix.
+
+### Changed
+- BREAKING: `hooks.start` / `hooks.stop` / `hooks.restart` are gone. Move `npm install`/`go mod download`-style work to `hooks.setup`; move DB seeding / warmup to `hooks.after_start`; move graceful drain / DB dumps to `hooks.before_stop`. This is a pre-1.0 breaking change — no migration shim.
+- `HybridProvider.Start` no longer calls nix — nix has no long-running services. Provisioning still runs both legs with nix first so a bad package name aborts before docker is touched.
+- `NixProvider.Start` is now a no-op; all heavy lifting moved to `Provision`.
+
+### Fixed
+- Setup-style hooks (`npm install`, `go mod download`) no longer fail with `path '.derrick/flake.nix' does not exist` on the first boot after deleting `.derrick/`. Provision now runs before any sandbox hook fires.
+
 ## [0.3.0] — 2026-04-20
 
 ### Added
