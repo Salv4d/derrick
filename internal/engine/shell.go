@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 )
 
@@ -37,26 +36,7 @@ func (e *ShellEngine) EnterSandbox(flakeDir string, args []string) error {
 		cmdArgs = append(cmdArgs, args...)
 		cmd = exec.Command(nixPath, cmdArgs...)
 	} else {
-		histFile := filepath.Join(flakeDir, "shell_history")
-		initContent := fmt.Sprintf(
-			"export PS1='\\e[34m(derrick-sandbox)\\e[0m \\w > '\n"+
-				"export HISTFILE=%q\n"+
-				"export HISTSIZE=10000\n"+
-				"export HISTFILESIZE=10000\n"+
-				"export HISTCONTROL=ignoredups:erasedups\n",
-			histFile,
-		)
-		tmpRC, err := os.CreateTemp("", "derrick-bashrc-*")
-		if err != nil {
-			return fmt.Errorf("failed to create shell init file: %w", err)
-		}
-		defer os.Remove(tmpRC.Name())
-		if _, err := tmpRC.WriteString(initContent); err != nil {
-			tmpRC.Close()
-			return fmt.Errorf("failed to write shell init file: %w", err)
-		}
-		tmpRC.Close()
-		cmd = exec.Command(nixPath, "develop", "--impure", flakePath, "-c", "bash", "--init-file", tmpRC.Name())
+		cmd = exec.Command(nixPath, "develop", "--impure", flakePath)
 	}
 
 	cmd.Env = NixEnv()
@@ -80,7 +60,7 @@ func (e *ShellEngine) EnterSandbox(flakeDir string, args []string) error {
 
 	if err := cmd.Run(); err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
-			return fmt.Errorf("shell existed with status: %d", exitError.ExitCode())
+			return fmt.Errorf("shell exited with status: %d", exitError.ExitCode())
 		}
 		return fmt.Errorf("failed to start sandbox shell: %w", err)
 	}
