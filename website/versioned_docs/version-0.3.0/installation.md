@@ -12,7 +12,7 @@ Derrick ships a single static binary. Pick whichever install method fits your wo
 | OS / arch | Supported | Notes |
 | :--- | :--- | :--- |
 | Linux amd64 | Yes | Primary development target |
-| Linux arm64 | Yes | Tested on Raspberry Pi OS, Asahi |
+| Linux arm64 | Yes | Released binary |
 | macOS amd64 (Intel) | Yes | Released binary |
 | macOS arm64 (Apple Silicon) | Yes | Released binary |
 | WSL2 | Yes | Treat as Linux |

@@ -58,7 +58,7 @@ No `nvm`. No `pyenv`. No "works on my machine".
 curl -fsSL https://raw.githubusercontent.com/Salv4d/derrick/main/install.sh | bash
 ```
 
-Other options (Nix flake, Homebrew, Go install, pre-built binary, build from source) → [Installation guide](./website/docs/installation.md).
+Other options (Nix flake, Go install, pre-built binary, build from source) → [Installation guide](./website/docs/installation.md).
 
 ## Where to go next
 
