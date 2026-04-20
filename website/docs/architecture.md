@@ -44,12 +44,14 @@ type Provider interface {
     IsAvailable() error
     Start(cfg *config.ProjectConfig, flags Flags) error
     Stop(cfg *config.ProjectConfig) error
-    Shell(cfg *config.ProjectConfig) error
+    Shell(cfg *config.ProjectConfig, args []string) error
     Status(cfg *config.ProjectConfig) (EnvironmentStatus, error)
 }
 ```
 
-`ResolveProvider` reads `cfg.ActiveProvider()` and returns the right backend. The CLI layer never branches on "is this Docker or Nix" — it calls `provider.Start(...)` and the backend handles the rest. Adding a new backend (DevContainers, Podman, etc.) requires zero changes to the CLI layer.
+`ResolveProvider` reads `cfg.ActiveProvider()` and returns the right backend: `docker`, `nix`, or `hybrid`. The CLI layer never branches on "is this Docker or Nix" — it calls `provider.Start(...)` and the backend handles the rest. Adding a new backend (DevContainers, Podman, etc.) requires zero changes to the CLI layer.
+
+When `args` is non-empty, `Shell` runs a one-shot command in the environment (`docker compose exec <svc> <args…>` or `nix develop --command <args…>`); when empty, it drops the user into an interactive shell. That lets scripting paths like `derrick shell -- go test ./...` work across backends without any cmd-layer branching.
 
 **Why CLI wrapping instead of API SDKs?**
 Both `mise` and `devcontainers-cli` (researched in Phase 1) wrap the Docker binary via `exec` rather than using the Docker Engine API SDK. This is portable (works with Podman/nerdctl), requires no version-pinned SDK binary, and enables streaming output natively. Derrick follows the same pattern.
@@ -109,11 +111,50 @@ Unknown errors fall through as plain strings. No error is ever silently swallowe
 ## Project Clustering & Network Topology
 
 When `provider: docker`, Derrick:
-1. Creates the `derrick-net` bridge network once (idempotent).
-2. Generates a `.derrick/docker-compose.override.yml` that attaches all services to `derrick-net` and injects `host.docker.internal:host-gateway` into each container.
-3. Runs `docker compose -f docker-compose.yml -f .derrick/docker-compose.override.yml up -d`.
+1. Generates a `.derrick/docker-compose.override.yml` that labels every service with `com.derrick.managed=true` and injects `host.docker.internal:host-gateway` so containers can reach host-native processes.
+2. Runs `docker compose -f docker-compose.yml -f .derrick/docker-compose.override.yml up -d`.
 
-This means containers across separate `derrick` projects resolve each other by service name with no user-facing config, and containers can reach host-native processes at `host.docker.internal`.
+Each project gets its own compose-managed network (the one compose creates per-project by default). Cross-project container-to-container DNS is intentionally **not** provided — if two projects need to talk, they connect via the host (`host.docker.internal`) or the user declares an explicit external network. The earlier global `derrick-net` was removed in v0.1.0 to enforce project isolation.
+
+The `com.derrick.managed=true` label is what makes `derrick clean` safe: prune operations filter by that label and never touch containers, networks, or volumes derrick didn't create.
+
+## Hybrid Provider
+
+`provider: hybrid` composes the Docker and Nix backends into a single environment:
+
+```go
+// conceptually — see internal/engine/hybrid_provider.go
+type HybridProvider struct {
+    docker providerLeg
+    nix    providerLeg
+}
+```
+
+Behavior is explicitly split rather than averaged:
+
+| Operation       | Docker leg                                  | Nix leg                                     |
+| :---            | :---                                        | :---                                        |
+| `IsAvailable()` | must succeed                                | must succeed (errors are joined, not swallowed) |
+| `Start()`       | `compose up`                                | runs **after** docker succeeds              |
+| `Stop()`        | `compose down`                              | no-op (nix shells have no background state) |
+| `Shell()`       | not called                                  | `nix develop` — language tools live here    |
+| `Status()`      | reports running services                    | reports whether `.derrick/flake.nix` exists |
+
+Use hybrid when your services (databases, queues, observability) belong in containers but your **language toolchain** belongs in a reproducible nix shell — the common case for polyglot backends where `go`, `node`, or `python` versions need to match CI exactly while Postgres and Redis are perfectly fine in containers.
+
+`Status()` aggregates both legs with `errors.Join` rather than short-circuiting: if the docker daemon is down **and** nix eval fails, you see both problems in one `derrick status` run instead of playing whack-a-mole.
+
+## Multi-Project Behavior
+
+Multiple derrick projects can run on the same host concurrently. The relevant design decisions:
+
+- **State file locking.** `internal/state/state.Load` wraps reads and writes in `syscall.Flock` on `.derrick/state.lock`. A second process that hits the same project directory blocks briefly rather than racing on `.derrick/state.json`. State is per-project (`.derrick/` lives next to `derrick.yaml`), so two different projects never contend for the same lock.
+- **Docker network isolation.** Each project's services sit on that project's compose network, not a shared `derrick-net`. Projects cannot accidentally resolve each other's service names — intentional cross-project communication goes through the host.
+- **Port conflicts are the user's problem.** Derrick does not rewrite or auto-remap host port bindings. If two projects both publish `5432:5432`, the second `start` fails with the normal compose bind error — translated by the error layer into a readable hint, but not silently fixed. Use distinct host ports in `docker-compose.yml` or bind only to `127.0.0.1`.
+- **Shared `/nix/store`.** The Nix store is host-global by design, so two projects pinning the same nixpkgs revision share the same derivations on disk — no duplication. Two projects pinning **different** revisions coexist fine; the store is content-addressed.
+- **Cycle detection.** `DERRICK_START_CHAIN` tracks the active project chain across `derrick start` invocations so a post-start hook that shells out to `derrick start` on a sibling project cannot recurse forever. A detected cycle aborts with a readable error.
+- **`derrick clean` scope.** Because every managed docker resource carries `com.derrick.managed=true`, a clean in one project never removes another project's containers, networks, or volumes — it prunes only what derrick created, filtered by label.
+- **`derrick shell` per cwd.** `derrick shell` is always scoped to the current working directory's `derrick.yaml`. There is no global "switch project" command — directory is the project identity, matching how direnv and `.envrc` already think about project scope.
 
 ## Future: Web Dashboard API
 
