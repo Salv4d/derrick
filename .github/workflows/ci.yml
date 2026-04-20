@@ -59,9 +59,9 @@ jobs:
           cache: true
 
       - name: golangci-lint
-        # v8 is the first action major that supports golangci-lint v2.x,
-        # which is what our .golangci.yml targets and what Nix ships locally.
+        # v8 is the first action major that supports golangci-lint v2.x.
+        # Pin to a release built with go1.25 so it can load a go1.25 go.mod.
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.1.6
+          version: v2.11.4
           args: --timeout=5m

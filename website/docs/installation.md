@@ -71,7 +71,7 @@ go build -o derrick ./cmd/derrick
 sudo mv derrick /usr/local/bin/
 ```
 
-Go 1.26+ required (the repo's `go.mod` is the source of truth).
+Go 1.24+ required (the repo's `go.mod` is the source of truth).
 
 ## Verify the install
 
