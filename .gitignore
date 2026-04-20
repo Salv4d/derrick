@@ -22,6 +22,7 @@ bin/
 # Derrick auto-generated files
 .derrick/
 .derrick-code/
+.envrc
 node_modules/
 tmp
 
