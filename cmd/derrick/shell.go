@@ -2,30 +2,44 @@ package main
 
 import (
 	"os"
-	"path/filepath"
 
+	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/engine"
 	"github.com/Salv4d/derrick/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// shellCmd drops into the isolated Nix development sandbox or executes a command inside it.
+// shellCmd drops into the project's managed shell, routing through the
+// resolved provider so docker, nix, and hybrid projects each get the
+// correct backend: the nix dev shell for nix/hybrid, a container exec
+// for docker-only.
 var shellCmd = &cobra.Command{
 	Use:   "shell [command...]",
-	Short: "Drop into the isolated Nix development sandbox or execute a command inside it",
-	Args:  cobra.ArbitraryArgs,
-	Run: func(cmd *cobra.Command, args []string) {
-		cwd, _ := os.Getwd()
+	Short: "Drop into the project's managed shell or execute a command inside it",
+	Long: `Opens an interactive shell using the project's provider.
 
-		if len(args) > 0 {
-			ui.Infof("Executing command in sandbox at %s", cwd)
-		} else {
-			ui.Infof("Opening sandbox at %s", cwd)
+For nix and hybrid projects this is the Nix dev shell (language tooling on
+PATH for editors and LSP clients). For docker projects this is a 'docker
+compose exec' into the configured service. Any args after the command
+name are executed as a one-shot command instead of opening an interactive
+session.`,
+	Args: cobra.ArbitraryArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		cfg, err := config.ParseConfig(configFile, profileName)
+		if err != nil {
+			ui.FailFast(err)
 		}
 
-		eng := engine.NewShellEngine()
-		derrickDir := filepath.Join(cwd, ".derrick")
-		if err := eng.EnterSandbox(derrickDir, args); err != nil {
+		provider := engine.ResolveProvider(cfg)
+
+		cwd, _ := os.Getwd()
+		if len(args) > 0 {
+			ui.Infof("Executing command via %s provider at %s", provider.Name(), cwd)
+		} else {
+			ui.Infof("Opening %s shell at %s", provider.Name(), cwd)
+		}
+
+		if err := provider.Shell(cfg, args); err != nil {
 			ui.FailFast(err)
 		}
 	},

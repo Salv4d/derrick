@@ -24,6 +24,8 @@ var LegacyPackages = map[string]LegacyEntry{
 	"nodejs-14_x": {Registry: "github:NixOS/nixpkgs/nixos-22.05"},
 	"nodejs_16":   {Registry: "github:NixOS/nixpkgs/nixos-23.05", Attribute: "nodejs-16_x"},
 	"nodejs-16_x": {Registry: "github:NixOS/nixpkgs/nixos-23.05"},
+	"nodejs_18":   {Registry: "github:NixOS/nixpkgs/nixos-24.05", Attribute: "nodejs-18_x"},
+	"nodejs-18_x": {Registry: "github:NixOS/nixpkgs/nixos-24.05"},
 
 	// ── Python ────────────────────────────────────────────────────────────
 	"python36":  {Registry: "github:NixOS/nixpkgs/nixos-19.09"},

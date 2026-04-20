@@ -36,8 +36,9 @@ type Provider interface {
 	// Stop tears down the environment gracefully.
 	Stop(cfg *config.ProjectConfig) error
 
-	// Shell opens an interactive shell inside the managed environment.
-	Shell(cfg *config.ProjectConfig) error
+	// Shell opens an interactive shell inside the managed environment,
+	// or runs args as a single command when args is non-empty.
+	Shell(cfg *config.ProjectConfig, args []string) error
 
 	// Status returns the live operational state.
 	Status(cfg *config.ProjectConfig) (EnvironmentStatus, error)

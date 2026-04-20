@@ -16,7 +16,7 @@ func UpdateYAMLPackage(configPath, oldPkg, newPkg string) error {
 		return fmt.Errorf("could not read %s for auto-update: %w", configPath, err)
 	}
 
-	re := regexp.MustCompile(fmt.Sprintf(`^(\s*-\s*)["']?%s["']?\s*$`, regexp.QuoteMeta(oldPkg)))
+	re := regexp.MustCompile(fmt.Sprintf(`^(\s*-\s*)(?:package:\s*)?["']?%s["']?\s*$`, regexp.QuoteMeta(oldPkg)))
 
 	lines := strings.Split(string(content), "\n")
 	var out []string
@@ -68,7 +68,7 @@ func UpdateYAMLPackagePin(configPath, oldPkg, newPkg, registry string) error {
 		return fmt.Errorf("could not read %s for auto-update: %w", configPath, err)
 	}
 
-	re := regexp.MustCompile(fmt.Sprintf(`^(\s*)-\s*["']?%s["']?\s*$`, regexp.QuoteMeta(oldPkg)))
+	re := regexp.MustCompile(fmt.Sprintf(`^(\s*)-\s*(?:package:\s*)?["']?%s["']?\s*$`, regexp.QuoteMeta(oldPkg)))
 
 	lines := strings.Split(string(content), "\n")
 	var out []string

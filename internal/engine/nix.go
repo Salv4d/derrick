@@ -35,6 +35,13 @@ const nixFlakeTemplate = `
 			{{ . }}
 			{{ end }}
 			];
+			shellHook = ''
+				export PS1='\[\e[34m\](derrick-sandbox)\[\e[0m\] \w > '
+				export HISTFILE="$PWD/.derrick/shell_history"
+				export HISTSIZE=10000
+				export HISTFILESIZE=10000
+				export HISTCONTROL=ignoredups:erasedups
+			'';
 		};
 	};
 }
@@ -154,8 +161,9 @@ func EnsureNixEnvironment(configPath string, packages []config.NixPackage, custo
 
 // NixEnv returns the current environment with NIXPKGS_ALLOW_UNFREE=1 set,
 // so that all Nix invocations can resolve unfree packages (e.g. Cursor, VSCode).
+// We also allow insecure packages since legacy snapshots inherently pull outdated versions.
 func NixEnv() []string {
-	return append(os.Environ(), "NIXPKGS_ALLOW_UNFREE=1")
+	return append(os.Environ(), "NIXPKGS_ALLOW_UNFREE=1", "NIXPKGS_ALLOW_INSECURE=1")
 }
 
 // WrapWithNix returns a command array to run inside the Nix environment.

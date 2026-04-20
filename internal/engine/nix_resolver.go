@@ -41,10 +41,28 @@ func ValidateAndResolve(configPath string, packages []config.NixPackage, registr
 
 	if err := cmd.Run(); err != nil {
 		errStr := stderr.String()
-		matches := missingPkgRegex.FindStringSubmatch(errStr)
+		allMatches := missingPkgRegex.FindAllStringSubmatch(errStr, -1)
 
-		if len(matches) > 1 {
-			missingPkg := matches[1]
+		var missingPkg string
+		var isRequested bool
+
+		for _, matches := range allMatches {
+			if len(matches) > 1 {
+				candidate := matches[1]
+				for _, p := range packages {
+					if p.Name == candidate {
+						missingPkg = candidate
+						isRequested = true
+						break
+					}
+				}
+				if isRequested {
+					break
+				}
+			}
+		}
+
+		if isRequested {
 
 			if entry, found := LegacyPackages[missingPkg]; found {
 				ui.Warningf("'%s' was removed from the unstable registry.", missingPkg)

@@ -16,7 +16,7 @@ type providerLeg interface {
 	IsAvailable() error
 	Start(cfg *config.ProjectConfig, flags Flags) error
 	Stop(cfg *config.ProjectConfig) error
-	Shell(cfg *config.ProjectConfig) error
+	Shell(cfg *config.ProjectConfig, args []string) error
 	Status(cfg *config.ProjectConfig) (EnvironmentStatus, error)
 }
 
@@ -76,9 +76,9 @@ func (h *HybridProvider) Stop(cfg *config.ProjectConfig) error {
 
 // Shell routes into the Nix dev shell. The editor and language tooling need
 // go/node/python on PATH, and those live in the nix shell — not in the
-// service container.
-func (h *HybridProvider) Shell(cfg *config.ProjectConfig) error {
-	return h.nix.Shell(cfg)
+// service container. args are forwarded as a one-shot command when set.
+func (h *HybridProvider) Shell(cfg *config.ProjectConfig, args []string) error {
+	return h.nix.Shell(cfg, args)
 }
 
 // Status reports both legs. Running tracks containers; nix is an ambient

@@ -74,10 +74,11 @@ func (d *DockerProvider) Stop(cfg *config.ProjectConfig) error {
 	return RunCommand(cmd)
 }
 
-// Shell opens a shell inside the target service of the Compose project.
+// Shell opens a shell inside the target service of the Compose project,
+// or runs cmdArgs as a single command when cmdArgs is non-empty.
 // The service is resolved in priority order: docker.shell in derrick.yaml,
 // then the first service declared in the compose file.
-func (d *DockerProvider) Shell(cfg *config.ProjectConfig) error {
+func (d *DockerProvider) Shell(cfg *config.ProjectConfig, cmdArgs []string) error {
 	if cfg.Docker.Compose == "" {
 		return fmt.Errorf("no docker.compose file specified in derrick.yaml")
 	}
@@ -95,7 +96,12 @@ func (d *DockerProvider) Shell(cfg *config.ProjectConfig) error {
 	for _, p := range cfg.Docker.Profiles {
 		args = append(args, "--profile", p)
 	}
-	args = append(args, service, "sh", "-c", "bash || sh")
+	args = append(args, service)
+	if len(cmdArgs) > 0 {
+		args = append(args, cmdArgs...)
+	} else {
+		args = append(args, "sh", "-c", "bash || sh")
+	}
 
 	cmd := exec.Command("docker", args...)
 	return RunCommand(cmd)

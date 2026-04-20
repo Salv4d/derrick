@@ -57,10 +57,11 @@ func (n *NixProvider) Start(cfg *config.ProjectConfig, _ Flags) error {
 // Stop is a no-op for Nix: the dev shell exits when the process ends.
 func (n *NixProvider) Stop(_ *config.ProjectConfig) error { return nil }
 
-// Shell opens an interactive Nix dev shell.
-func (n *NixProvider) Shell(cfg *config.ProjectConfig) error {
+// Shell opens an interactive Nix dev shell, or runs a single command when
+// args is non-empty.
+func (n *NixProvider) Shell(cfg *config.ProjectConfig, args []string) error {
 	eng := NewShellEngine()
-	return eng.EnterSandbox(".derrick", nil)
+	return eng.EnterSandbox(".derrick", args)
 }
 
 // Status checks whether the Nix environment has been initialized.
