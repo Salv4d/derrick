@@ -20,7 +20,8 @@ gets an atomic commit and a one-line technical note.
     - Removed both orphans and the now-unused `bytes`, `strings`, and `ui` imports. All callers have moved to `DockerProvider.Start/Stop`; no external consumers.
 - [x] **CA5 — Harden nil-safety for `state.Load` callers.** `cmd/derrick/stop.go` and `status.go` call `projectState.FlagsUsed` / `.Status` after a `state.Load(_, err) := ...` that returns `nil` on lock failure. Fall back to a zero-value state when Load errs.
     - Changed the contract: `state.Load` now always returns a non-nil `*EnvironmentState` (Status=StatusUnknown) even on error, so the `projectState, _ := state.Load(cwd)` idiom used by `stop`/`status` can no longer nil-deref. Dropped the now-dead `if projectState != nil` check in `status.go`. Added two tests that pin the contract: one for the corrupted-JSON error path, one that guards the non-nil guarantee directly.
-- [ ] **CA6 — `NixProvider.Status` should reflect project reality.** Today it returns `Running:true` whenever the `nix` binary exists. Report `true` only when the project's flake has actually been built (i.e. `.derrick/flake.nix` exists).
+- [x] **CA6 — `NixProvider.Status` should reflect project reality.** Today it returns `Running:true` whenever the `nix` binary exists. Report `true` only when the project's flake has actually been built (i.e. `.derrick/flake.nix` exists).
+    - `Status` now requires `.derrick/flake.nix` on disk, otherwise reports "flake not built — run 'derrick start'". `derrick status` and the hybrid status aggregation stop lying about a nix environment being ready before `derrick start` has materialized it.
 
 ## CLI UX
 
