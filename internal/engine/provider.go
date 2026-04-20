@@ -51,6 +51,8 @@ func ResolveProvider(cfg *config.ProjectConfig) Provider {
 		return &DockerProvider{}
 	case "nix":
 		return &NixProvider{}
+	case "hybrid":
+		return NewHybridProvider()
 	default:
 		return &NixProvider{}
 	}

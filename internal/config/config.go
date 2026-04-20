@@ -137,6 +137,7 @@ type Profile struct {
 // Provider selects the isolation backend:
 //   - "docker"     — Docker Compose
 //   - "nix"        — Nix flake dev shell
+//   - "hybrid"     — Docker (daemon) + Nix (dev shell)
 //   - "auto"       — Docker if available, otherwise Nix
 type ProjectConfig struct {
 	// Schema is the derrick.yaml schema version. Files written before
@@ -173,6 +174,8 @@ func (c *ProjectConfig) ActiveProvider() string {
 		return "docker"
 	case "nix":
 		return "nix"
+	case "hybrid":
+		return "hybrid"
 	case "auto", "":
 		if c.Docker.Compose != "" || len(c.Docker.Profiles) > 0 {
 			return "docker"
