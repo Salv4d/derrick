@@ -47,8 +47,10 @@ gets an atomic commit and a one-line technical note.
 
 ## CI/CD
 
-- [ ] **CI1 — golangci-lint in PR CI.** Fail fast on vet, ineffassign, staticcheck, unused, gofmt.
-- [ ] **CI2 — `go vet` as its own step.** Cheap, already covered by lint but explicit is clearer in logs.
+- [x] **CI1 — golangci-lint in PR CI.** Fail fast on vet, ineffassign, staticcheck, unused, gofmt.
+    - Added `golangci/golangci-lint-action@v8` (first action major that supports golangci-lint v2.x, which is what Nix ships locally) pinned to `v2.1.6`. Introduced `.golangci.yml` written in the v2 schema with a deliberately scoped linter set — `govet`, `ineffassign`, `staticcheck`, `unused`, plus `gofmt` in the formatters section — so CI signal stays high and we don't drown in deferred-close errcheck noise. Fixed the four gofmt findings (`completion.go`, `docker.go`, `hybrid_provider.go`, `hybrid_provider_test.go`) and two staticcheck findings the first run surfaced: lifted an `if/break` into the `for` condition in `env.go` (QF1006) and stripped trailing punctuation from a user-facing error string in `nix_resolver.go` (ST1005). `golangci-lint run ./...` reports `0 issues.` locally.
+- [x] **CI2 — `go vet` as its own step.** Cheap, already covered by lint but explicit is clearer in logs.
+    - Added `go vet ./...` as an explicit step in the `test` job. Redundant with the `lint` job's vet pass but surfaces faster and with clearer logs when a vet-class issue lands — the lint job has more setup cost and can be slower to report.
 
 ## Documentation
 

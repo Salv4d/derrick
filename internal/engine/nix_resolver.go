@@ -102,7 +102,7 @@ func ValidateAndResolve(configPath string, packages []config.NixPackage, registr
 			}
 
 			if len(alternatives) == 0 {
-				return packages, fmt.Errorf("no similar packages found for '%s'. Please check your %s.", missingPkg, configPath)
+				return packages, fmt.Errorf("no similar packages found for '%s' — check your %s", missingPkg, configPath)
 			}
 
 			var selectedPkg string

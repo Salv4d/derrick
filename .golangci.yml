@@ -1,0 +1,20 @@
+version: "2"
+
+# Scope the linter set intentionally. The goal is to catch real correctness
+# and hygiene issues without drowning the signal in deferred-close noise.
+# Add linters here only when we commit to fixing every finding they surface.
+linters:
+  default: none
+  enable:
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+formatters:
+  enable:
+    - gofmt
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

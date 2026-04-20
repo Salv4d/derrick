@@ -26,9 +26,9 @@ type providerLeg interface {
 // Contract:
 //   - Start:  bring up containers, then materialize the Nix flake + .envrc.
 //   - Stop:   tear down containers. Nix dev shells are process-scoped and
-//             need no explicit stop.
+//     need no explicit stop.
 //   - Shell:  drop into the Nix dev shell — this is where host-visible
-//             language tools (go, node, …) live, not inside a container.
+//     language tools (go, node, …) live, not inside a container.
 //   - Status: aggregate both legs and report them side-by-side.
 type HybridProvider struct {
 	docker providerLeg

@@ -9,8 +9,8 @@ import (
 // completionCmd emits shell completion scripts. It delegates to cobra's
 // built-in generators so new subcommands are picked up automatically.
 var completionCmd = &cobra.Command{
-	Use:       "completion [bash|zsh|fish|powershell]",
-	Short:     "Generate shell completion script",
+	Use:   "completion [bash|zsh|fish|powershell]",
+	Short: "Generate shell completion script",
 	Long: `Generate shell completion for Derrick.
 
 Load completions in the current session:

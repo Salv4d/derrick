@@ -120,11 +120,7 @@ func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix boo
 			}
 		}
 
-		for {
-			if rules.Validation == "" || val == "" {
-				break
-			}
-
+		for rules.Validation != "" && val != "" {
 			ui.Taskf("Validating %s value", key)
 			err := executeCommand(rules.Validation, useNix, envSlice(resolved))
 			if err == nil {

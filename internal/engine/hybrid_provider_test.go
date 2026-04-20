@@ -28,8 +28,8 @@ type stubLeg struct {
 	shellArgs  []string
 }
 
-func (s *stubLeg) Name() string         { return s.name }
-func (s *stubLeg) IsAvailable() error   { return s.availableErr }
+func (s *stubLeg) Name() string       { return s.name }
+func (s *stubLeg) IsAvailable() error { return s.availableErr }
 func (s *stubLeg) Start(_ *config.ProjectConfig, _ Flags) error {
 	s.startCalls++
 	return s.startErr

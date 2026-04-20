@@ -112,4 +112,3 @@ func FirstService(composeFile string) (string, error) {
 	}
 	return "", fmt.Errorf("no services found in %s", composeFile)
 }
-

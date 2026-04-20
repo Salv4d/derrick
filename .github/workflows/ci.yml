@@ -34,9 +34,34 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
+      - name: go vet
+        run: go vet ./...
+
       - name: Run tests
         run: go test -v -race -count=1 ./...
 
       - name: Build (verify compilation)
         run: |
           go build -o /dev/null ./cmd/derrick
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: golangci-lint
+        # v8 is the first action major that supports golangci-lint v2.x,
+        # which is what our .golangci.yml targets and what Nix ships locally.
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.1.6
+          args: --timeout=5m
