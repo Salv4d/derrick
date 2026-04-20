@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-04-20
+
 ### Added
 - Scoped `.golangci.yml` (govet, ineffassign, staticcheck, unused, gofmt) wired into PR CI via `golangci-lint-action@v8`, plus an explicit `go vet` step in the test job.
 - `derrick completion [bash|zsh|fish|powershell]` built on cobra's native generators, with activation docs in the long help.
 - Table-driven unit tests for `ResolveProvider`, `HybridProvider` composition, hook `when:` conditions, `GenerateNetworkOverride` service labelling, and the `state.Load` non-nil contract.
+- Dedicated docs for the Hybrid provider and multi-project behavior (state lock, per-project networks, port-conflict stance, shared `/nix/store`, cycle detection).
 
 ### Changed
 - `Provider.Shell(cfg, args)` now takes trailing arguments; docker backend forwards them to `compose exec`, nix backend forwards them to `nix develop --command`. `derrick shell` delegates to the resolved provider instead of hard-coding nix — docker-only projects finally get a working interactive shell.
@@ -82,7 +85,8 @@ First public release.
 - `derrick shell` no longer hardcodes a service name; `docker.shell` is now configurable.
 - Hook flags are restored on stop so `first-setup` stays honest across restarts.
 
-[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Salv4d/derrick/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Salv4d/derrick/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Salv4d/derrick/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Salv4d/derrick/releases/tag/v0.1.0
