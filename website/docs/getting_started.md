@@ -114,8 +114,11 @@ Override it explicitly when you need to be unambiguous:
 ```yaml
 provider: docker   # always Docker
 provider: nix      # always Nix
+provider: hybrid   # Docker for services, Nix for the language toolchain
 provider: auto     # Derrick decides (default)
 ```
+
+Use `hybrid` for polyglot backends where databases, queues, and observability belong in containers but `go`, `node`, or `python` versions need to match CI exactly. `derrick shell` routes to the nix leg (that's where your language tools are); `docker compose` runs the service leg. See [Architecture → Hybrid Provider](./architecture.md#hybrid-provider) for the full behavior matrix.
 
 ## 6. Starting a Hub Project
 
@@ -134,16 +137,13 @@ projects:
   payment-api: https://github.com/your-org/payment-api.git
 ```
 
-## 7. Cross-Project Clustering
+## 7. Running Multiple Projects
 
-Run `derrick start` in multiple microservice directories. Derrick automatically attaches all Docker Compose projects to a shared `derrick-net` bridge network, so containers across projects can resolve each other by service name:
+Run `derrick start` in as many project directories as you like — derrick is scoped per-`derrick.yaml`, and state is locked per-project so concurrent starts don't race. Each project gets its own compose-managed network (the one `docker compose` creates by default), which keeps services isolated by design.
 
-```javascript
-// Frontend container talking to a backend service in another project
-const response = await fetch("http://payment-worker:8080/charge");
-```
+If two projects need to talk, they connect **through the host**: every derrick-managed container gets `host.docker.internal:host-gateway` injected automatically, so a container in project A can reach a port published by project B via `host.docker.internal:<port>`. Port conflicts surface as normal compose bind errors — use distinct host ports or bind to `127.0.0.1` per project.
 
-Containers can also reach host-native processes (running in your Nix shell) via `host.docker.internal`, which Derrick injects automatically.
+See [Architecture → Multi-Project Behavior](./architecture.md#multi-project-behavior) for the full list of isolation guarantees (state lock, label-scoped clean, cycle detection, shared `/nix/store`).
 
 ## 8. IDE & Tool Integration
 

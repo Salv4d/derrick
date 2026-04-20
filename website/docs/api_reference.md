@@ -15,12 +15,13 @@ This guide covers the complete Derrick CLI surface and every field in `derrick.y
 | :--- | :--- |
 | `start [alias]` | Resolve the provider, run lifecycle hooks, and boot the environment. An optional alias clones and starts a Hub-registered project. |
 | `stop` | Run stop hooks and tear down the environment gracefully. |
-| `shell` | Open an interactive shell inside the active environment. |
+| `shell [-- cmd…]` | Open an interactive shell in the active environment, or run a one-shot command when args follow `--`. Routes to the active provider (docker `compose exec`, nix `nix develop --command`). |
 | `run [packages...] [-- cmd]` | Spawn a throwaway Nix environment with ad-hoc packages. |
 | `init` | Interactive wizard that generates `derrick.yaml` for a new project. |
-| `doctor` | Audit the environment against `derrick.yaml` without booting it. |
+| `doctor` | Audit the environment against `derrick.yaml` without booting it. Exits non-zero when issues are found (gates CI). |
 | `status` | Print the current project's runtime state (provider, hooks, env files). |
-| `clean` | Garbage-collect orphaned Nix derivatives and unused Docker assets. |
+| `clean` | Garbage-collect orphaned Nix derivatives and Docker resources labelled `com.derrick.managed=true`. |
+| `completion [shell]` | Emit shell completion script for `bash`, `zsh`, `fish`, or `powershell`. Activation instructions are in the long help. |
 | `update` | Replace the local binary with the latest GitHub release. |
 | `version` | Print version and check for updates. |
 
@@ -32,12 +33,17 @@ This guide covers the complete Derrick CLI surface and every field in `derrick.y
 | `-f, --file` | Custom config file path (default: `derrick.yaml`). |
 | `-p, --profile` | Named profile to activate (see Profiles below). |
 
+### Machine-readable output
+
+`status`, `doctor`, and `version` accept `--json` for scripting. When combined with `doctor`'s non-zero exit on issues, you can gate CI on environment health without parsing text output.
+
 ### `start` flags
 
 | Flag | Description |
 | :--- | :--- |
 | `--reset` | Signal providers and hooks to rebuild from scratch. |
 | `--flag <name>` | Activate a custom project flag (can be repeated). Enables `when: flag:<name>` hooks. |
+| `--dry-run` | Print the provider actions and hooks that would run, without mutating state or starting anything. Also supported by `clean`. |
 
 ---
 
@@ -49,7 +55,7 @@ This guide covers the complete Derrick CLI surface and every field in `derrick.y
 | :--- | :--- | :--- | :--- |
 | `name` | `string` | **Yes** | Project name. Must be lowercase. |
 | `version` | `string` | **Yes** | Project version string. |
-| `provider` | `string` | No | Isolation backend: `docker`, `nix`, or `auto` (default). `auto` picks Docker when a compose file is present, otherwise Nix. |
+| `provider` | `string` | No | Isolation backend: `docker`, `nix`, `hybrid`, or `auto` (default). `auto` picks Docker when a compose file is present, otherwise Nix. `hybrid` composes both: containers for services, nix for the language toolchain. |
 | `requires` | `[]string` | No | Sibling project aliases that must be running. Derrick clones and starts them automatically. |
 
 ```yaml

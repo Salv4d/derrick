@@ -9,7 +9,7 @@ Precise definitions used throughout Derrick's codebase and documentation.
 
 ---
 
-**Provider** — A Go interface (`internal/engine/provider.go`) that every isolation backend implements. Current implementations: `DockerProvider` (wraps `docker compose`) and `NixProvider` (wraps `nix develop`). The CLI layer is completely agnostic of which provider is active.
+**Provider** — A Go interface (`internal/engine/provider.go`) that every isolation backend implements. Current implementations: `DockerProvider` (wraps `docker compose`), `NixProvider` (wraps `nix develop`), and `HybridProvider` (composes both — containers for services, nix for the language toolchain). The CLI layer is completely agnostic of which provider is active.
 
 **Supreme Orchestrator** — Derrick's core design pattern: act as a high-level coordinator that delegates to proven tools (Docker, Nix) rather than reimplementing their capabilities. Derrick's value is developer experience and abstraction, not package management.
 
@@ -27,6 +27,6 @@ Precise definitions used throughout Derrick's codebase and documentation.
 
 **Host Pollution** — The anti-pattern of installing global tool versions directly on the developer's OS (e.g., `nvm`, global `go install`, `pyenv`). Derrick eliminates host pollution by isolating all project dependencies inside the Provider's environment.
 
-**derrick-net** — The shared Docker bridge network Derrick creates and manages. Attaching all Docker Compose projects to this network enables cross-project container DNS resolution without any user configuration.
+**`com.derrick.managed`** — Docker label applied to every service, network, and volume Derrick creates (via the generated compose override). Scopes `derrick clean` so prune operations only touch derrick-managed resources and never another project's containers.
 
 **Error Translation** — The process in `internal/engine/executor.go` that catches raw stderr from wrapped subprocesses, matches it against known patterns, and returns a structured `DerrickError` with a human-readable `Fix` message instead of a raw exit code.
