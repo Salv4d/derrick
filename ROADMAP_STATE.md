@@ -38,9 +38,12 @@ gets an atomic commit and a one-line technical note.
     - Table-driven test pins every `ResolveProvider` branch including the "auto + compose" / "auto + packages" detection and the explicit hybrid case.
 - [x] **T2 — Tests for `HybridProvider` composition.** Inject stub providers behind the concrete struct (via an internal interface) and assert Start/Stop/Shell/Status route correctly and propagate errors.
     - Eight tests over a `stubLeg` double pin the routing contract: `Start` skips nix when docker errors, `Stop` is docker-only, `Shell` never hits docker, `Status` joins both leg errors instead of short-circuiting. Runs in milliseconds and needs no daemon.
-- [ ] **T3 — Tests for hook `shouldRun` conditions.** always / first-setup / flag:* / unknown. Pure function, high value.
-- [ ] **T4 — Tests for `GenerateNetworkOverride`.** Verify every service receives the `com.derrick.managed` label and `host.docker.internal` hosts entry.
-- [ ] **T5 — Tests for state nil-safety in command callers.** Exercise the path where `state.Load` cannot acquire a lock or the file is malformed.
+- [x] **T3 — Tests for hook `shouldRun` conditions.** always / first-setup / flag:* / unknown. Pure function, high value.
+    - Table-driven coverage of every branch including unknown-`when` fallback and the `flag:X` absent/inactive/active axes.
+- [x] **T4 — Tests for `GenerateNetworkOverride`.** Verify every service receives the `com.derrick.managed` label and `host.docker.internal` hosts entry.
+    - Fixture-based test writes a two-service compose file and asserts both services get the label and `host-gateway` extra host. Also covered `FirstService` YAML ordering and the missing-file error path.
+- [x] **T5 — Tests for state nil-safety in command callers.** Exercise the path where `state.Load` cannot acquire a lock or the file is malformed.
+    - Delivered as part of CA5: `TestLoadAlwaysReturnsNonNil` pins the non-nil contract the cmd callers rely on, and `TestLoadCorruptedFile` pins the "error + usable zero state" path for malformed JSON.
 
 ## CI/CD
 
