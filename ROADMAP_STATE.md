@@ -54,5 +54,6 @@ gets an atomic commit and a one-line technical note.
 
 ## Documentation
 
-- [ ] **D1 — CHANGELOG.md (Keep a Changelog format).** Seed with v0.1.0 → v0.2.0 so users can see semver history.
+- [x] **D1 — CHANGELOG.md (Keep a Changelog format).** Seed with v0.1.0 → v0.2.0 so users can see semver history.
+    - Seeded `CHANGELOG.md` with sections for `[Unreleased]`, `0.2.0`, `0.1.1`, and `0.1.0`, reconstructed from the annotated tag dates and the `git log` between tags. Grouped entries under Keep-a-Changelog headings (Added / Changed / Fixed / Removed / Security) rather than dumping raw commits, so the file serves as user-facing release notes instead of a git log duplicate. Linked the compare URLs at the bottom so each heading is clickable on GitHub.
 - [ ] **D2 — Document hybrid provider and multi-project behavior.** Cover when to use `provider: hybrid`, how `derrick shell` behaves, and what happens when multiple projects run concurrently (state lock, per-project docker network, port conflicts, shared /nix/store).

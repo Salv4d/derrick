@@ -1,0 +1,88 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- Scoped `.golangci.yml` (govet, ineffassign, staticcheck, unused, gofmt) wired into PR CI via `golangci-lint-action@v8`, plus an explicit `go vet` step in the test job.
+- `derrick completion [bash|zsh|fish|powershell]` built on cobra's native generators, with activation docs in the long help.
+- Table-driven unit tests for `ResolveProvider`, `HybridProvider` composition, hook `when:` conditions, `GenerateNetworkOverride` service labelling, and the `state.Load` non-nil contract.
+
+### Changed
+- `Provider.Shell(cfg, args)` now takes trailing arguments; docker backend forwards them to `compose exec`, nix backend forwards them to `nix develop --command`. `derrick shell` delegates to the resolved provider instead of hard-coding nix — docker-only projects finally get a working interactive shell.
+- `HybridProvider` is now composed of two narrow `providerLeg`s (testable without a daemon). `IsAvailable` joins both leg errors with `errors.Join`; `Status` aggregates both legs without short-circuiting on a single-leg failure; `NewHybridProvider()` is the public constructor used by `ResolveProvider`.
+- `state.Load` always returns a non-nil `*EnvironmentState` (zeroed with `Status: StatusUnknown`) even on error, so the `projectState, _ := state.Load(cwd)` idiom used by `stop`/`status` can no longer nil-deref.
+
+### Fixed
+- `NixProvider.Status` now requires `.derrick/flake.nix` on disk before reporting the environment as ready. Previously it returned `Running: true` whenever the `nix` binary existed, even before `derrick start`.
+- `derrick doctor` exits non-zero when `report.Issues > 0`, in both text and `--json` modes, so CI scripts can gate on exit code.
+
+### Removed
+- Orphaned `StartContainers` / `StopContainers` helpers in `internal/engine/docker.go` (superseded by `DockerProvider.Start/Stop` since the provider refactor).
+
+## [0.2.0] — 2026-04-19
+
+### Added
+- `--json` output for `derrick status`, `derrick doctor`, and `derrick version` so the CLI can be driven programmatically.
+- `--dry-run` on `derrick start` and `derrick clean` to preview provider actions without mutating state.
+- Nix flake at `packaging/nix/` so derrick itself can be installed via `nix profile install`.
+- One-line installer script that downloads the correct platform binary from a GitHub release.
+- Schema versioning on `derrick.yaml` (`CurrentSchema = 1`), surfaced by doctor when the config is from a future version.
+- `derrick update` command that downloads the latest release and atomically replaces the running binary.
+- `derrick status` command reporting environment state, active provider, and hook flags.
+- Per-entry pinning for EOL nix packages, replacing the old whole-project pin hack.
+- Nightly integration CI covering docker start/stop on real compose projects.
+
+### Changed
+- Release pipeline now builds darwin `amd64` and `arm64` binaries in addition to linux `amd64` / `arm64`.
+- Removed the unfinished TUI dashboard — `derrick status` covers the same need without the maintenance weight.
+
+### Fixed
+- `derrick doctor` no longer mutates `.derrick/` during its audit — reports are pure observations.
+- Nix flake generation now detects the host OS/arch instead of hard-coding `x86_64-linux`, unbreaking macOS and ARM.
+- `derrick clean` scopes docker prune to resources labelled `com.derrick.managed=true` instead of blowing away every dangling container on the host.
+- `derrick stop` runs stop hooks before provider teardown so hooks can still reach the running services.
+- `NixPackage` marshals as a plain YAML scalar when `Registry` is empty, restoring round-trip fidelity for hand-written `derrick.yaml` files.
+- Nix legacy package resolution and the EOL-package index now handle a wider range of nixpkgs history.
+
+## [0.1.1] — 2026-04-19
+
+### Added
+- `.envrc` emission on first `derrick start` for direnv integration.
+- Per-project shell command history persisted under `.derrick/`.
+
+### Fixed
+- `NixPackage` YAML marshalling (also shipped in 0.2.0 via fix forward).
+- Nix legacy package resolution and an expanded EOL index.
+
+### Docs
+- Fixed stale `docker.network` reference in the API docs; documented `docker.shell`; removed the obsolete `ports` field.
+
+## [0.1.0] — 2026-04-19
+
+First public release.
+
+### Added
+- Provider interface with independent Docker and Nix backends, plus a Hybrid provider that composes both.
+- Conditional hook execution via `when:` (`always`, `first-setup`, `flag:<name>`).
+- Environment state persistence at `.derrick/state.json` with file-locking against concurrent writes.
+- Redesigned `derrick.yaml` schema with top-level `provider`, `docker`, and `nix` keys.
+- `derrick start` / `derrick stop` rewritten on top of the Provider interface.
+
+### Security
+- Replaced `bash -c` executor with a safe shlex-based dispatcher to prevent command injection through hook strings.
+- Removed the global `derrick-net` to enforce per-project network isolation.
+- Added cycle detection via `DERRICK_START_CHAIN`, atomic `.env` writes, and fail-fast behaviour on compose overlay errors.
+
+### Fixed
+- `derrick shell` no longer hardcodes a service name; `docker.shell` is now configurable.
+- Hook flags are restored on stop so `first-setup` stays honest across restarts.
+
+[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Salv4d/derrick/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/Salv4d/derrick/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/Salv4d/derrick/releases/tag/v0.1.0
