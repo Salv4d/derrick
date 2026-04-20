@@ -1,14 +1,11 @@
 package engine
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
-	"github.com/Salv4d/derrick/internal/ui"
 	"gopkg.in/yaml.v3"
 )
 
@@ -116,92 +113,3 @@ func FirstService(composeFile string) (string, error) {
 	return "", fmt.Errorf("no services found in %s", composeFile)
 }
 
-// StartContainers brings up the docker-compose project.
-func StartContainers(composeFile string, profiles []string) error {
-	if composeFile == "" {
-		return nil
-	}
-
-	ui.Taskf("Starting Docker containers from [%s]", composeFile)
-
-	overridePath, err := GenerateNetworkOverride(composeFile, ".derrick")
-	if err != nil {
-		ui.Warningf("Failed to generate network overrides (clustering disabled): %v", err)
-	}
-
-	args := []string{"compose", "-f", composeFile}
-	if err == nil && overridePath != "" {
-		args = append(args, "-f", overridePath)
-	}
-	for _, p := range profiles {
-		args = append(args, "--profile", p)
-	}
-	args = append(args, "up", "-d")
-
-	cmd := exec.Command("docker", args...)
-
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	err = cmd.Run()
-	if err != nil {
-		ui.Error("FAILED")
-		errMsg := strings.TrimSpace(stderr.String())
-
-		if strings.Contains(errMsg, "permission denied") && strings.Contains(errMsg, "docker.sock") {
-			return fmt.Errorf(
-				"Docker permission denied.\n" +
-					"Your current user does not have access to the Docker daemon.\n" +
-					"To fix this on Linux/WSL, run the following commands:\n\n" +
-					"  sudo usermod -aG docker $USER\n" +
-					"  newgrp docker",
-			)
-		}
-
-		if errMsg != "" {
-			return fmt.Errorf("Docker Compose failed: %s", errMsg)
-		}
-		return fmt.Errorf("Docker Compose failed with error: %v", err)
-	}
-
-	ui.Success("DONE")
-	return nil
-}
-
-// StopContainers stops the docker-compose project.
-func StopContainers(composeFile string, profiles []string) error {
-	if composeFile == "" {
-		return nil
-	}
-
-	ui.Taskf("Stopping Docker containers from [%s]", composeFile)
-
-	overridePath, err := GenerateNetworkOverride(composeFile, ".derrick")
-
-	args := []string{"compose", "-f", composeFile}
-	if err == nil && overridePath != "" {
-		args = append(args, "-f", overridePath)
-	}
-	for _, p := range profiles {
-		args = append(args, "--profile", p)
-	}
-	args = append(args, "down")
-
-	cmd := exec.Command("docker", args...)
-
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	err = cmd.Run()
-	if err != nil {
-		ui.Error("FAILED")
-		errMsg := strings.TrimSpace(stderr.String())
-		if errMsg != "" {
-			return fmt.Errorf("Docker Compose teardown failed: %s", errMsg)
-		}
-		return fmt.Errorf("Docker Compose teardown failed: %v", err)
-	}
-
-	ui.Success("DONE")
-	return nil
-}
