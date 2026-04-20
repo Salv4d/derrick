@@ -23,6 +23,11 @@ type Flags struct {
 //
 // Each backend (Docker, Nix) implements this interface so the CLI layer can remain
 // completely agnostic of the underlying isolation technology.
+//
+// Lifecycle split: Provision materializes the environment so that setup hooks
+// can run inside it (writes flake.nix, compose override, resolves deps). Start
+// boots the running services. Splitting these lets `setup` hooks (npm install,
+// go mod download) run inside a ready sandbox before services come up.
 type Provider interface {
 	// Name returns the human-readable backend identifier ("docker", "nix", …).
 	Name() string
@@ -30,7 +35,13 @@ type Provider interface {
 	// IsAvailable checks that the required tooling exists on the host.
 	IsAvailable() error
 
-	// Start activates the environment (starts containers, enters nix develop, etc.).
+	// Provision materializes the environment: writes generated config files
+	// (.derrick/flake.nix, compose override) and resolves dependencies so the
+	// sandbox is ready for setup hooks. Does NOT boot long-running services.
+	Provision(cfg *config.ProjectConfig) error
+
+	// Start boots long-running services (docker compose up). Pure file/resolve
+	// work belongs in Provision.
 	Start(cfg *config.ProjectConfig, flags Flags) error
 
 	// Stop tears down the environment gracefully.

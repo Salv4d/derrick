@@ -25,7 +25,7 @@ nix:
     - "go"
     - "nodejs"
 hooks:
-  start:
+  setup:
     - run: "echo 'Starting'"
       when: always
 validations:
@@ -48,9 +48,9 @@ validations:
 		assert.Equal(t, DefaultNixRegistry, cfg.Nix.Registry)
 		assert.Equal(t, "docker-compose.yml", cfg.Docker.Compose)
 
-		assert.Len(t, cfg.Hooks.Start, 1)
-		assert.Equal(t, "echo 'Starting'", cfg.Hooks.Start[0].Run)
-		assert.Equal(t, "always", cfg.Hooks.Start[0].When)
+		assert.Len(t, cfg.Hooks.Setup, 1)
+		assert.Equal(t, "echo 'Starting'", cfg.Hooks.Setup[0].Run)
+		assert.Equal(t, "always", cfg.Hooks.Setup[0].When)
 
 		assert.Len(t, cfg.Validations, 1)
 		assert.Equal(t, "Check Env", cfg.Validations[0].Name)
@@ -61,7 +61,7 @@ validations:
 name: "hook-test"
 version: "1.0.0"
 hooks:
-  start:
+  setup:
     - "echo hello"
 `)
 		p := filepath.Join(tempDir, "hook.yaml")
@@ -69,9 +69,9 @@ hooks:
 
 		cfg, err := ParseConfig(p, "")
 		require.NoError(t, err)
-		assert.Len(t, cfg.Hooks.Start, 1)
-		assert.Equal(t, "echo hello", cfg.Hooks.Start[0].Run)
-		assert.Equal(t, "always", cfg.Hooks.Start[0].When)
+		assert.Len(t, cfg.Hooks.Setup, 1)
+		assert.Equal(t, "echo hello", cfg.Hooks.Setup[0].Run)
+		assert.Equal(t, "always", cfg.Hooks.Setup[0].When)
 	})
 
 	t.Run("Custom Nix registry", func(t *testing.T) {
@@ -134,7 +134,7 @@ profiles:
       packages:
         - "python3"
     hooks:
-      start:
+      setup:
         - run: "echo 'Starting advanced'"
           when: always
 `)
@@ -150,8 +150,8 @@ profiles:
 
 		assert.ElementsMatch(t, []string{"cache", "worker"}, cfg.Docker.Profiles)
 
-		assert.Len(t, cfg.Hooks.Start, 1)
-		assert.Equal(t, "echo 'Starting advanced'", cfg.Hooks.Start[0].Run)
+		assert.Len(t, cfg.Hooks.Setup, 1)
+		assert.Equal(t, "echo 'Starting advanced'", cfg.Hooks.Setup[0].Run)
 	})
 }
 

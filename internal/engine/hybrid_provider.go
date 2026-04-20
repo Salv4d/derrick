@@ -14,6 +14,7 @@ import (
 type providerLeg interface {
 	Name() string
 	IsAvailable() error
+	Provision(cfg *config.ProjectConfig) error
 	Start(cfg *config.ProjectConfig, flags Flags) error
 	Stop(cfg *config.ProjectConfig) error
 	Shell(cfg *config.ProjectConfig, args []string) error
@@ -24,12 +25,15 @@ type providerLeg interface {
 // toolchains through a Nix dev shell.
 //
 // Contract:
-//   - Start:  bring up containers, then materialize the Nix flake + .envrc.
-//   - Stop:   tear down containers. Nix dev shells are process-scoped and
+//   - Provision: materialize the Nix flake + .envrc, then write the Docker
+//     compose override. Nix first so setup hooks get a resolved dev shell
+//     before Docker interpolation runs.
+//   - Start:     bring up containers. Nix has no services — it's a no-op.
+//   - Stop:      tear down containers. Nix dev shells are process-scoped and
 //     need no explicit stop.
-//   - Shell:  drop into the Nix dev shell — this is where host-visible
+//   - Shell:     drop into the Nix dev shell — this is where host-visible
 //     language tools (go, node, …) live, not inside a container.
-//   - Status: aggregate both legs and report them side-by-side.
+//   - Status:    aggregate both legs and report them side-by-side.
 type HybridProvider struct {
 	docker providerLeg
 	nix    providerLeg
@@ -59,14 +63,20 @@ func (h *HybridProvider) IsAvailable() error {
 	return errors.Join(errs...)
 }
 
-// Start brings up containers first, then materializes the flake. If docker
-// fails we skip nix — a dev shell is useless when the backing services are
-// down.
-func (h *HybridProvider) Start(cfg *config.ProjectConfig, flags Flags) error {
-	if err := h.docker.Start(cfg, flags); err != nil {
+// Provision materializes both legs. Nix runs first so a failure in flake
+// resolution aborts before we touch docker; if nix succeeds, docker's
+// compose-override generation is effectively pure IO and won't fail.
+func (h *HybridProvider) Provision(cfg *config.ProjectConfig) error {
+	if err := h.nix.Provision(cfg); err != nil {
 		return err
 	}
-	return h.nix.Start(cfg, flags)
+	return h.docker.Provision(cfg)
+}
+
+// Start boots the docker leg only. Nix has no long-running services — dev
+// shells are entered on demand by hooks and `derrick shell`.
+func (h *HybridProvider) Start(cfg *config.ProjectConfig, flags Flags) error {
+	return h.docker.Start(cfg, flags)
 }
 
 // Stop tears down the docker leg. Nix is intentionally a no-op.

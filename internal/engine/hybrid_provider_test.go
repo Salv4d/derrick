@@ -16,26 +16,45 @@ type stubLeg struct {
 	name string
 
 	availableErr error
+	provisionErr error
 	startErr     error
 	stopErr      error
 	shellErr     error
 	status       EnvironmentStatus
 	statusErr    error
 
-	startCalls int
-	stopCalls  int
-	shellCalls int
-	shellArgs  []string
+	// callOrder lets tests assert the sequence across legs when sharing a
+	// common recorder pointer.
+	callOrder *[]string
+
+	provisionCalls int
+	startCalls     int
+	stopCalls      int
+	shellCalls     int
+	shellArgs      []string
+}
+
+func (s *stubLeg) record(op string) {
+	if s.callOrder != nil {
+		*s.callOrder = append(*s.callOrder, s.name+":"+op)
+	}
 }
 
 func (s *stubLeg) Name() string       { return s.name }
 func (s *stubLeg) IsAvailable() error { return s.availableErr }
+func (s *stubLeg) Provision(_ *config.ProjectConfig) error {
+	s.provisionCalls++
+	s.record("provision")
+	return s.provisionErr
+}
 func (s *stubLeg) Start(_ *config.ProjectConfig, _ Flags) error {
 	s.startCalls++
+	s.record("start")
 	return s.startErr
 }
 func (s *stubLeg) Stop(_ *config.ProjectConfig) error {
 	s.stopCalls++
+	s.record("stop")
 	return s.stopErr
 }
 func (s *stubLeg) Shell(_ *config.ProjectConfig, args []string) error {
@@ -66,24 +85,45 @@ func TestHybrid_IsAvailable_JoinsBothFailures(t *testing.T) {
 	assert.ErrorContains(t, err, "nix missing")
 }
 
-func TestHybrid_Start_StopsOnDockerFailure(t *testing.T) {
-	docker := &stubLeg{name: "docker", startErr: errors.New("compose up failed")}
-	nix := &stubLeg{name: "nix"}
+func TestHybrid_Provision_NixBeforeDocker(t *testing.T) {
+	var order []string
+	docker := &stubLeg{name: "docker", callOrder: &order}
+	nix := &stubLeg{name: "nix", callOrder: &order}
 
-	err := newHybridWithStubs(docker, nix).Start(&config.ProjectConfig{}, Flags{})
-	assert.ErrorContains(t, err, "compose up failed")
-	assert.Equal(t, 1, docker.startCalls, "docker.Start should still have been invoked once")
-	assert.Equal(t, 0, nix.startCalls, "nix.Start must not run when docker fails")
+	err := newHybridWithStubs(docker, nix).Provision(&config.ProjectConfig{})
+	assert.NoError(t, err)
+	// Nix resolution can fail; Docker override generation is pure IO. Running
+	// nix first means a missing package aborts before we touch docker.
+	assert.Equal(t, []string{"nix:provision", "docker:provision"}, order)
 }
 
-func TestHybrid_Start_RunsNixAfterDocker(t *testing.T) {
+func TestHybrid_Provision_AbortsOnNixFailure(t *testing.T) {
+	docker := &stubLeg{name: "docker"}
+	nix := &stubLeg{name: "nix", provisionErr: errors.New("flake resolve failed")}
+
+	err := newHybridWithStubs(docker, nix).Provision(&config.ProjectConfig{})
+	assert.ErrorContains(t, err, "flake resolve failed")
+	assert.Equal(t, 1, nix.provisionCalls)
+	assert.Equal(t, 0, docker.provisionCalls, "docker.Provision must not run when nix fails")
+}
+
+func TestHybrid_Start_OnlyStartsDocker(t *testing.T) {
 	docker := &stubLeg{name: "docker"}
 	nix := &stubLeg{name: "nix"}
 
 	err := newHybridWithStubs(docker, nix).Start(&config.ProjectConfig{}, Flags{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, docker.startCalls)
-	assert.Equal(t, 1, nix.startCalls)
+	assert.Equal(t, 0, nix.startCalls, "nix has no services — Start must be a no-op in hybrid")
+}
+
+func TestHybrid_Start_PropagatesDockerFailure(t *testing.T) {
+	docker := &stubLeg{name: "docker", startErr: errors.New("compose up failed")}
+	nix := &stubLeg{name: "nix"}
+
+	err := newHybridWithStubs(docker, nix).Start(&config.ProjectConfig{}, Flags{})
+	assert.ErrorContains(t, err, "compose up failed")
+	assert.Equal(t, 1, docker.startCalls)
 }
 
 func TestHybrid_Stop_OnlyStopsDocker(t *testing.T) {

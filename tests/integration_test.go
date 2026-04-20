@@ -26,10 +26,13 @@ docker:
   shell: "app"
 
 hooks:
-  start:
+  setup:
+    - run: "echo setting-up"
+      when: always
+  after_start:
     - run: "echo started"
       when: always
-  stop:
+  before_stop:
     - run: "echo stopping"
       when: always
 `

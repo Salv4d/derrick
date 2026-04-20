@@ -130,9 +130,11 @@ func mergeProfileToConfig(cfg *ProjectConfig, p Profile) {
 	}
 
 	if p.Hooks != nil {
-		cfg.Hooks.Start = append(cfg.Hooks.Start, p.Hooks.Start...)
-		cfg.Hooks.Stop = append(cfg.Hooks.Stop, p.Hooks.Stop...)
-		cfg.Hooks.Restart = append(cfg.Hooks.Restart, p.Hooks.Restart...)
+		cfg.Hooks.BeforeStart = append(cfg.Hooks.BeforeStart, p.Hooks.BeforeStart...)
+		cfg.Hooks.Setup = append(cfg.Hooks.Setup, p.Hooks.Setup...)
+		cfg.Hooks.AfterStart = append(cfg.Hooks.AfterStart, p.Hooks.AfterStart...)
+		cfg.Hooks.BeforeStop = append(cfg.Hooks.BeforeStop, p.Hooks.BeforeStop...)
+		cfg.Hooks.AfterStop = append(cfg.Hooks.AfterStop, p.Hooks.AfterStop...)
 	}
 
 	if len(p.Validations) > 0 {

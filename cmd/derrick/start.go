@@ -156,45 +156,75 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 		}
 		firstSetup := !projectState.FirstSetupCompleted
 
-		hookOpts := engine.HookOpts{
+		// useSandbox gates whether hooks that run "inside the sandbox"
+		// (setup, after_start, before_stop) get wrapped with `nix develop`.
+		// True for nix and hybrid; docker-only has no sandbox — hooks run on
+		// the host against the compose network.
+		useSandbox := cfg.ActiveProvider() == "nix" || cfg.ActiveProvider() == "hybrid"
+
+		// hostOpts: before_start / after_stop — bare host shell.
+		hostOpts := engine.HookOpts{
 			SetupCompleted: !firstSetup,
 			ActiveFlags:    activeFlags,
-			UseNix:         cfg.ActiveProvider() == "nix",
+			UseNix:         false,
+		}
+		// sandboxOpts: setup / after_start / before_stop — nix dev shell when active.
+		sandboxOpts := engine.HookOpts{
+			SetupCompleted: !firstSetup,
+			ActiveFlags:    activeFlags,
+			UseNix:         useSandbox,
 		}
 
 		// ── Environment variables ──────────────────────────────────────────────
 		ui.Section("Environment")
 		ui.Task("Validating environment variables")
-		resolvedEnv, err := engine.ValidateAndLoadEnv(cwd, cfg, hookOpts.UseNix)
+		resolvedEnv, err := engine.ValidateAndLoadEnv(cwd, cfg, useSandbox)
 		if err != nil {
 			ui.FailFast(err)
 		}
-		hookOpts.Env = resolvedEnv
+		hostOpts.Env = resolvedEnv
+		sandboxOpts.Env = resolvedEnv
 		flags.Env = resolvedEnv
 		ui.Success("Environment variables loaded")
 
 		// ── Dry-run plan ──────────────────────────────────────────────────────
 		if startDryRun {
-			printStartPlan(cfg, provider.Name(), hookOpts.ActiveFlags)
+			printStartPlan(cfg, provider.Name(), activeFlags)
 			return
 		}
 
-		// ── Pre-start hooks ───────────────────────────────────────────────────
-		if err := engine.ExecuteHooks("start (pre)", cfg.Hooks.Start, hookOpts); err != nil {
+		// ── before_start hooks (host) ─────────────────────────────────────────
+		if err := engine.ExecuteHooks("before_start", cfg.Hooks.BeforeStart, hostOpts); err != nil {
 			ui.FailFast(err)
 		}
 
-		// ── Validations ───────────────────────────────────────────────────────
-		if err := engine.RunValidations(cfg.Validations, hookOpts.UseNix, resolvedEnv); err != nil {
+		// ── Provision (materialize flake / compose override) ──────────────────
+		ui.Sectionf("%s Provisioning", provider.Name())
+		if err := provider.Provision(cfg); err != nil {
 			ui.FailFast(err)
 		}
 
-		// ── Provider start ────────────────────────────────────────────────────
+		// ── setup hooks (sandbox, services not yet running) ───────────────────
+		if err := engine.ExecuteHooks("setup", cfg.Hooks.Setup, sandboxOpts); err != nil {
+			ui.FailFast(err)
+		}
+
+		// ── Validations (inside sandbox) ──────────────────────────────────────
+		if err := engine.RunValidations(cfg.Validations, useSandbox, resolvedEnv); err != nil {
+			ui.FailFast(err)
+		}
+
+		// ── Provider start (boot services) ────────────────────────────────────
 		ui.Sectionf("%s Orchestration", provider.Name())
 		if err := provider.Start(cfg, flags); err != nil {
 			ui.FailFast(err)
 		}
 		ui.Success("Environment is running")
+
+		// ── after_start hooks (sandbox, services up) ──────────────────────────
+		if err := engine.ExecuteHooks("after_start", cfg.Hooks.AfterStart, sandboxOpts); err != nil {
+			ui.FailFast(err)
+		}
 
 		// ── Persist state ─────────────────────────────────────────────────────
 		projectState.Project = cfg.Name
@@ -231,16 +261,9 @@ func printStartPlan(cfg *config.ProjectConfig, providerName string, activeFlags 
 		ui.Infof("Flags:    %s", strings.Join(flagNames, ", "))
 	}
 
-	if len(cfg.Hooks.Start) > 0 {
-		ui.Info("Pre-start hooks:")
-		for _, h := range cfg.Hooks.Start {
-			when := h.When
-			if when == "" {
-				when = "always"
-			}
-			fmt.Printf("    [%s] %s\n", when, h.Run)
-		}
-	}
+	printHookStage("before_start (host)", cfg.Hooks.BeforeStart)
+	printHookStage("setup (sandbox, before services)", cfg.Hooks.Setup)
+	printHookStage("after_start (sandbox, services up)", cfg.Hooks.AfterStart)
 
 	if len(cfg.Validations) > 0 {
 		ui.Info("Validations:")
@@ -262,6 +285,22 @@ func printStartPlan(cfg *config.ProjectConfig, providerName string, activeFlags 
 
 	fmt.Println()
 	ui.Success("Dry-run complete. No side effects.")
+}
+
+// printHookStage renders a dry-run entry for one hook stage. Skipping the
+// header entirely when the stage is empty keeps the plan output tight.
+func printHookStage(label string, hooks []config.Hook) {
+	if len(hooks) == 0 {
+		return
+	}
+	ui.Infof("%s hooks:", label)
+	for _, h := range hooks {
+		when := h.When
+		if when == "" {
+			when = "always"
+		}
+		fmt.Printf("    [%s] %s\n", when, h.Run)
+	}
 }
 
 // resolveAlias looks up an alias in the Derrick Hub and returns the local path

@@ -94,10 +94,27 @@ func (h *Hook) UnmarshalYAML(value *yaml.Node) error {
 }
 
 // LifecycleHooks contains hooks for each lifecycle stage.
+//
+// Stages (derrick start):
+//   - BeforeStart: host shell, before provider touches anything. Use for
+//     precondition checks or inputs that must exist before provisioning.
+//   - Setup:       inside the sandbox (nix dev shell when nix is active),
+//     after Provision but before services boot. Use for language-dependent
+//     setup that doesn't need services — `npm install`, `go mod download`.
+//   - AfterStart:  inside the sandbox, after services are up. Use for work
+//     that needs both the toolchain and live services — DB seeding, warmup.
+//
+// Stages (derrick stop):
+//   - BeforeStop:  inside the sandbox, while services are still reachable.
+//     Use for graceful drain, DB dumps, cache flushes.
+//   - AfterStop:   host shell, after teardown. Use for log shipping or local
+//     cleanup that can't rely on the sandbox.
 type LifecycleHooks struct {
-	Start   []Hook `yaml:"start,omitempty"`
-	Stop    []Hook `yaml:"stop,omitempty"`
-	Restart []Hook `yaml:"restart,omitempty"`
+	BeforeStart []Hook `yaml:"before_start,omitempty"`
+	Setup       []Hook `yaml:"setup,omitempty"`
+	AfterStart  []Hook `yaml:"after_start,omitempty"`
+	BeforeStop  []Hook `yaml:"before_stop,omitempty"`
+	AfterStop   []Hook `yaml:"after_stop,omitempty"`
 }
 
 // DockerConfig holds Docker Compose orchestration settings.

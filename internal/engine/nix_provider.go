@@ -26,8 +26,10 @@ func (n *NixProvider) IsAvailable() error {
 	return nil
 }
 
-// Start resolves the Nix flake and validates the environment is ready.
-func (n *NixProvider) Start(cfg *config.ProjectConfig, _ Flags) error {
+// Provision writes .derrick/flake.nix, resolves the registry, and drops a
+// .envrc for direnv users. After this returns, `nix develop` from the project
+// root has a cached resolved environment — safe to use from setup hooks.
+func (n *NixProvider) Provision(cfg *config.ProjectConfig) error {
 	if len(cfg.Nix.Packages) == 0 {
 		return fmt.Errorf("no nix.packages specified in derrick.yaml")
 	}
@@ -54,6 +56,11 @@ func (n *NixProvider) Start(cfg *config.ProjectConfig, _ Flags) error {
 	}
 	return nil
 }
+
+// Start is a no-op for Nix: there are no long-running services to boot. Every
+// `nix develop` invocation (hooks, shell) enters a fresh process-scoped dev
+// shell from the flake Provision already resolved.
+func (n *NixProvider) Start(_ *config.ProjectConfig, _ Flags) error { return nil }
 
 // Stop is a no-op for Nix: the dev shell exits when the process ends.
 func (n *NixProvider) Stop(_ *config.ProjectConfig) error { return nil }

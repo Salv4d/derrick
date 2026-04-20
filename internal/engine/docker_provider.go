@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/ui"
@@ -32,16 +33,28 @@ func (d *DockerProvider) IsAvailable() error {
 	return nil
 }
 
-// Start brings up the Docker Compose project, creating the shared network first.
+// Provision writes .derrick/docker-compose.override.yml so every service has
+// the com.derrick.managed label and a host.docker.internal host entry. No
+// containers are booted here — that's Start's job.
+func (d *DockerProvider) Provision(cfg *config.ProjectConfig) error {
+	if cfg.Docker.Compose == "" {
+		return fmt.Errorf("no docker.compose file specified in derrick.yaml")
+	}
+	if _, err := GenerateNetworkOverride(cfg.Docker.Compose, ".derrick"); err != nil {
+		return fmt.Errorf("failed to generate docker network overlay: %w", err)
+	}
+	return nil
+}
+
+// Start brings up the Docker Compose project using the override Provision
+// produced. The override path is rebuilt here to avoid storing state on the
+// receiver; Provision is idempotent so this is cheap.
 func (d *DockerProvider) Start(cfg *config.ProjectConfig, flags Flags) error {
 	if cfg.Docker.Compose == "" {
 		return fmt.Errorf("no docker.compose file specified in derrick.yaml")
 	}
 
-	overridePath, err := GenerateNetworkOverride(cfg.Docker.Compose, ".derrick")
-	if err != nil {
-		return fmt.Errorf("failed to generate docker network overlay: %w", err)
-	}
+	overridePath := filepath.Join(".derrick", "docker-compose.override.yml")
 
 	args := []string{"compose", "-f", cfg.Docker.Compose, "-f", overridePath}
 	for _, p := range cfg.Docker.Profiles {
