@@ -27,8 +27,10 @@ gets an atomic commit and a one-line technical note.
 
 - [x] **UX1 — `derrick completion` command.** Add cobra-native bash/zsh/fish/powershell completions. Low effort, major DX win.
     - Uses cobra's built-in generators so the output stays in sync as new subcommands are added. Documented activation paths for all four shells in the long help.
-- [ ] **UX2 — Version command stability when offline.** `RunVersion` prints only a single warning when GitHub is unreachable; keep that, but ensure the exit code stays 0 so CI using `derrick version` never fails due to a flaky network.
-- [ ] **UX3 — Exit codes for `derrick doctor`.** Today doctor always exits 0. Exit with a non-zero code when `report.Issues > 0` so CI pipelines can gate on it.
+- [x] **UX2 — Version command stability when offline.** `RunVersion` prints only a single warning when GitHub is unreachable; keep that, but ensure the exit code stays 0 so CI using `derrick version` never fails due to a flaky network.
+    - Verified: `RunVersion` never calls `ui.FailFast`/`os.Exit`; network errors are printed via `ui.Warningf` and the command returns normally. No change required.
+- [x] **UX3 — Exit codes for `derrick doctor`.** Today doctor always exits 0. Exit with a non-zero code when `report.Issues > 0` so CI pipelines can gate on it.
+    - `derrick doctor` now exits 1 when the audit found one or more issues. This applies in both text and `--json` modes, so CI scripts can gate on it without output parsing.
 
 ## Testing
 

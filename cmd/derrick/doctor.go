@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/engine"
@@ -13,11 +14,14 @@ import (
 // doctorCmd audits the environment and reports missing dependencies.
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
-	Short: "Audits the environment and reports missing dependencies",
+	Short: "Audit the environment and report missing dependencies",
 	Long: `Runs a comprehensive, read-only audit of your local environment.
 It checks for necessary system dependencies (like Nix and Docker) and runs
 all YAML validations without applying any auto-fixes, providing a complete
-health report.`,
+health report.
+
+Exits non-zero when the audit surfaces one or more issues, so CI pipelines
+can gate on 'derrick doctor --json' without parsing output.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ui.PrintHeader()
 
@@ -33,6 +37,10 @@ health report.`,
 		if jsonOutput {
 			out, _ := json.MarshalIndent(report, "", "  ")
 			fmt.Println(string(out))
+		}
+
+		if report.Issues > 0 {
+			os.Exit(1)
 		}
 	},
 }
