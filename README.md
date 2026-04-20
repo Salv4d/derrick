@@ -1,146 +1,92 @@
 <p align="center">
-  <img src="assets/logo.jpg" alt="Derrick CLI Logo" width="200">
+  <img src="assets/logo.jpg" alt="Derrick CLI Logo" width="180">
 </p>
 
-<h1 align="center">Derrick CLI</h1>
+<h1 align="center">Derrick</h1>
 
 <p align="center">
-  <strong>A professional-grade local development orchestrator for complex microservice environments.</strong><br>
-  <em>Unite the absolute reproducibility of Nix with the optional containerization of Docker Compose.</em>
+  <strong>One file. One command. A working dev environment — for every teammate, every laptop, every time.</strong>
 </p>
 
 <p align="center">
-  <a href="https://salv4d.github.io/derrick/"><img src="https://img.shields.io/badge/📖_Documentation-salv4d.github.io/derrick-blue.svg?style=for-the-badge" alt="Documentation"></a>
-  <a href="https://github.com/Salv4d/derrick/actions/workflows/deploy-docs.yml"><img src="https://img.shields.io/github/actions/workflow/status/Salv4d/derrick/deploy-docs.yml?style=for-the-badge&label=Docs%20CI" alt="Docs CI"></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-purple.svg?style=for-the-badge" alt="License: MIT"></a>
-  <a href="https://goreportcard.com/report/github.com/Salv4d/derrick"><img src="https://goreportcard.com/badge/github.com/Salv4d/derrick?style=for-the-badge" alt="Go Report Card"></a>
-  <img src="https://img.shields.io/badge/Stability-Alpha-orange.svg?style=for-the-badge" alt="Stability: Alpha">
+  <a href="https://salv4d.github.io/derrick/"><img src="https://img.shields.io/badge/docs-salv4d.github.io/derrick-blue.svg" alt="Documentation"></a>
+  <a href="https://github.com/Salv4d/derrick/releases/latest"><img src="https://img.shields.io/github/v/release/Salv4d/derrick?label=release" alt="Latest release"></a>
+  <a href="https://github.com/Salv4d/derrick/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Salv4d/derrick/ci.yml?label=CI" alt="CI"></a>
+  <a href="https://goreportcard.com/report/github.com/Salv4d/derrick"><img src="https://goreportcard.com/badge/github.com/Salv4d/derrick" alt="Go Report Card"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-purple.svg" alt="License: MIT"></a>
 </p>
 
 ---
 
-## 💡 The Problem Derrick Solves
+## What Derrick is
 
-Unlike generic task runners, Derrick ensures that every contributor's machine is a bit-for-bit clone of the production-grade toolchain. 
+Derrick is a local dev-environment orchestrator. You describe what your project needs in a `derrick.yaml` — language toolchain, containerized services, setup hooks — and a single `derrick start` boots the whole thing, the same way, on every machine.
 
-1. **Zero Host OS Pollution:** No `nvm`, `pyenv`, or global `go` required. All your project dependencies live strictly inside an isolated Nix sandbox.
-2. **Declarative Contracts:** Define your environment in `derrick.yaml`. If the contract says you need Go 1.21 and Postgres, Derrick guarantees that state.
-3. **Fail-Fast Validation:** Audits local constraints like `.env` secrets or active ports in milliseconds before booting the environment, prompting self-healing fixes.
+Under the hood it wraps **Nix** (for reproducible language toolchains without polluting your host OS) and **Docker Compose** (for services like Postgres, Redis, ClickHouse). You can use either alone, or compose them with `provider: hybrid`.
 
----
+## See it work
 
-## ⚡ Quick Start
+```yaml
+# derrick.yaml
+name: my-api
+version: 0.1.0
+provider: hybrid
 
-Experience a fully hermetic environment in seconds. 
+nix:
+  packages: [go_1_22, nodejs_22]
 
-> *Note: Requires [Nix](https://nixos.org/download) to be previously installed on your machine. Docker is optional!*
+docker:
+  compose: ./docker-compose.yml
 
-### 1. Installation
+hooks:
+  start:
+    - run: "go mod download"
+      when: first-setup
+```
 
-**One-line install (Recommended — Linux & macOS, amd64/arm64)**
+```bash
+derrick start   # pulls toolchain, starts containers, runs first-setup hooks
+derrick shell   # drops you into the sealed environment
+# inside: go and node are on PATH — Postgres and Redis are on host.docker.internal
+```
+
+No `nvm`. No `pyenv`. No "works on my machine".
+
+## Install
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Salv4d/derrick/main/install.sh | bash
 ```
 
-**Download Pre-compiled Binary**
-```bash
-curl -L -o derrick https://github.com/Salv4d/derrick/releases/latest/download/derrick-linux-amd64
-chmod +x derrick
-sudo mv derrick /usr/local/bin/
-```
+Other options (Nix flake, Homebrew, Go install, pre-built binary, build from source) → [Installation guide](./website/docs/installation.md).
 
-**Using Go**
-```bash
-go install github.com/Salv4d/derrick/cmd/derrick@latest
-```
+## Where to go next
 
-**Using Nix (flake)**
-```bash
-nix run github:Salv4d/derrick -- --help
-# or install into your profile:
-nix profile install github:Salv4d/derrick
-```
+| If you want to… | Start here |
+| :--- | :--- |
+| See Derrick running in 3 minutes | [Getting Started tutorial](./website/docs/getting_started.md) |
+| Understand how it compares to mise, devcontainers, devenv.sh | [Why Derrick?](./website/docs/why_derrick.md) |
+| Copy a working config for a real microservices project | [Recipes / Use Cases](./website/docs/use_cases/) |
+| Look up a command or `derrick.yaml` field | [CLI & Config Reference](./website/docs/api_reference.md) |
+| Learn the Provider / State / Hooks model | [Architecture](./website/docs/architecture.md) |
+| Debug a broken start | [Troubleshooting](./website/docs/troubleshooting.md) |
+| Hack on Derrick itself | [Contributing Guide](./website/docs/contributing.md) |
 
-**Build from Source**
-```bash
-git clone https://github.com/Salv4d/derrick.git
-cd derrick
-go build -o derrick ./cmd/derrick
-sudo mv derrick /usr/local/bin/
-```
+Full docs site: **[salv4d.github.io/derrick](https://salv4d.github.io/derrick/)**
 
-### 2. Enter the Sandbox
+## Status
 
-Navigate to your project folder and run the smart wizard to generate your `derrick.yaml`:
+Derrick is currently **alpha**. Pre-built binaries exist for linux/amd64, linux/arm64, darwin/amd64, and darwin/arm64. The CLI is daily-driver stable on Linux, WSL2, and macOS; Windows-native is not supported yet (use WSL2).
 
-```bash
-# Auto-detects your project language and optional external databases
-derrick init
+Tracked on the roadmap:
+- Remote config extensions (inherit `derrick.yaml` bases from signed URLs)
+- Cloud workspace provisioning (sync local sandbox to remote VMs)
+- First-class Podman / nerdctl backend
 
-# Formats and starts Nix binaries and Docker containers
-derrick start
+## Contributing
 
-# Drops you into the strictly sealed bash terminal (your sandbox)
-derrick shell
+PRs welcome. Start with the [Contributing Guide](./website/docs/contributing.md) — it covers local dev (`derrick shell` bootstraps the Go toolchain itself), the test suite, and how to add a new provider backend.
 
-# Need an ad-hoc throwaway sandbox with specific tools?
-derrick run python3 jq
+## License
 
-# Or execute a command directly without entering a shell:
-derrick run python3 -- python -c "print('hello')"
-
-# Audits if your project meets the strict derrick.yaml constraints
-derrick doctor
-
-# Free up disk space with the universal garbage collector
-derrick clean
-```
-
-### 3. IDE Integration & AI Coding Agents ✨
-
-After running `derrick start`, you can open your project in any editor from within the hermetic sandbox. All dependencies (Language Servers, Linters, Compilers) are available on the PATH without polluting your Host OS.
-
-**Open your project from the sandbox:**
-```bash
-# Enter the sandbox, then launch your editor
-derrick shell
-$EDITOR .    # or e.g. code ., nvim ., etc.
-```
-
----
-
-## 📖 Deep-Dive Documentation
-
-For advanced features, lifecycle hooks, complex `derrick.yaml` directives, and the architecture design, visit our official documentation portal:
-
-👉 **[https://salv4d.github.io/derrick/](https://salv4d.github.io/derrick/)**
-
-*(Or browse the raw Markdown files locally in the [`/website/docs`](./website/docs/getting_started.md) folder).*
-
----
-
-## 🚧 Status & Roadmap
-
-Derrick is currently in **Alpha**. It is stable for Linux/WSL environments.
-
-- [x] Nix + Docker Compose Orchestration
-- [x] Interactive Environment Validation & `.env` Setup
-- [x] Custom Config YAML Support (`-f` flag)
-- [x] **Project Clustering:** Docker & Host-native global network bridging.
-- [ ] **Remote Config Extensions:** Inherit base YAML settings from remote URLs securely.
-- [ ] **Cloud Workspace Provisioning:** Sync your local sandbox state directly to cloud VMs.
-
----
-
-## 🤝 Contributing
-
-We heavily welcome contributions and improvements!
-Read our fully detailed **[Contributing Guide](./website/docs/contributing.md)** to learn how to properly set up your environment, write tests, and open Conventional pull requests.
-
-*We also maintain a set of [Benchmark Projects](.derrick/benchmark_projects.md) to test Derrick against strict, enterprise-style scenarios.*
-
----
-
-## 📄 License
-
-Distributed under the MIT License. See `LICENSE` for more information.
+MIT — see [LICENSE](./LICENSE).

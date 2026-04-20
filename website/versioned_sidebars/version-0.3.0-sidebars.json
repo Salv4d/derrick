@@ -1,0 +1,35 @@
+{
+  "docs": [
+    "intro",
+    "installation",
+    "getting_started",
+    "why_derrick",
+    {
+      "type": "category",
+      "label": "Recipes",
+      "link": {
+        "type": "doc",
+        "id": "use_cases/index"
+      },
+      "items": [
+        "use_cases/supabase",
+        "use_cases/plausible",
+        "use_cases/grafana",
+        "use_cases/ghost",
+        "use_cases/appwrite"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Reference",
+      "collapsed": false,
+      "items": [
+        "api_reference",
+        "architecture",
+        "glossary"
+      ]
+    },
+    "troubleshooting",
+    "contributing"
+  ]
+}
