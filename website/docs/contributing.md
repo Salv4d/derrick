@@ -33,24 +33,34 @@ nix develop .derrick/#default   # or run derrick init + derrick start on a fresh
 ## Running tests
 
 ```bash
-# Unit + integration, race detector, no cache
+# Unit tests (fast, no docker/nix required)
 go test -race -count=1 ./...
+
+# Integration tests (requires a running docker daemon)
+go test -tags=integration -count=1 ./tests/...
 
 # Just one package
 go test -race ./internal/engine/...
-
-# Verbose
-go test -v ./internal/engine/...
 ```
 
-CI runs:
+CI runs on every PR:
 
 - `go vet ./...`
-- `go test -v -race -count=1 ./...`
+- `go test -v -race -count=1 ./...` — includes the **recipe lint** (`TestRecipes_Parse`) which parses every full `derrick.yaml` block in `website/docs/use_cases/*.md` against the current schema, so doc changes that drift from the code fail CI.
 - `go build -o /dev/null ./cmd/derrick`
 - `golangci-lint run ./...` (config in `.golangci.yml`)
 
+Integration tests run nightly against a real docker daemon (`.github/workflows/nightly.yml`).
+
 Run `golangci-lint run ./...` locally before pushing — CI will reject PRs that fail lint.
+
+### Editing a recipe
+
+When you add or modify a recipe in `website/docs/use_cases/`, the recipe lint validates your yaml automatically. The lint treats any fenced ```yaml block whose first non-blank line starts with `name:` as a full `derrick.yaml`; hook and profile fragments (which don't start with `name:`) are skipped. Run it with:
+
+```bash
+go test -run TestRecipes_Parse ./tests/...
+```
 
 ## Project layout
 

@@ -32,31 +32,36 @@ func ParseConfig(filename string, profileName string) (*ProjectConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read %s: %w", filename, err)
 	}
+	return ParseConfigBytes(data, profileName)
+}
 
+// ParseConfigBytes validates a derrick.yaml byte stream, optionally applying a
+// named profile. Used by ParseConfig and by the recipe-lint test that parses
+// embedded yaml from markdown without touching the filesystem.
+func ParseConfigBytes(data []byte, profileName string) (*ProjectConfig, error) {
 	var cfg ProjectConfig
 
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
 
-	if err = decoder.Decode(&cfg); err != nil {
+	if err := decoder.Decode(&cfg); err != nil {
 		return nil, enhanceYAMLError(data, err)
 	}
 
-	if err = checkSchema(&cfg); err != nil {
+	if err := checkSchema(&cfg); err != nil {
 		return nil, err
 	}
 
-	if err = validate.Struct(cfg); err != nil {
+	if err := validate.Struct(cfg); err != nil {
 		return nil, formatValidationError(err)
 	}
 
 	if profileName != "" {
-		if err = applyProfile(&cfg, profileName); err != nil {
+		if err := applyProfile(&cfg, profileName); err != nil {
 			return nil, err
 		}
 	}
 
-	// Apply defaults.
 	if cfg.Nix.Registry == "" {
 		cfg.Nix.Registry = DefaultNixRegistry
 	}
