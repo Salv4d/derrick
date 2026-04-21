@@ -34,13 +34,19 @@ func (d *DockerProvider) IsAvailable() error {
 }
 
 // Provision writes .derrick/docker-compose.override.yml so every service has
-// the com.derrick.managed label and a host.docker.internal host entry. No
-// containers are booted here — that's Start's job.
+// the com.derrick.managed label and a host.docker.internal host entry. When
+// docker.networks is declared, it also ensures those external networks exist
+// and attaches every service to them. No containers are booted here.
 func (d *DockerProvider) Provision(cfg *config.ProjectConfig) error {
 	if cfg.Docker.Compose == "" {
 		return fmt.Errorf("no docker.compose file specified in derrick.yaml")
 	}
-	if _, err := GenerateNetworkOverride(cfg.Docker.Compose, ".derrick"); err != nil {
+	if len(cfg.Docker.Networks) > 0 {
+		if err := EnsureNetworks(cfg.Docker.Networks); err != nil {
+			return err
+		}
+	}
+	if _, err := GenerateNetworkOverride(cfg.Docker.Compose, ".derrick", cfg.Docker.Networks); err != nil {
 		return fmt.Errorf("failed to generate docker network overlay: %w", err)
 	}
 	return nil

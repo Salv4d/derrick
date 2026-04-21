@@ -49,7 +49,7 @@ func TestGenerateNetworkOverride_LabelsEveryService(t *testing.T) {
 	require.NoError(t, os.WriteFile(composePath, []byte(composeFixture), 0o644))
 
 	outDir := filepath.Join(dir, ".derrick")
-	overridePath, err := GenerateNetworkOverride(composePath, outDir)
+	overridePath, err := GenerateNetworkOverride(composePath, outDir, nil)
 	require.NoError(t, err)
 	assert.Equal(t, filepath.Join(outDir, "docker-compose.override.yml"), overridePath)
 
@@ -72,6 +72,29 @@ func TestGenerateNetworkOverride_LabelsEveryService(t *testing.T) {
 
 func TestGenerateNetworkOverride_ReturnsErrorWhenComposeMissing(t *testing.T) {
 	dir := t.TempDir()
-	_, err := GenerateNetworkOverride(filepath.Join(dir, "nope.yml"), filepath.Join(dir, ".derrick"))
+	_, err := GenerateNetworkOverride(filepath.Join(dir, "nope.yml"), filepath.Join(dir, ".derrick"), nil)
 	require.Error(t, err, "missing compose file should surface a read error")
+}
+
+func TestGenerateNetworkOverride_InjectsExtraNetworks(t *testing.T) {
+	dir := t.TempDir()
+	composePath := filepath.Join(dir, "docker-compose.yml")
+	require.NoError(t, os.WriteFile(composePath, []byte(composeFixture), 0o644))
+
+	outDir := filepath.Join(dir, ".derrick")
+	overridePath, err := GenerateNetworkOverride(composePath, outDir, []string{"shared-dev", "monitoring"})
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(overridePath)
+	require.NoError(t, err)
+
+	var got OverrideMap
+	require.NoError(t, yaml.Unmarshal(data, &got))
+
+	for _, svc := range got.Services {
+		assert.Contains(t, svc.Networks, "shared-dev")
+		assert.Contains(t, svc.Networks, "monitoring")
+	}
+	assert.True(t, got.Networks["shared-dev"].External)
+	assert.True(t, got.Networks["monitoring"].External)
 }

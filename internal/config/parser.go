@@ -118,6 +118,9 @@ func mergeProfileToConfig(cfg *ProjectConfig, p Profile) {
 		if len(p.Docker.Profiles) > 0 {
 			cfg.Docker.Profiles = append(cfg.Docker.Profiles, p.Docker.Profiles...)
 		}
+		if len(p.Docker.Networks) > 0 {
+			cfg.Docker.Networks = append(cfg.Docker.Networks, p.Docker.Networks...)
+		}
 	}
 
 	if p.Nix != nil {

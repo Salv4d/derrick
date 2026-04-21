@@ -124,6 +124,11 @@ type DockerConfig struct {
 	// Shell is the service to exec into when running `derrick shell`.
 	// Defaults to the first service defined in the compose file.
 	Shell string `yaml:"shell,omitempty"`
+	// Networks lists additional Docker networks every service in this project
+	// should join. Derrick creates them on start if they don't exist and marks
+	// them com.derrick.managed=true. Use this to opt into cross-project
+	// container DNS without giving up per-project network isolation by default.
+	Networks []string `yaml:"networks,omitempty"`
 }
 
 // NixConfig holds Nix sandbox settings.
