@@ -9,30 +9,43 @@ Copy-paste `derrick.yaml` files for real open-source projects. Each recipe is a 
 
 ## By topology
 
-### Polyglot backend (10+ services)
-**[Supabase](./supabase.md)** — Postgres, Auth, Realtime, Storage, Edge Functions, Studio. Aggressive `.env` validation trees and tight boot ordering.
+### Polyglot backend (multi-service)
+**[Supabase](./supabase.md)** — Postgres, Auth, Realtime, Storage, Kong. Env validation catches weak JWT secrets before containers start.
 
-### Strict boot-order pipeline (Elixir OTP)
+**[Sentry](./sentry.md)** — Python + Django + Kafka + ClickHouse. `after_start` migrations run only after Postgres is healthy.
+
+### Strict boot-order pipeline
 **[Plausible Analytics](./plausible.md)** — Elixir + Phoenix + ClickHouse + Postgres with deterministic startup sequencing.
+
+**[Plane](./plane.md)** — Django API + Next.js frontend + Celery + Redis. Migrations gated behind service readiness.
 
 ### Frontend + backend polyglot
 **[Grafana](./grafana.md)** — Go backend + React frontend + Yarn toolchain cleanly isolated in a single sandbox.
 
+**[n8n](./n8n.md)** — Node.js automation platform: simple Docker mode for runners, hybrid mode for custom node contributors.
+
 ### Language-pinned single-runtime
 **[Ghost CMS](./ghost.md)** — Pinning Node.js LTS without `nvm` or `asdf` drift.
 
+**[Keycloak](./keycloak.md)** — Docker-only: realm config imported from JSON so every developer starts from the same auth state.
+
+**[Meilisearch](./meilisearch.md)** — Docker-only: seed data loaded on first start so every developer searches the same dataset.
+
 ### Complex compiled extensions
-**[Appwrite](./appwrite.md)** — C++ PHP extensions (Swoole) pre-built inside the Nix sandbox so contributors never compile them by hand.
+**[Appwrite](./appwrite.md)** — PHP + Compose stack. Nix provides the toolchain; containers run the workers.
 
 ## By feature demonstrated
 
 | Want to see how to… | Recipe |
 | :--- | :--- |
-| Validate required `.env` keys before boot | [Supabase](./supabase.md) |
-| Orchestrate dependent services with boot ordering | [Plausible](./plausible.md) |
-| Mix native toolchain with containerized services (`provider: hybrid`) | [Grafana](./grafana.md) |
-| Pin an EOL Node version | [Ghost](./ghost.md) |
-| Ship pre-built binaries for C/C++ dependencies | [Appwrite](./appwrite.md) |
+| Validate required `.env` keys before boot | [Supabase](./supabase.md), [Sentry](./sentry.md) |
+| Orchestrate dependent services with boot ordering | [Plausible](./plausible.md), [Plane](./plane.md) |
+| Mix native toolchain with containerized services (`provider: hybrid`) | [Grafana](./grafana.md), [n8n](./n8n.md) |
+| Pin a specific language version | [Ghost](./ghost.md), [Grafana](./grafana.md) |
+| Import config/data on first setup | [Keycloak](./keycloak.md), [Meilisearch](./meilisearch.md) |
+| Use `flags` for on-demand operations (rebuild, reseed, migrate) | [Grafana](./grafana.md), [Meilisearch](./meilisearch.md), [Plane](./plane.md) |
+| Use `profiles` for lightweight vs full-stack modes | [Supabase](./supabase.md) |
+| Use `requires` to boot a dependency automatically | [Meilisearch](./meilisearch.md) |
 
 ## Using a recipe
 
@@ -41,4 +54,4 @@ Copy-paste `derrick.yaml` files for real open-source projects. Each recipe is a 
 3. Run `derrick start`.
 4. If first-setup needs project-specific seeding, add a `when: first-setup` hook.
 
-All recipes are tested against real upstream repos in `benchmark_projects.md`. If a recipe breaks against a new upstream release, please [open an issue](https://github.com/Salv4d/derrick/issues) or PR the fix.
+All recipes use the current `derrick.yaml` schema. If a recipe breaks against a new upstream release, please [open an issue](https://github.com/Salv4d/derrick/issues) or PR the fix.

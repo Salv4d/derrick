@@ -2,46 +2,93 @@
 title: Ghost CMS
 ---
 
-# Ghost CMS Local Orchestration
+# Ghost CMS
 
-**Ghost CMS** represents the classic friction of "Node Version Drift" (Easy/Medium). Ghost specifically demands an exact LTS cycle of **Node.js**, while developers constantly have conflicting versions installed locally via tools like `nvm` or global repositories.
+**The problem:** Ghost requires a specific Node.js LTS. Without a toolchain manager every contributor ends up on a different version — Ghost's CLI rejects mismatches with cryptic errors.
 
-### The Derrick Solution
-
-Zero host OS pollution. By passing `nodejs_18` directly to Derrick, Ghost is boxed beautifully within the exact binaries it wants, entirely isolating developers from managing their OS's node. We also map strict `env` overrides for local mail setups securely.
-
-### The `derrick.yaml` Implementation
+**The Derrick solution:** `nix.packages: [nodejs_18]` pins the exact LTS across every machine. No `nvm`, no `.nvmrc` that people forget to source, no host pollution.
 
 ```yaml
----
-name: "ghost-blog"
-version: "5.0.0"
+name: ghost-blog
+version: 5.82.0
+provider: nix
 
-dependencies:
-  nix_packages:
-    - "nodejs_18" # Strict LTS bounds required by Ghost
-    - "ghost-cli"
-  docker_compose: "docker-compose.yml" # Assumes a MySQL db template
+nix:
+  packages:
+    - nodejs_18
 
 env:
   url:
-    description: "Localhost bound URL"
+    description: "Public URL Ghost serves on"
     default: "http://localhost:2368"
   database__client:
-    default: "mysql"
-  database__connection__password:
-    description: "Root dev password"
-    default: "root"
+    description: "Database adapter — sqlite3 for local, mysql for staging"
+    default: "sqlite3"
 
 validations:
-  - name: "Port Check"
-    command: "! lsof -i :2368"
-    auto_fix: "kill -9 $(lsof -t -i:2368)"
+  - name: "Node 18"
+    command: "node --version | grep -qE '^v18'"
 
 hooks:
   setup:
-    - run: "ghost install local"
+    - run: "npm install -g ghost-cli@latest"
+      when: first-setup
+    - run: "ghost install local --no-prompt"
       when: first-setup
   after_start:
     - "ghost start"
+  before_stop:
+    - "ghost stop"
+```
+
+## What's happening
+
+| Stage | Command | Why |
+| :--- | :--- | :--- |
+| `setup` (first time) | `npm install -g ghost-cli` | Installs the CLI inside the nix sandbox — not globally on the host. |
+| `setup` (first time) | `ghost install local` | Initialises the Ghost directory, downloads content, creates SQLite DB. |
+| `after_start` | `ghost start` | Launches the Ghost server process. |
+| `before_stop` | `ghost stop` | Graceful shutdown — ensures SQLite is flushed before the sandbox exits. |
+
+## MySQL variant
+
+Swap SQLite for a containerised MySQL by switching to `provider: hybrid` and adding a compose file:
+
+```yaml
+name: ghost-blog
+version: 5.82.0
+provider: hybrid
+
+nix:
+  packages:
+    - nodejs_18
+
+docker:
+  compose: docker-compose.yml   # starts MySQL 8
+
+env:
+  url:
+    default: "http://localhost:2368"
+  database__client:
+    default: "mysql"
+  database__connection__host:
+    default: "localhost"
+  database__connection__user:
+    default: "ghost"
+  database__connection__password:
+    required: true
+    default: "ghost"
+  database__connection__database:
+    default: "ghost_dev"
+
+hooks:
+  setup:
+    - run: "npm install -g ghost-cli@latest"
+      when: first-setup
+    - run: "ghost install local --no-prompt --db mysql"
+      when: first-setup
+  after_start:
+    - "ghost start"
+  before_stop:
+    - "ghost stop"
 ```

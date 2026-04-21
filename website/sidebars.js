@@ -37,6 +37,11 @@ const sidebars = {
         'use_cases/grafana',
         'use_cases/ghost',
         'use_cases/appwrite',
+        'use_cases/sentry',
+        'use_cases/keycloak',
+        'use_cases/plane',
+        'use_cases/n8n',
+        'use_cases/meilisearch',
       ],
     },
     {
