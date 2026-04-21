@@ -1,39 +1,57 @@
 {{define "tbody"}}
-<tbody id="projects-rows"
-       hx-get="/rows"
-       hx-trigger="every 4s"
-       hx-swap="outerHTML">
+<tbody id="projects-rows">
   {{range .}}{{template "row" .}}{{end}}
 </tbody>
 {{end}}
 
 {{define "row"}}
 <tr id="row-{{.Name}}">
-  <td class="col-name">{{.Name}}</td>
+  <td class="col-name">
+    <button class="expand-btn" onclick="toggleDetail('{{.Name}}', this)" title="Show details">▶</button>
+    {{.Name}}
+  </td>
   <td class="col-provider">{{.Provider}}</td>
-  <td class="col-status">
+  <td class="col-status"
+      hx-get="/projects/{{.Name}}/status"
+      hx-trigger="every 4s"
+      hx-swap="innerHTML">
     <span class="badge {{.StatusClass}}">{{.Status}}</span>
   </td>
   <td class="col-uptime">{{if .StartedAt}}{{.StartedAt}}{{else}}—{{end}}</td>
   <td class="col-actions">
-    {{if eq .Status "running"}}
-      <button class="btn btn-stop"
-              hx-post="/projects/{{.Name}}/stop"
-              hx-target="#row-{{.Name}}"
-              hx-swap="outerHTML"
-              hx-indicator="#spinner-{{.Name}}">
-        Stop
-      </button>
-    {{else}}
-      <button class="btn btn-start"
-              hx-post="/projects/{{.Name}}/start"
-              hx-target="#row-{{.Name}}"
-              hx-swap="outerHTML"
-              hx-indicator="#spinner-{{.Name}}">
-        Start
-      </button>
+    <span class="action-btns">
+      {{if eq .Status "running"}}
+        <button class="btn btn-stop"
+                hx-post="/projects/{{.Name}}/stop"
+                hx-target="#row-{{.Name}}"
+                hx-swap="outerHTML"
+                hx-indicator="#spinner-{{.Name}}">
+          Stop
+        </button>
+      {{else}}
+        <button class="btn btn-start"
+                hx-post="/projects/{{.Name}}/start"
+                hx-target="#row-{{.Name}}"
+                hx-swap="outerHTML"
+                hx-indicator="#spinner-{{.Name}}">
+          Start
+        </button>
+      {{end}}
+      <span id="spinner-{{.Name}}" class="htmx-indicator">
+        <svg class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+        </svg>
+      </span>
+    </span>
+    {{if .Error}}
+    <div class="error-msg">
+      <svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
+      <pre>{{.Error}}</pre>
+    </div>
     {{end}}
-    <span id="spinner-{{.Name}}" class="htmx-indicator spinner">⟳</span>
   </td>
+</tr>
+<tr id="detail-{{.Name}}" class="detail-row">
+  <td colspan="5" id="detail-cell-{{.Name}}" class="detail-cell"></td>
 </tr>
 {{end}}

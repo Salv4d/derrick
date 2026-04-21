@@ -10,15 +10,22 @@ import (
 var templateFS embed.FS
 
 var (
-	pageTmpl *template.Template
-	rowsTmpl *template.Template
-	rowTmpl  *template.Template
+	pageTmpl   *template.Template
+	rowsTmpl   *template.Template
+	rowTmpl    *template.Template
+	detailTmpl *template.Template
 )
 
 func init() {
-	pageTmpl = template.Must(template.New("page").ParseFS(templateFS, "templates/index.html", "templates/rows.html"))
-	rowsTmpl = template.Must(template.New("rows").ParseFS(templateFS, "templates/rows.html"))
-	rowTmpl  = template.Must(template.New("row").ParseFS(templateFS, "templates/rows.html"))
+	all := template.Must(template.New("").ParseFS(templateFS,
+		"templates/index.html",
+		"templates/rows.html",
+		"templates/detail.html",
+	))
+	pageTmpl   = all
+	rowsTmpl   = all
+	rowTmpl    = all
+	detailTmpl = all
 }
 
 func renderPage(w io.Writer, views []projectView) error {
@@ -31,4 +38,8 @@ func renderRows(w io.Writer, views []projectView) error {
 
 func renderRow(w io.Writer, v projectView) error {
 	return rowTmpl.ExecuteTemplate(w, "row", v)
+}
+
+func renderDetail(w io.Writer, dv detailView) error {
+	return detailTmpl.ExecuteTemplate(w, "detail", dv)
 }

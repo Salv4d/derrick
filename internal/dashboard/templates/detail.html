@@ -1,0 +1,61 @@
+{{define "detail"}}
+<div class="detail-panel">
+  {{if .HasDocker}}
+  <div class="detail-section">
+    <h4 class="detail-heading">Containers</h4>
+    {{if .Containers}}
+    <table class="detail-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Image</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Containers}}
+        <tr>
+          <td class="container-name">{{.Name}}</td>
+          <td class="container-image">{{.Image}}</td>
+          <td class="container-status">
+            {{if .IsUp}}<span class="dot dot-green"></span>{{else}}<span class="dot dot-red"></span>{{end}}
+            {{.Status}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p class="detail-empty">No containers running.</p>
+    {{end}}
+  </div>
+  {{end}}
+
+  {{if .Flags}}
+  <div class="detail-section">
+    <h4 class="detail-heading">Flags</h4>
+    <div class="flag-list">
+      {{range $name, $def := .Flags}}
+      <div class="flag-item">
+        <div class="flag-info">
+          <span class="flag-name">--flag {{$name}}</span>
+          {{if $def.Description}}<span class="flag-desc">{{$def.Description}}</span>{{end}}
+        </div>
+        <button class="btn btn-flag"
+                hx-post="/projects/{{$.ProjectName}}/flag/{{$name}}"
+                hx-target="#row-{{$.ProjectName}}"
+                hx-swap="outerHTML"
+                hx-indicator="#spinner-{{$.ProjectName}}">
+          Run
+        </button>
+      </div>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+
+  {{if and (not .HasDocker) (not .Flags)}}
+  <p class="detail-empty">No containers or flags defined for this project.</p>
+  {{end}}
+</div>
+{{end}}

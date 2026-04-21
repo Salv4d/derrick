@@ -13,8 +13,9 @@ import (
 
 // Project is a derrick project the dashboard knows about.
 type Project struct {
-	Name string
-	Dir  string
+	Name   string
+	Dir    string
+	Config *config.ProjectConfig
 }
 
 // Server is the dashboard HTTP server.
@@ -45,7 +46,7 @@ func New(dirs []string) (*Server, error) {
 		if err != nil {
 			return nil, fmt.Errorf("dashboard: %s: %w", d, err)
 		}
-		projects = append(projects, Project{Name: cfg.Name, Dir: abs})
+		projects = append(projects, Project{Name: cfg.Name, Dir: abs, Config: cfg})
 	}
 
 	s := &Server{
@@ -60,8 +61,11 @@ func New(dirs []string) (*Server, error) {
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /", s.handleIndex)
 	s.mux.HandleFunc("GET /rows", s.handleRows)
+	s.mux.HandleFunc("GET /projects/{name}/status", s.handleStatus)
+	s.mux.HandleFunc("GET /projects/{name}/detail", s.handleDetail)
 	s.mux.HandleFunc("POST /projects/{name}/start", s.handleStart)
 	s.mux.HandleFunc("POST /projects/{name}/stop", s.handleStop)
+	s.mux.HandleFunc("POST /projects/{name}/flag/{flag}", s.handleRunFlag)
 }
 
 // Serve starts the HTTP server on the given port and blocks until ctx is cancelled.
