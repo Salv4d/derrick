@@ -42,12 +42,15 @@ The core abstraction is a Go interface every backend implements:
 type Provider interface {
     Name() string
     IsAvailable() error
+    Provision(cfg *config.ProjectConfig) error
     Start(cfg *config.ProjectConfig, flags Flags) error
     Stop(cfg *config.ProjectConfig) error
     Shell(cfg *config.ProjectConfig, args []string) error
     Status(cfg *config.ProjectConfig) (EnvironmentStatus, error)
 }
 ```
+
+`Provision` materializes the environment (writes `.derrick/flake.nix`, generates the compose override, ensures external networks exist) without booting services. `Start` only boots long-running services. This split is what lets setup-style hooks (`npm install`, `go mod download`) run against a resolved toolchain before any container starts.
 
 `ResolveProvider` reads `cfg.ActiveProvider()` and returns the right backend: `docker`, `nix`, or `hybrid`. The CLI layer never branches on "is this Docker or Nix" — it calls `provider.Start(...)` and the backend handles the rest. Adding a new backend (DevContainers, Podman, etc.) requires zero changes to the CLI layer.
 
@@ -146,11 +149,16 @@ Unknown errors fall through as plain strings. No error is ever silently swallowe
 
 When `provider: docker`, Derrick:
 1. Generates a `.derrick/docker-compose.override.yml` that labels every service with `com.derrick.managed=true` and injects `host.docker.internal:host-gateway` so containers can reach host-native processes.
-2. Runs `docker compose -f docker-compose.yml -f .derrick/docker-compose.override.yml up -d`.
+2. Runs `docker compose -p <name> -f docker-compose.yml -f .derrick/docker-compose.override.yml up -d`. `-p <name>` makes the `name:` field in `derrick.yaml` the authoritative compose project name, regardless of the working directory basename.
 
-Each project gets its own compose-managed network (the one compose creates per-project by default). Cross-project container-to-container DNS is intentionally **not** provided — if two projects need to talk, they connect via the host (`host.docker.internal`) or the user declares an explicit external network. The earlier global `derrick-net` was removed in v0.1.0 to enforce project isolation.
+Each project gets its own compose-managed network by default. Cross-project DNS is **opt-in**, via two mechanisms:
 
-The `com.derrick.managed=true` label is what makes `derrick clean` safe: prune operations filter by that label and never touch containers, networks, or volumes derrick didn't create.
+- **`docker.networks`** — list external networks every service in this project should join. Derrick creates any missing ones on start, marks them `com.derrick.managed=true`, and attaches every service. Two projects declaring the same network can resolve each other by service name.
+- **`requires` with `connect: true`** (the default) — when project A requires project B, Derrick creates a shared network `derrick-<A>`, boots B with `DERRICK_JOIN_NETWORK=derrick-<A>` in its environment, and both sides auto-wire onto it. No user configuration is needed on B.
+
+The earlier global `derrick-net` was removed in v0.1.0 because it coupled every project to every other project. The current model keeps projects isolated by default and makes connection an explicit, per-relationship choice.
+
+The `com.derrick.managed=true` label is what makes `derrick clean` safe: prune operations filter by that label and never touch containers, networks, or volumes derrick didn't create — including the shared networks described above.
 
 ## Hybrid Provider
 
@@ -184,7 +192,7 @@ Use hybrid when your services (databases, queues, observability) belong in conta
 Multiple derrick projects can run on the same host concurrently. The relevant design decisions:
 
 - **State file locking.** `internal/state/state.Load` wraps reads and writes in `syscall.Flock` on `.derrick/state.lock`. A second process that hits the same project directory blocks briefly rather than racing on `.derrick/state.json`. State is per-project (`.derrick/` lives next to `derrick.yaml`), so two different projects never contend for the same lock.
-- **Docker network isolation.** Each project's services sit on that project's compose network, not a shared `derrick-net`. Projects cannot accidentally resolve each other's service names — intentional cross-project communication goes through the host.
+- **Docker network isolation, with opt-in connection.** Each project's services sit on that project's compose network by default. Projects cannot accidentally resolve each other's service names. Intentional cross-project communication has three escape hatches: go through the host (`host.docker.internal`), declare a shared network under `docker.networks` in both projects, or use `requires` with `connect: true` so Derrick auto-wires the shared network for you.
 - **Port conflicts are the user's problem.** Derrick does not rewrite or auto-remap host port bindings. If two projects both publish `5432:5432`, the second `start` fails with the normal compose bind error — translated by the error layer into a readable hint, but not silently fixed. Use distinct host ports in `docker-compose.yml` or bind only to `127.0.0.1`.
 - **Shared `/nix/store`.** The Nix store is host-global by design, so two projects pinning the same nixpkgs revision share the same derivations on disk — no duplication. Two projects pinning **different** revisions coexist fine; the store is content-addressed.
 - **Cycle detection.** `DERRICK_START_CHAIN` tracks the active project chain across `derrick start` invocations so a post-start hook that shells out to `derrick start` on a sibling project cannot recurse forever. A detected cycle aborts with a readable error.

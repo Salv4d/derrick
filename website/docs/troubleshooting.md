@@ -171,13 +171,35 @@ When your project is `provider: hybrid`, `shell` routes to the **nix** leg (that
 
 ### Containers from project A can't resolve project B's service names
 
-That's the design. Projects have isolated compose networks as of v0.1.0. Cross-project communication goes through the host:
+By default, projects are isolated — each gets its own compose network. You have three ways to let them talk:
+
+**1. Through the host (no config required).** Every derrick-managed container gets `host.docker.internal:host-gateway` injected, so A can reach B's published ports:
 
 ```
 http://host.docker.internal:<port>
 ```
 
-Every derrick-managed container gets `host.docker.internal:host-gateway` injected automatically.
+**2. Declare a shared external network in both projects.** Both declare the same name under `docker.networks`; Derrick creates it on first start (labelled `com.derrick.managed=true`) and attaches every service:
+
+```yaml
+# In both projects' derrick.yaml
+docker:
+  networks:
+    - shared-infra
+```
+
+Now A's services can reach B's by service name, and vice-versa.
+
+**3. Use `requires` with `connect: true`.** When A declares B as a requirement, Derrick boots B first and auto-wires a shared network `derrick-A` between them — no config needed on B:
+
+```yaml
+# Project A only
+requires:
+  - name: project-b
+    connect: true   # default — can be omitted
+```
+
+Set `connect: false` when B only needs to be booted (e.g. a CLI helper reachable via the host).
 
 ### `derrick clean` in one project removed another project's containers
 

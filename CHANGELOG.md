@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `docker.networks` field: list external Docker networks every service in the project joins. Derrick creates any missing ones on start (labelled `com.derrick.managed=true`) so `derrick clean` still prunes them safely. Opt-in escape hatch from per-project network isolation.
+- `requires` entries now accept a struct form with a `connect` option (plain string form shorthand = `connect: true`). When `connect: true`, Derrick creates a shared network `derrick-<parent>` and auto-wires both sides via `DERRICK_JOIN_NETWORK` in the dependency subprocess — no config required in the dependency.
+- Five new recipe docs: Sentry, Keycloak, Plane, n8n, Meilisearch.
+- `TestRecipes_Parse` — every full `derrick.yaml` block embedded in `website/docs/use_cases/*.md` is parsed against the current schema on every CI run, so doc changes that drift from the code fail fast. 12 recipe blocks guarded.
+- `config.ParseConfigBytes` so yaml can be validated without a filesystem round-trip (used by the recipe lint).
+
+### Fixed
+- `docker compose` was invoked without `-p cfg.Name`, so containers inherited their project name from the cwd basename — `derrick stop` and `derrick status` then targeted the wrong project whenever the folder name didn't match the `name:` in `derrick.yaml`. Now `-p cfg.Name` is passed on up / down / exec / ps. Caught by the nightly integration test.
+- Existing recipes (ghost, grafana, plausible, supabase, appwrite) rewritten to match the current `derrick.yaml` schema. The previous versions used a fictional `dependencies:` block with `nix_packages:` / `docker_compose:` fields that never existed in the parser.
+
 ## [0.4.1] — 2026-04-20
 
 ### Fixed

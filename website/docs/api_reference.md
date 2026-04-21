@@ -56,7 +56,7 @@ This guide covers the complete Derrick CLI surface and every field in `derrick.y
 | `name` | `string` | **Yes** | Project name. Must be lowercase. |
 | `version` | `string` | **Yes** | Project version string. |
 | `provider` | `string` | No | Isolation backend: `docker`, `nix`, `hybrid`, or `auto` (default). `auto` picks Docker when a compose file is present, otherwise Nix. `hybrid` composes both: containers for services, nix for the language toolchain. |
-| `requires` | `[]string` | No | Sibling project aliases that must be running. Derrick clones and starts them automatically. |
+| `requires` | `[]string` or `[]object` | No | Sibling projects that must be running first. See the [`requires` block](#requires-block) below. |
 
 ```yaml
 name: "my-api"
@@ -75,12 +75,15 @@ Used when `provider` is `docker` or `auto`.
 | `docker.compose` | `string` | Path to the Docker Compose file. |
 | `docker.profiles` | `[]string` | Compose profiles to activate. |
 | `docker.shell` | `string` | Service to exec into for `derrick shell`. Defaults to the first service in the compose file. |
+| `docker.networks` | `[]string` | External Docker networks every service in this project joins. Derrick creates any missing networks on first start (labelled `com.derrick.managed=true`) and injects them into the generated override. Use this to opt into cross-project container DNS without giving up per-project isolation by default. |
 
 ```yaml
 docker:
   compose: ./docker-compose.yml
   profiles: [dev, worker]
   shell: app
+  networks:
+    - shared-infra   # also declared by a sibling project → they can resolve each other by service name
 ```
 
 ---
@@ -243,6 +246,33 @@ validations:
   - name: "Go compiler"
     command: "go version"
 ```
+
+---
+
+### `requires` block
+
+Declare sibling projects that must be running before this one. Derrick resolves each name via the Hub (`~/.derrick/config.yaml`), clones if needed, and runs `derrick start` in the dependency's directory before continuing with the current project.
+
+Each entry can be a plain string (shorthand for `{name: <x>, connect: true}`) or a full object.
+
+| Field | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `requires[].name` | `string` | — | Sibling directory name, matching the Hub alias. |
+| `requires[].connect` | `bool` | `true` | When `true`, Derrick creates a shared network `derrick-<this-project>` and attaches both this project and the dependency to it, so containers can resolve each other by service name. Set `false` when the dependency only needs to be booted (e.g. a standalone CLI service reachable over `host.docker.internal`). |
+
+```yaml
+# Plain string — auto-connected.
+requires:
+  - auth-service
+
+# Full form — mix connected and isolated dependencies.
+requires:
+  - name: auth-service        # shares a docker network with this project
+  - name: meilisearch-dev
+    connect: false            # just needs to be booted; reached via host:7700
+```
+
+Cycles are rejected at runtime: if `A` requires `B` and `B` requires `A`, `derrick start` aborts with a readable error instead of recursing. The active chain is tracked in the `DERRICK_START_CHAIN` env var across subprocesses.
 
 ---
 
