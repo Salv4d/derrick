@@ -62,7 +62,7 @@ func (d *DockerProvider) Start(cfg *config.ProjectConfig, flags Flags) error {
 
 	overridePath := filepath.Join(".derrick", "docker-compose.override.yml")
 
-	args := []string{"compose", "-f", cfg.Docker.Compose, "-f", overridePath}
+	args := []string{"compose", "-p", cfg.Name, "-f", cfg.Docker.Compose, "-f", overridePath}
 	for _, p := range cfg.Docker.Profiles {
 		args = append(args, "--profile", p)
 	}
@@ -82,7 +82,7 @@ func (d *DockerProvider) Stop(cfg *config.ProjectConfig) error {
 		return nil
 	}
 
-	args := []string{"compose", "-f", cfg.Docker.Compose}
+	args := []string{"compose", "-p", cfg.Name, "-f", cfg.Docker.Compose}
 	for _, p := range cfg.Docker.Profiles {
 		args = append(args, "--profile", p)
 	}
@@ -111,7 +111,7 @@ func (d *DockerProvider) Shell(cfg *config.ProjectConfig, cmdArgs []string) erro
 		}
 	}
 
-	args := []string{"compose", "-f", cfg.Docker.Compose, "exec"}
+	args := []string{"compose", "-p", cfg.Name, "-f", cfg.Docker.Compose, "exec"}
 	for _, p := range cfg.Docker.Profiles {
 		args = append(args, "--profile", p)
 	}
@@ -132,7 +132,7 @@ func (d *DockerProvider) Status(cfg *config.ProjectConfig) (EnvironmentStatus, e
 		return EnvironmentStatus{}, nil
 	}
 
-	args := []string{"compose", "-f", cfg.Docker.Compose, "ps", "--services", "--filter", "status=running"}
+	args := []string{"compose", "-p", cfg.Name, "-f", cfg.Docker.Compose, "ps", "--services", "--filter", "status=running"}
 	cmd := exec.Command("docker", args...)
 
 	out, err := cmd.Output()
