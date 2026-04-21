@@ -20,6 +20,11 @@ import (
 // process environment, so cycles abort instead of fork-bombing.
 const startChainEnv = "DERRICK_START_CHAIN"
 
+// derrickJoinNetworkEnv is injected by a parent project into a required
+// dependency's environment so the dependency joins the shared Docker network
+// the parent created for cross-project container DNS.
+const derrickJoinNetworkEnv = "DERRICK_JOIN_NETWORK"
+
 var (
 	startReset       bool
 	startCustomFlags []string
@@ -110,20 +115,42 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 		// ── Dependency resolution ──────────────────────────────────────────────
 		if len(cfg.Requires) > 0 {
 			ui.Section("Dependency Resolution")
+
+			depNames := make([]string, len(cfg.Requires))
+			for i, r := range cfg.Requires {
+				depNames[i] = r.Name
+			}
+
 			resolver, err := engine.NewDependencyResolver()
 			if err != nil {
 				ui.Warningf("Hub unavailable: %v", err)
 			} else {
-				if err := resolver.ResolveAndClone(cwd, cfg.Requires); err != nil {
+				if err := resolver.ResolveAndClone(cwd, depNames); err != nil {
 					ui.FailFast(err)
 				}
+			}
+
+			// When any requirement has connect:true, create a shared network
+			// named after this project and wire both sides into it.
+			sharedNetwork := ""
+			for _, r := range cfg.Requires {
+				if r.Connect {
+					sharedNetwork = "derrick-" + cfg.Name
+					break
+				}
+			}
+			if sharedNetwork != "" {
+				if err := engine.EnsureNetworks([]string{sharedNetwork}); err != nil {
+					ui.FailFast(err)
+				}
+				cfg.Docker.Networks = appendUnique(cfg.Docker.Networks, sharedNetwork)
 			}
 
 			parentDir := filepath.Dir(cwd)
 			childChain := appendStartChain(os.Getenv(startChainEnv), cfg.Name)
 			for _, dep := range cfg.Requires {
-				depPath := filepath.Join(parentDir, dep)
-				ui.Infof("Booting dependency: %s", dep)
+				depPath := filepath.Join(parentDir, dep.Name)
+				ui.Infof("Booting dependency: %s", dep.Name)
 				cmdArgs := []string{"start"}
 				if profileName != "" {
 					cmdArgs = append(cmdArgs, "--profile", profileName)
@@ -133,11 +160,20 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 				depCmd.Stdout = os.Stdout
 				depCmd.Stderr = os.Stderr
 				depCmd.Stdin = os.Stdin
-				depCmd.Env = append(os.Environ(), startChainEnv+"="+childChain)
+				env := append(os.Environ(), startChainEnv+"="+childChain)
+				if dep.Connect && sharedNetwork != "" {
+					env = append(env, derrickJoinNetworkEnv+"="+sharedNetwork)
+				}
+				depCmd.Env = env
 				if err := depCmd.Run(); err != nil {
-					ui.FailFast(fmt.Errorf("dependency '%s' failed to start: %w", dep, err))
+					ui.FailFast(fmt.Errorf("dependency '%s' failed to start: %w", dep.Name, err))
 				}
 			}
+		}
+
+		// Honour DERRICK_JOIN_NETWORK injected by a requiring parent project.
+		if joinNet := os.Getenv(derrickJoinNetworkEnv); joinNet != "" {
+			cfg.Docker.Networks = appendUnique(cfg.Docker.Networks, joinNet)
 		}
 
 		// ── Provider selection ─────────────────────────────────────────────────
@@ -369,6 +405,16 @@ func appendStartChain(raw, name string) string {
 		return name
 	}
 	return raw + "," + name
+}
+
+// appendUnique appends s to slice only if it is not already present.
+func appendUnique(slice []string, s string) []string {
+	for _, v := range slice {
+		if v == s {
+			return slice
+		}
+	}
+	return append(slice, s)
 }
 
 func init() {

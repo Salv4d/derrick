@@ -63,6 +63,33 @@ type FlagDef struct {
 	Description string `yaml:"description"`
 }
 
+// Requirement declares a project that must be started before this one.
+// Plain-string form ("project-b") is shorthand for {name: project-b, connect: true}.
+type Requirement struct {
+	// Name is the project directory name (matches the Hub alias or sibling dir).
+	Name string `yaml:"name"`
+	// Connect controls whether Derrick creates a shared Docker network so the
+	// two projects' services can reach each other by container name. Default true.
+	Connect bool `yaml:"connect"`
+}
+
+// UnmarshalYAML lets a Requirement be written as a plain string ("my-service")
+// or a full struct ({ name: my-service, connect: false }).
+func (r *Requirement) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		r.Name = value.Value
+		r.Connect = true
+		return nil
+	}
+	type alias Requirement
+	tmp := alias{Connect: true}
+	if err := value.Decode(&tmp); err != nil {
+		return err
+	}
+	*r = Requirement(tmp)
+	return nil
+}
+
 // Hook is a lifecycle command with an optional execution condition.
 //
 // The When field controls when the hook fires:
@@ -176,7 +203,7 @@ type ProjectConfig struct {
 
 	Hooks    LifecycleHooks     `yaml:"hooks,omitempty"`
 	Flags    map[string]FlagDef `yaml:"flags,omitempty"`
-	Requires []string           `yaml:"requires,omitempty"`
+	Requires []Requirement      `yaml:"requires,omitempty"`
 	Env      map[string]EnvVar  `yaml:"env,omitempty"`
 
 	// Validation checks run during `derrick start` after the environment boots.
