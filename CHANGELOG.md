@@ -5,18 +5,27 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] — 2026-04-21
 
 ### Added
 - `docker.networks` field: list external Docker networks every service in the project joins. Derrick creates any missing ones on start (labelled `com.derrick.managed=true`) so `derrick clean` still prunes them safely. Opt-in escape hatch from per-project network isolation.
 - `requires` entries now accept a struct form with a `connect` option (plain string form shorthand = `connect: true`). When `connect: true`, Derrick creates a shared network `derrick-<parent>` and auto-wires both sides via `DERRICK_JOIN_NETWORK` in the dependency subprocess — no config required in the dependency.
+- Recursive parallel booting: `derrick start` now boots all project dependencies in parallel using `errgroup`, significantly reducing startup time for large project trees.
+- `derrick run` now supports inline command execution via the `--` separator (e.g. `derrick run nodejs -- npm test`).
+- Improved `derrick init` wizard: now explicitly asks for the isolation backend (Hybrid, Docker Only, or Nix Only) when both Compose and a language toolchain are detected.
+- Expanded `derrick doctor` audit: now verifies Docker daemon connectivity, Docker Compose file syntax, existence of environment base files, and presence of all required projects.
 - Five new recipe docs: Sentry, Keycloak, Plane, n8n, Meilisearch.
-- `TestRecipes_Parse` — every full `derrick.yaml` block embedded in `website/docs/use_cases/*.md` is parsed against the current schema on every CI run, so doc changes that drift from the code fail fast. 12 recipe blocks guarded.
-- `config.ParseConfigBytes` so yaml can be validated without a filesystem round-trip (used by the recipe lint).
+- `TestRecipes_Parse` — every full `derrick.yaml` block embedded in `website/docs/use_cases/*.md` is parsed against the current schema on every CI run.
+
+### Changed
+- Nix evaluation optimization: `EnsureNixEnvironment` now skips writing `flake.nix` if the content is unchanged, and `BootEnvironment` skips the verification phase if a `flake.lock` exists and the flake is up-to-date.
+- Strict `derrick.yaml` validation: the project contract is now strictly validated on load using `validator/v10` tags, catching invalid provider names or project aliases immediately.
 
 ### Fixed
-- `docker compose` was invoked without `-p cfg.Name`, so containers inherited their project name from the cwd basename — `derrick stop` and `derrick status` then targeted the wrong project whenever the folder name didn't match the `name:` in `derrick.yaml`. Now `-p cfg.Name` is passed on up / down / exec / ps. Caught by the nightly integration test.
-- Existing recipes (ghost, grafana, plausible, supabase, appwrite) rewritten to match the current `derrick.yaml` schema. The previous versions used a fictional `dependencies:` block with `nix_packages:` / `docker_compose:` fields that never existed in the parser.
+- JSON Error Feedback: Commands using `--json` now return a properly formatted JSON error object on failure instead of decorative text.
+- `derrick run` reliability: fixed `os.Chdir` timing so that cleanup hooks still fire correctly on early failures.
+- `docker compose` was invoked without `-p cfg.Name`, so containers inherited their project name from the cwd basename. Now `-p cfg.Name` is passed on all compose operations.
+- Existing recipes (ghost, grafana, plausible, supabase, appwrite) rewritten to match the current `derrick.yaml` schema.
 
 ## [0.4.1] — 2026-04-20
 
@@ -116,7 +125,10 @@ First public release.
 - `derrick shell` no longer hardcodes a service name; `docker.shell` is now configurable.
 - Hook flags are restored on stop so `first-setup` stays honest across restarts.
 
-[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Salv4d/derrick/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/Salv4d/derrick/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/Salv4d/derrick/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Salv4d/derrick/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Salv4d/derrick/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Salv4d/derrick/compare/v0.1.0...v0.1.1
