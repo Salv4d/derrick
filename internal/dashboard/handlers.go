@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/Salv4d/derrick/internal/config"
+	"github.com/Salv4d/derrick/internal/discovery"
 	"github.com/Salv4d/derrick/internal/state"
+	"gopkg.in/yaml.v3"
 )
 
 // projectView is the template-facing representation of a project.
@@ -27,6 +29,7 @@ type projectView struct {
 	Error           string
 	StreamingAction string // "start", "stop", or empty
 	HasLogs         bool
+	Networks        []string
 }
 
 // containerInfo holds display data for one running container.
@@ -77,6 +80,8 @@ func toView(p Project) projectView {
 		v.HasLogs = true
 	}
 
+	v.Networks = p.Config.Docker.Networks
+
 	return v
 }
 
@@ -116,6 +121,177 @@ func (s *Server) handleStop(w http.ResponseWriter, r *http.Request) {
 	if err := renderRow(w, v); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
+	p := s.findProject(r.PathValue("name"))
+	if p == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	data, err := os.ReadFile(filepath.Join(p.Dir, "derrick.yaml"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintf(w, `
+		<form hx-post="/projects/%s/settings" hx-target="this" hx-swap="outerHTML" class="settings-form">
+			<div class="detail-section">
+				<h4 class="detail-heading">Edit derrick.yaml</h4>
+				<textarea name="config" class="config-editor" spellcheck="false">%s</textarea>
+				<div class="action-btns" style="margin-top: 12px;">
+					<button type="submit" class="btn btn-start">Save Changes</button>
+					<span class="htmx-indicator">Saving...</span>
+				</div>
+			</div>
+		</form>
+	`, p.Name, string(data))
+}
+
+func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
+	p := s.findProject(r.PathValue("name"))
+	if p == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	newConfig := r.FormValue("config")
+	// Basic validation: try to parse it
+	_, err := config.ParseConfigBytes([]byte(newConfig), "")
+	if err != nil {
+		fmt.Fprintf(w, `
+			<div class="error-msg" style="margin-bottom: 12px;">
+				<svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
+				<pre>Validation Failed: %v</pre>
+			</div>
+		`, err)
+		// Re-render the form with error
+		fmt.Fprintf(w, `
+			<form hx-post="/projects/%s/settings" hx-target="this" hx-swap="outerHTML" class="settings-form">
+				<div class="detail-section">
+					<h4 class="detail-heading">Edit derrick.yaml</h4>
+					<textarea name="config" class="config-editor" spellcheck="false">%s</textarea>
+					<div class="action-btns" style="margin-top: 12px;">
+						<button type="submit" class="btn btn-start">Save Changes</button>
+					</div>
+				</div>
+			</form>
+		`, p.Name, newConfig)
+		return
+	}
+
+	err = os.WriteFile(filepath.Join(p.Dir, "derrick.yaml"), []byte(newConfig), 0644)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	parsed, _ := config.ParseConfigBytes([]byte(newConfig), "")
+	p.Config = parsed
+
+	fmt.Fprintf(w, `
+		<div class="detail-section">
+			<div style="background: var(--green-dim); color: var(--green); padding: 8px 12px; border-radius: var(--radius); margin-bottom: 12px; font-size: 13px;">
+				✓ Settings saved successfully.
+			</div>
+			<button hx-get="/projects/%s/settings" hx-target="closest .detail-section" hx-swap="outerHTML" class="btn btn-flag">Back to Editor</button>
+		</div>
+	`, p.Name)
+}
+
+func (s *Server) handleInitForm(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, `
+		<h2 style="margin-bottom: 24px;">Initialize New Project</h2>
+		<form hx-post="/init" hx-target="#init-modal-content">
+			<div class="detail-section">
+				<p class="detail-heading">Project Directory</p>
+				<input type="text" name="dir" placeholder="/path/to/project" class="config-editor" style="height: 40px; margin-bottom: 20px;">
+				<button type="submit" class="btn btn-start" style="width: 100%%;">Run Discovery</button>
+			</div>
+		</form>
+	`)
+}
+
+func (s *Server) handleInit(w http.ResponseWriter, r *http.Request) {
+	dir := r.FormValue("dir")
+	if dir == "" {
+		http.Error(w, "directory is required", http.StatusBadRequest)
+		return
+	}
+
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	meta := discovery.DiscoverProject(absDir)
+	cfg := config.ProjectConfig{
+		Schema:  config.CurrentSchema,
+		Name:    meta.Name,
+		Version: meta.Version,
+	}
+	for _, f := range []string{"docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"} {
+		if _, err := os.Stat(filepath.Join(absDir, f)); err == nil {
+			cfg.Docker.Compose = f
+			break
+		}
+	}
+	pkgs := discovery.SuggestedPackages(meta.Language)
+	for _, p := range pkgs {
+		cfg.Nix.Packages = append(cfg.Nix.Packages, config.NixPackage{Name: p})
+	}
+	yamlData, _ := yaml.Marshal(&cfg)
+
+	fmt.Fprintf(w, `
+		<h2 style="margin-bottom: 24px;">Review Configuration</h2>
+		<p class="subtitle" style="margin-bottom: 20px;">We've analyzed %s and generated a draft contract.</p>
+		<form hx-post="/projects/save-new" hx-target="#init-modal-content">
+			<input type="hidden" name="dir" value="%s">
+			<div class="detail-section">
+				<textarea name="config" class="config-editor" style="height: 300px;">%s</textarea>
+				<div class="action-btns" style="margin-top: 24px; width: 100%%; justify-content: flex-end;">
+					<button type="button" class="btn btn-flag" onclick="document.getElementById('init-modal').style.display='none'">Cancel</button>
+					<button type="submit" class="btn btn-start">Create derrick.yaml</button>
+				</div>
+			</div>
+		</form>
+	`, absDir, absDir, string(yamlData))
+}
+
+func (s *Server) handleSaveNew(w http.ResponseWriter, r *http.Request) {
+	dir := r.FormValue("dir")
+	newConfig := r.FormValue("config")
+	parsed, err := config.ParseConfigBytes([]byte(newConfig), "")
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Validation Failed: %v", err), http.StatusBadRequest)
+		return
+	}
+	err = os.WriteFile(filepath.Join(dir, "derrick.yaml"), []byte(newConfig), 0644)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	s.mu.Lock()
+	s.projects = append(s.projects, Project{
+		Name:   parsed.Name,
+		Dir:    dir,
+		Config: parsed,
+	})
+	s.mu.Unlock()
+
+	fmt.Fprintf(w, `
+		<div style="text-align: center; padding: 20px;">
+			<div style="background: var(--green-dim); color: var(--green); padding: 16px; border-radius: var(--radius); margin-bottom: 24px;">
+				<h3 style="margin-bottom: 8px;">✓ Project Initialized!</h3>
+				<p>Successfully created derrick.yaml in %s</p>
+			</div>
+			<button class="btn btn-start" onclick="location.reload()">Refresh Dashboard</button>
+		</div>
+	`, dir)
 }
 
 func (s *Server) handleRows(w http.ResponseWriter, r *http.Request) {
@@ -315,6 +491,8 @@ func (s *Server) streamCommand(w http.ResponseWriter, r *http.Request, p *Projec
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 func (s *Server) buildViews() []projectView {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	views := make([]projectView, len(s.projects))
 	for i, p := range s.projects {
 		views[i] = toView(p)

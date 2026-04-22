@@ -1,83 +1,96 @@
 {{define "detail"}}
 <div class="detail-panel">
-  {{if .HasDocker}}
-  <div class="detail-section">
-    <h4 class="detail-heading">Containers</h4>
-    {{if .Containers}}
-    <table class="detail-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Image</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Containers}}
-        <tr>
-          <td class="container-name">{{.Name}}</td>
-          <td class="container-image">{{.Image}}</td>
-          <td class="container-status">
-            {{if .IsUp}}<span class="dot dot-green"></span>{{else}}<span class="dot dot-red"></span>{{end}}
-            {{.Status}}
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
-    {{else}}
-    <p class="detail-empty">No containers running.</p>
-    {{end}}
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('{{.ProjectName}}', 'info', this)">Info</div>
+    <div class="tab" onclick="switchTab('{{.ProjectName}}', 'settings', this)">Settings</div>
   </div>
-  {{end}}
 
-  {{if .Flags}}
-  <div class="detail-section">
-    <h4 class="detail-heading">Flags</h4>
-    <div class="flag-list">
-      {{range $name, $def := .Flags}}
-      <div class="flag-item">
-        <div class="flag-info">
-          <span class="flag-name">--flag {{$name}}</span>
-          {{if $def.Description}}<span class="flag-desc">{{$def.Description}}</span>{{end}}
-        </div>
-        <button class="btn btn-flag"
-                hx-post="/projects/{{$.ProjectName}}/flag/{{$name}}"
-                hx-target="#row-{{$.ProjectName}}"
-                hx-swap="outerHTML"
-                hx-indicator="#spinner-{{$.ProjectName}}">
-          Run
-        </button>
-      </div>
+  <div id="tab-info-{{.ProjectName}}">
+    {{if .HasDocker}}
+    <div class="detail-section">
+      <h4 class="detail-heading">Containers</h4>
+      {{if .Containers}}
+      <table class="detail-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Image</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Containers}}
+          <tr>
+            <td class="container-name">{{.Name}}</td>
+            <td class="container-image">{{.Image}}</td>
+            <td class="container-status">
+              {{if .IsUp}}<span class="dot dot-green"></span>{{else}}<span class="dot dot-red"></span>{{end}}
+              {{.Status}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+      {{else}}
+      <p class="detail-empty">No containers running.</p>
       {{end}}
     </div>
-  </div>
-  {{end}}
+    {{end}}
 
-  {{if .LastLogs}}
-  <div class="detail-section">
-    <h4 class="detail-heading">Last Run Logs</h4>
-    <div class="console">
-      <div class="console-logs" style="max-height: 200px;">{{.LastLogs}}</div>
+    {{if .Flags}}
+    <div class="detail-section">
+      <h4 class="detail-heading">Flags</h4>
+      <div class="flag-list">
+        {{range $name, $def := .Flags}}
+        <div class="flag-item">
+          <div class="flag-info">
+            <span class="flag-name">--flag {{$name}}</span>
+            {{if $def.Description}}<span class="flag-desc">{{$def.Description}}</span>{{end}}
+          </div>
+          <button class="btn btn-flag"
+                  hx-post="/projects/{{$.ProjectName}}/flag/{{$name}}"
+                  hx-target="#row-{{$.ProjectName}}"
+                  hx-swap="outerHTML"
+                  hx-indicator="#spinner-{{$.ProjectName}}">
+            Run
+          </button>
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+
+    {{if .LastLogs}}
+    <div class="detail-section">
+      <h4 class="detail-heading">Last Run Logs</h4>
+      <div class="console">
+        <div class="console-logs" style="max-height: 200px;">{{.LastLogs}}</div>
+      </div>
+    </div>
+    {{end}}
+
+    <div class="detail-section">
+      <h4 class="detail-heading">Persistence</h4>
+      <div class="action-btns">
+        <button class="btn btn-flag" 
+                hx-get="/projects/{{.ProjectName}}/logs"
+                hx-target="#logs-container-{{.ProjectName}}"
+                hx-swap="innerHTML">
+          Show Last Command Logs
+        </button>
+      </div>
+      <div id="logs-container-{{.ProjectName}}" style="margin-top: 10px;"></div>
+    </div>
+
+    {{if and (not .HasDocker) (not .Flags) (not .LastLogs)}}
+    <p class="detail-empty">No containers, flags, or recent logs for this project.</p>
+    {{end}}
+  </div>
+
+  <div id="tab-settings-{{.ProjectName}}" style="display: none;">
+    <div hx-get="/projects/{{.ProjectName}}/settings" hx-trigger="load">
+      <div class="detail-empty">Loading settings...</div>
     </div>
   </div>
-  {{end}}
-
-  <div class="detail-section">
-    <h4 class="detail-heading">Persistence</h4>
-    <div class="action-btns">
-      <button class="btn btn-flag" 
-              hx-get="/projects/{{.ProjectName}}/logs"
-              hx-target="#logs-container-{{.ProjectName}}"
-              hx-swap="innerHTML">
-        Show Last Command Logs
-      </button>
-    </div>
-    <div id="logs-container-{{.ProjectName}}" style="margin-top: 10px;"></div>
-  </div>
-
-  {{if and (not .HasDocker) (not .Flags) (not .LastLogs)}}
-  <p class="detail-empty">No containers, flags, or recent logs for this project.</p>
-  {{end}}
 </div>
 {{end}}

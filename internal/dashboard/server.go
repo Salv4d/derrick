@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/Salv4d/derrick/internal/config"
 )
@@ -21,6 +22,7 @@ type Project struct {
 
 // Server is the dashboard HTTP server.
 type Server struct {
+	mu       sync.Mutex
 	projects []Project
 	binary   string
 	mux      *http.ServeMux
@@ -66,6 +68,11 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /projects/{name}/status", s.handleStatus)
 	s.mux.HandleFunc("GET /projects/{name}/detail", s.handleDetail)
 	s.mux.HandleFunc("GET /projects/{name}/logs", s.handleLogs)
+	s.mux.HandleFunc("GET /projects/{name}/settings", s.handleSettings)
+	s.mux.HandleFunc("POST /projects/{name}/settings", s.handleSaveSettings)
+	s.mux.HandleFunc("GET /init-form", s.handleInitForm)
+	s.mux.HandleFunc("POST /init", s.handleInit)
+	s.mux.HandleFunc("POST /projects/save-new", s.handleSaveNew)
 	s.mux.HandleFunc("GET /projects/{name}/stream/start", s.handleStreamStart)
 	s.mux.HandleFunc("GET /projects/{name}/stream/stop", s.handleStreamStop)
 	s.mux.HandleFunc("GET /projects/{name}/stream/flag/{flag}", s.handleStreamFlag)
@@ -101,6 +108,8 @@ func (s *Server) Serve(ctx context.Context, port int) error {
 
 // findProject returns the Project with the given name, or nil.
 func (s *Server) findProject(name string) *Project {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	for i := range s.projects {
 		if s.projects[i].Name == name {
 			return &s.projects[i]
