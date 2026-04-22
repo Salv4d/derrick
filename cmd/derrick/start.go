@@ -96,19 +96,19 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 		if err != nil {
 			ui.FailFast(err)
 		}
-		ui.Successf("Project: %s  v%s  [%s]", cfg.Name, cfg.Version, cfg.ActiveProvider())
-
-		// ── Cycle detection (requires:) ────────────────────────────────────────
-		chain := parseStartChain(os.Getenv(startChainEnv))
-		if chain[cfg.Name] {
-			ui.FailFast(fmt.Errorf("circular dependency detected: '%s' is already booting in this chain [%s]", cfg.Name, os.Getenv(startChainEnv)))
-		}
 
 		// ── Custom flags ───────────────────────────────────────────────────────
 		activeFlags := resolveCustomFlags(cfg, cmd, startCustomFlags)
 		if startReset {
 			activeFlags["reset"] = true
+			ui.Warning("Reset flag active: environment will be rebuilt from scratch")
 		}
+
+		flagList := ""
+		if len(startCustomFlags) > 0 {
+			flagList = fmt.Sprintf(" (flags: %s)", strings.Join(startCustomFlags, ", "))
+		}
+		ui.Successf("Project: %s  v%s  [%s]%s", cfg.Name, cfg.Version, cfg.ActiveProvider(), flagList)
 
 		flags := engine.Flags{Active: activeFlags, Reset: startReset}
 
