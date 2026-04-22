@@ -72,9 +72,21 @@ func nixSystem() string {
 func BootEnvironment(configPath string, requestPackages []config.NixPackage, registryURL string, outDir string) error {
 	ui.Section("Derrick Sandbox Initialization")
 
-	err := EnsureNixEnvironment(configPath, requestPackages, registryURL, outDir)
+	updated, err := EnsureNixEnvironment(configPath, requestPackages, registryURL, outDir)
 	if err != nil {
 		return err
+	}
+
+	// Optimization: skip validation if flake.nix is unchanged and flake.lock exists.
+	if !updated {
+		lockPath := filepath.Join(outDir, "flake.lock")
+		if outDir == "" {
+			lockPath = ".derrick/flake.lock"
+		}
+		if _, err := os.Stat(lockPath); err == nil {
+			ui.Success("Environment UP TO DATE. Skipping verification.")
+			return nil
+		}
 	}
 
 	_, err = ValidateAndResolve(configPath, requestPackages, registryURL, outDir)
@@ -87,9 +99,10 @@ func BootEnvironment(configPath string, requestPackages []config.NixPackage, reg
 }
 
 // EnsureNixEnvironment creates the flake.nix and ensures isolation.
-func EnsureNixEnvironment(configPath string, packages []config.NixPackage, customRegistry string, outDir string) error {
+// Returns true if flake.nix was updated.
+func EnsureNixEnvironment(configPath string, packages []config.NixPackage, customRegistry string, outDir string) (bool, error) {
 	if len(packages) == 0 {
-		return nil
+		return false, nil
 	}
 
 	ui.Task("Ensuring Nix environment isolation")
@@ -106,13 +119,13 @@ func EnsureNixEnvironment(configPath string, packages []config.NixPackage, custo
 	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		ui.Error("FAILED")
-		return fmt.Errorf("failed to create %s directory: %w", dir, err)
+		return false, fmt.Errorf("failed to create %s directory: %w", dir, err)
 	}
 
 	tmpl, err := template.New("flake").Parse(nixFlakeTemplate)
 	if err != nil {
 		ui.Error("FAILED")
-		return fmt.Errorf("failed to parse Nix template: %w", err)
+		return false, fmt.Errorf("failed to parse Nix template: %w", err)
 	}
 
 	data := NixTemplateData{
@@ -145,18 +158,27 @@ func EnsureNixEnvironment(configPath string, packages []config.NixPackage, custo
 	err = tmpl.Execute(&flakeContent, data)
 	if err != nil {
 		ui.Error("FAILED")
-		return fmt.Errorf("failed to execute Nix template: %w", err)
+		return false, fmt.Errorf("failed to execute Nix template: %w", err)
 	}
 
 	flakePath := filepath.Join(dir, "flake.nix")
+	
+	// Check if already exists and is identical
+	if existing, err := os.ReadFile(flakePath); err == nil {
+		if bytes.Equal(existing, flakeContent.Bytes()) {
+			ui.Success("UP TO DATE")
+			return false, nil
+		}
+	}
+
 	err = os.WriteFile(flakePath, flakeContent.Bytes(), 0o644)
 	if err != nil {
 		ui.Error("FAILED")
-		return fmt.Errorf("failed to write flake.nix: %w", err)
+		return false, fmt.Errorf("failed to write flake.nix: %w", err)
 	}
 
 	ui.Success("DONE")
-	return nil
+	return true, nil
 }
 
 // NixEnv returns the current environment with NIXPKGS_ALLOW_UNFREE=1 set,

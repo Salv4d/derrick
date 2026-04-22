@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Salv4d/derrick/internal/config"
@@ -36,8 +38,13 @@ services), tears down the provider, then runs after_stop hooks on the host.`,
 			activeFlags[f] = true
 		}
 
+		flagList := ""
+		if len(projectState.FlagsUsed) > 0 {
+			flagList = fmt.Sprintf(" (flags: %s)", strings.Join(projectState.FlagsUsed, ", "))
+		}
+
 		provider := engine.ResolveProvider(cfg)
-		ui.Infof("Stopping %s environment: %s", provider.Name(), cfg.Name)
+		ui.Infof("Stopping %s environment: %s%s", provider.Name(), cfg.Name, flagList)
 
 		useSandbox := cfg.ActiveProvider() == "nix" || cfg.ActiveProvider() == "hybrid"
 

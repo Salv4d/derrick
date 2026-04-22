@@ -180,15 +180,40 @@ var initCmd = &cobra.Command{
 			envBaseFile = ""
 		}
 
-		cfg := config.ProjectConfig{
-			Schema:  config.CurrentSchema,
-			Name:    projectName,
-			Version: projectVersion,
+		var provider string
+		if len(nixPackages) > 0 && useDockerCompose {
+			err = huh.NewSelect[string]().
+				Title("We detected both a language toolchain and Docker Compose. How do you want to run this?").
+				Options(
+					huh.NewOption("Hybrid (Standard) — Docker for services, Nix for toolchain", "hybrid"),
+					huh.NewOption("Docker Only — Run everything in Docker", "docker"),
+					huh.NewOption("Nix Only — Run everything locally via Nix", "nix"),
+				).
+				Value(&provider).
+				Run()
+			if err != nil {
+				ui.FailFastf("Wizard aborted: %v", err)
+			}
+		} else if len(nixPackages) > 0 {
+			provider = "nix"
+		} else if useDockerCompose {
+			provider = "docker"
+		} else {
+			provider = "nix"
 		}
 
-		cfg.Nix.Packages = nixPackages
+		cfg := config.ProjectConfig{
+			Schema:   config.CurrentSchema,
+			Name:     projectName,
+			Version:  projectVersion,
+			Provider: provider,
+		}
 
-		if useDockerCompose {
+		if provider == "nix" || provider == "hybrid" {
+			cfg.Nix.Packages = nixPackages
+		}
+
+		if (provider == "docker" || provider == "hybrid") && useDockerCompose {
 			cfg.Docker.Compose = dockerComposeFile
 		}
 

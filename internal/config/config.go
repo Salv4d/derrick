@@ -194,9 +194,9 @@ type ProjectConfig struct {
 	// "legacy, accept and upgrade in memory".
 	Schema int `yaml:"schema,omitempty"`
 
-	Name     string `yaml:"name" validate:"required,lowercase"`
+	Name     string `yaml:"name" validate:"required,lowercase,hostname_rfc1123"`
 	Version  string `yaml:"version" validate:"required"`
-	Provider string `yaml:"provider,omitempty"` // docker | nix | auto
+	Provider string `yaml:"provider,omitempty" validate:"omitempty,oneof=docker nix hybrid auto"`
 
 	Docker DockerConfig `yaml:"docker,omitempty"`
 	Nix    NixConfig    `yaml:"nix,omitempty"`
