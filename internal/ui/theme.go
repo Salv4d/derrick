@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -179,6 +180,11 @@ func SprintInfo(format string, args ...any) string {
 
 // FailFast prints a critical error and exits.
 func FailFast(err error) {
+	if Quiet {
+		out, _ := json.Marshal(map[string]string{"error": err.Error()})
+		fmt.Println(string(out))
+		os.Exit(1)
+	}
 	fmt.Printf("\n%s\n", styleError.Render("✖ CRITICAL ERROR"))
 	fmt.Println(styleError.Render(err.Error()))
 	os.Exit(1)
@@ -186,7 +192,13 @@ func FailFast(err error) {
 
 // FailFastf prints a formatted critical error and exits.
 func FailFastf(format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	if Quiet {
+		out, _ := json.Marshal(map[string]string{"error": msg})
+		fmt.Println(string(out))
+		os.Exit(1)
+	}
 	fmt.Printf("\n%s\n", styleError.Render("✖ CRITICAL ERROR"))
-	fmt.Println(styleError.Render(fmt.Sprintf(format, args...)))
+	fmt.Println(styleError.Render(msg))
 	os.Exit(1)
 }
