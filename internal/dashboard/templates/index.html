@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Derrick Dashboard</title>
   <script src="https://unpkg.com/htmx.org@2.0.2/dist/htmx.min.js"></script>
+  <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -225,6 +226,37 @@
 
     .detail-empty { color: var(--muted); font-size: 13px; font-style: italic; }
 
+    /* ── Console ─────────────────────────────────────────────────────────── */
+    .console {
+      margin-top: 12px;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: var(--mono);
+      font-size: 12px;
+      overflow: hidden;
+    }
+    .console-header {
+      background: var(--surface);
+      padding: 6px 12px;
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+    }
+    .console-logs {
+      padding: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      color: #d1d5db;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .log-line { margin-bottom: 2px; }
+
     /* ── Flag list ───────────────────────────────────────────────────────── */
     .flag-list { display: flex; flex-direction: column; gap: 6px; }
     .flag-item {
@@ -307,6 +339,14 @@
         });
       }
     }
+
+    // Auto-scroll console to bottom when new logs arrive.
+    document.body.addEventListener('htmx:sseMessage', function(e) {
+      const logs = e.target.closest('.console-logs');
+      if (logs) {
+        logs.scrollTop = logs.scrollHeight;
+      }
+    });
   </script>
 </body>
 </html>

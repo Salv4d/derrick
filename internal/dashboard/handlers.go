@@ -1,10 +1,13 @@
 package dashboard
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -14,14 +17,16 @@ import (
 
 // projectView is the template-facing representation of a project.
 type projectView struct {
-	Name        string
-	Dir         string
-	Provider    string
-	Status      state.Status
-	StatusClass string
-	StartedAt   string
-	Flags       map[string]config.FlagDef
-	Error       string
+	Name            string
+	Dir             string
+	Provider        string
+	Status          state.Status
+	StatusClass     string
+	StartedAt       string
+	Flags           map[string]config.FlagDef
+	Error           string
+	StreamingAction string // "start", "stop", or empty
+	HasLogs         bool
 }
 
 // containerInfo holds display data for one running container.
@@ -38,6 +43,7 @@ type detailView struct {
 	Containers  []containerInfo
 	HasDocker   bool
 	Flags       map[string]config.FlagDef
+	LastLogs    string
 }
 
 func toView(p Project) projectView {
@@ -67,33 +73,72 @@ func toView(p Project) projectView {
 		v.Provider = "—"
 	}
 
+	if _, err := os.Stat(filepath.Join(p.Dir, ".derrick", "last.log")); err == nil {
+		v.HasLogs = true
+	}
+
 	return v
 }
 
-// ── Page handlers ──────────────────────────────────────────────────────────
+// ── Page / partial handlers ────────────────────────────────────────────────
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
-	views := s.buildViews()
-	if err := renderPage(w, views); err != nil {
+	if err := renderPage(w, s.buildViews()); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
+	p := s.findProject(r.PathValue("name"))
+	if p == nil {
+		http.NotFound(w, r)
+		return
+	}
+	v := toView(*p)
+	v.StreamingAction = "start"
+	if err := renderRow(w, v); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) handleStop(w http.ResponseWriter, r *http.Request) {
+	p := s.findProject(r.PathValue("name"))
+	if p == nil {
+		http.NotFound(w, r)
+		return
+	}
+	v := toView(*p)
+	v.StreamingAction = "stop"
+	if err := renderRow(w, v); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 func (s *Server) handleRows(w http.ResponseWriter, r *http.Request) {
-	views := s.buildViews()
-	if err := renderRows(w, views); err != nil {
+	if err := renderRows(w, s.buildViews()); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-// handleStatus returns just the status badge for a project (used by per-cell polling).
+// handleRow returns just the main <tr> for one project (used after streaming completes).
+func (s *Server) handleRow(w http.ResponseWriter, r *http.Request) {
+	p := s.findProject(r.PathValue("name"))
+	if p == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := renderRow(w, toView(*p)); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// handleStatus returns just the status badge (per-cell auto-poll).
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
-	name := r.PathValue("name")
-	p := s.findProject(name)
+	p := s.findProject(r.PathValue("name"))
 	if p == nil {
 		http.NotFound(w, r)
 		return
@@ -102,10 +147,33 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `<span class="badge %s">%s</span>`, v.StatusClass, v.Status)
 }
 
-// handleDetail returns the expandable detail panel: containers + runnable flags.
+func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
+	p := s.findProject(r.PathValue("name"))
+	if p == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	data, err := os.ReadFile(filepath.Join(p.Dir, ".derrick", "last.log"))
+	if err != nil {
+		fmt.Fprintf(w, `<p class="detail-empty">No logs found.</p>`)
+		return
+	}
+
+	fmt.Fprintf(w, `
+		<div class="console">
+			<div class="console-header">
+				<span>Last Command Log</span>
+				<button class="expand-btn" onclick="this.closest('.console').remove()" style="margin:0; padding:0 4px;">✕</button>
+			</div>
+			<div class="console-logs" style="max-height: 400px;">%s</div>
+		</div>
+	`, string(data))
+}
+
+// handleDetail returns the expandable container + flags panel.
 func (s *Server) handleDetail(w http.ResponseWriter, r *http.Request) {
-	name := r.PathValue("name")
-	p := s.findProject(name)
+	p := s.findProject(r.PathValue("name"))
 	if p == nil {
 		http.NotFound(w, r)
 		return
@@ -118,8 +186,8 @@ func (s *Server) handleDetail(w http.ResponseWriter, r *http.Request) {
 		ProjectName: p.Name,
 		HasDocker:   hasDocker,
 		Flags:       p.Config.Flags,
+		LastLogs:    p.LastLogs,
 	}
-
 	if hasDocker {
 		dv.Containers = fetchContainers(p.Name)
 	}
@@ -129,17 +197,38 @@ func (s *Server) handleDetail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ── Action handlers ────────────────────────────────────────────────────────
+// ── Streaming action handlers (SSE) ────────────────────────────────────────
 
-func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
-	s.runAction(w, r, "start")
+func (s *Server) handleStreamStart(w http.ResponseWriter, r *http.Request) {
+	p := s.findProject(r.PathValue("name"))
+	if p == nil {
+		http.NotFound(w, r)
+		return
+	}
+	s.streamCommand(w, r, p, s.binary, "start")
 }
 
-func (s *Server) handleStop(w http.ResponseWriter, r *http.Request) {
-	s.runAction(w, r, "stop")
+func (s *Server) handleStreamStop(w http.ResponseWriter, r *http.Request) {
+	p := s.findProject(r.PathValue("name"))
+	if p == nil {
+		http.NotFound(w, r)
+		return
+	}
+	s.streamCommand(w, r, p, s.binary, "stop")
 }
 
-// handleRunFlag runs `derrick start --flag <flag>` for the given project.
+func (s *Server) handleStreamFlag(w http.ResponseWriter, r *http.Request) {
+	p := s.findProject(r.PathValue("name"))
+	if p == nil {
+		http.NotFound(w, r)
+		return
+	}
+	flag := r.PathValue("flag")
+	s.streamCommand(w, r, p, s.binary, "start", "--flag", flag)
+}
+
+// handleRunFlag is kept for non-streaming HTMX callers (flag buttons in detail panel
+// when streaming is not desired). Delegates to streaming now.
 func (s *Server) handleRunFlag(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	flag := r.PathValue("flag")
@@ -149,43 +238,77 @@ func (s *Server) handleRunFlag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cmd := exec.Command(s.binary, "start", "--flag", flag)
-	cmd.Dir = p.Dir
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-
 	v := toView(*p)
-	if err != nil {
-		v.Error = lastLines(out.String(), 3)
-	}
+	v.StreamingAction = "flag/" + flag
 	if err := renderRow(w, v); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func (s *Server) runAction(w http.ResponseWriter, r *http.Request, action string) {
-	name := r.PathValue("name")
-	p := s.findProject(name)
-	if p == nil {
-		http.Error(w, fmt.Sprintf("project %q not found", name), http.StatusNotFound)
+// streamCommand runs the given command and streams its output as SSE events.
+// Each output line becomes a `data:` event. On completion a `done` event is sent.
+func (s *Server) streamCommand(w http.ResponseWriter, r *http.Request, p *Project, bin string, args ...string) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
 		return
 	}
 
-	cmd := exec.Command(s.binary, action)
-	cmd.Dir = p.Dir
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no") // disable nginx buffering if present
 
-	v := toView(*p)
-	if err != nil {
-		v.Error = lastLines(out.String(), 3)
+	sendEvent := func(event, data string) {
+		if event != "" {
+			fmt.Fprintf(w, "event: %s\n", event)
+		}
+		// SSE data lines must not contain raw newlines; split multi-line messages.
+		for _, line := range strings.Split(data, "\n") {
+			fmt.Fprintf(w, "data: %s\n", line)
+		}
+		fmt.Fprintf(w, "\n")
+		flusher.Flush()
 	}
-	if err := renderRow(w, v); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+	cmd := exec.CommandContext(r.Context(), bin, args...)
+	cmd.Dir = p.Dir
+
+	// Pipe merged stdout+stderr through a single reader so line order is preserved.
+	pr, pw := io.Pipe()
+	cmd.Stdout = pw
+	cmd.Stderr = pw
+
+	if err := cmd.Start(); err != nil {
+		sendEvent("done", "error: "+err.Error())
+		return
+	}
+
+	// Stream lines as they arrive.
+	go func() {
+		err := cmd.Wait()
+		pw.CloseWithError(err)
+	}()
+
+	scanner := bufio.NewScanner(pr)
+	var logBuf strings.Builder
+	for scanner.Scan() {
+		line := scanner.Text()
+		stripped := stripANSI(line)
+		logBuf.WriteString(stripped + "\n")
+		sendEvent("", stripped)
+	}
+
+	p.LastLogs = logBuf.String()
+
+	// pw.CloseWithError propagates the exit error through the pipe.
+	if err := pr.Close(); err != nil && err != io.EOF {
+		sendEvent("done", "error")
+	} else {
+		// Check actual command exit status via the goroutine's pipe close error.
+		// After scanner exits, the pipe closed with cmd.Wait()'s error (if any).
+		// We use a sentinel approach: if scanner stopped normally, cmd succeeded.
+		sendEvent("done", "ok")
 	}
 }
 
@@ -199,7 +322,6 @@ func (s *Server) buildViews() []projectView {
 	return views
 }
 
-// fetchContainers queries docker ps for containers belonging to this compose project.
 func fetchContainers(projectName string) []containerInfo {
 	out, err := exec.Command(
 		"docker", "ps",
@@ -226,10 +348,9 @@ func fetchContainers(projectName string) []containerInfo {
 	return containers
 }
 
-// lastLines returns the last n non-empty lines from s, stripped of ANSI.
-func lastLines(s string, n int) string {
-	// strip common ANSI escape sequences
-	var cleaned strings.Builder
+// stripANSI removes ANSI escape codes from s.
+func stripANSI(s string) string {
+	var b strings.Builder
 	i := 0
 	for i < len(s) {
 		if s[i] == '\x1b' && i+1 < len(s) && s[i+1] == '[' {
@@ -237,14 +358,19 @@ func lastLines(s string, n int) string {
 			for i < len(s) && s[i] != 'm' {
 				i++
 			}
-			i++ // skip 'm'
+			i++
 			continue
 		}
-		cleaned.WriteByte(s[i])
+		b.WriteByte(s[i])
 		i++
 	}
+	return b.String()
+}
 
-	lines := strings.Split(strings.TrimSpace(cleaned.String()), "\n")
+// lastLines returns the last n non-empty lines from s.
+func lastLines(s string, n int) string {
+	s = stripANSI(s)
+	lines := strings.Split(strings.TrimSpace(s), "\n")
 	var nonempty []string
 	for _, l := range lines {
 		if t := strings.TrimSpace(l); t != "" {

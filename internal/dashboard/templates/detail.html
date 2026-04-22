@@ -54,8 +54,30 @@
   </div>
   {{end}}
 
-  {{if and (not .HasDocker) (not .Flags)}}
-  <p class="detail-empty">No containers or flags defined for this project.</p>
+  {{if .LastLogs}}
+  <div class="detail-section">
+    <h4 class="detail-heading">Last Run Logs</h4>
+    <div class="console">
+      <div class="console-logs" style="max-height: 200px;">{{.LastLogs}}</div>
+    </div>
+  </div>
+  {{end}}
+
+  <div class="detail-section">
+    <h4 class="detail-heading">Persistence</h4>
+    <div class="action-btns">
+      <button class="btn btn-flag" 
+              hx-get="/projects/{{.ProjectName}}/logs"
+              hx-target="#logs-container-{{.ProjectName}}"
+              hx-swap="innerHTML">
+        Show Last Command Logs
+      </button>
+    </div>
+    <div id="logs-container-{{.ProjectName}}" style="margin-top: 10px;"></div>
+  </div>
+
+  {{if and (not .HasDocker) (not .Flags) (not .LastLogs)}}
+  <p class="detail-empty">No containers, flags, or recent logs for this project.</p>
   {{end}}
 </div>
 {{end}}

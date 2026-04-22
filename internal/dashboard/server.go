@@ -13,15 +13,16 @@ import (
 
 // Project is a derrick project the dashboard knows about.
 type Project struct {
-	Name   string
-	Dir    string
-	Config *config.ProjectConfig
+	Name     string
+	Dir      string
+	Config   *config.ProjectConfig
+	LastLogs string
 }
 
 // Server is the dashboard HTTP server.
 type Server struct {
 	projects []Project
-	binary   string // path to the derrick binary (os.Args[0])
+	binary   string
 	mux      *http.ServeMux
 }
 
@@ -61,10 +62,17 @@ func New(dirs []string) (*Server, error) {
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /", s.handleIndex)
 	s.mux.HandleFunc("GET /rows", s.handleRows)
+	s.mux.HandleFunc("GET /projects/{name}/row", s.handleRow)
 	s.mux.HandleFunc("GET /projects/{name}/status", s.handleStatus)
 	s.mux.HandleFunc("GET /projects/{name}/detail", s.handleDetail)
+	s.mux.HandleFunc("GET /projects/{name}/logs", s.handleLogs)
+	s.mux.HandleFunc("GET /projects/{name}/stream/start", s.handleStreamStart)
+	s.mux.HandleFunc("GET /projects/{name}/stream/stop", s.handleStreamStop)
+	s.mux.HandleFunc("GET /projects/{name}/stream/flag/{flag}", s.handleStreamFlag)
+
 	s.mux.HandleFunc("POST /projects/{name}/start", s.handleStart)
 	s.mux.HandleFunc("POST /projects/{name}/stop", s.handleStop)
+	// Keep POST routes for direct HTMX callers (flags from detail panel).
 	s.mux.HandleFunc("POST /projects/{name}/flag/{flag}", s.handleRunFlag)
 }
 

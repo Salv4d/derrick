@@ -18,14 +18,14 @@ var stopCmd = &cobra.Command{
 	Long: `Runs before_stop hooks inside the sandbox (so they can still reach live
 services), tears down the provider, then runs after_stop hooks on the host.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		cwd, _ := os.Getwd()
+		_ = ui.SetLogFile(cwd)
 		ui.PrintHeader()
 
 		cfg, err := config.ParseConfig(configFile, profileName)
 		if err != nil {
 			ui.FailFast(err)
 		}
-
-		cwd, _ := os.Getwd()
 
 		// Load persisted state first so stop hooks can see the flags the user
 		// passed to `derrick start`. Without this, hooks with when: flag:<name>

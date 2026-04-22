@@ -5,7 +5,11 @@
 {{end}}
 
 {{define "row"}}
-<tr id="row-{{.Name}}">
+<tr id="row-{{.Name}}"
+    {{if .StreamingAction}}
+    hx-ext="sse"
+    sse-connect="/projects/{{.Name}}/stream/{{.StreamingAction}}"
+    {{end}}>
   <td class="col-name">
     <button class="expand-btn" onclick="toggleDetail('{{.Name}}', this)" title="Show details">▶</button>
     {{.Name}}
@@ -43,6 +47,22 @@
         </svg>
       </span>
     </span>
+    
+    {{if .StreamingAction}}
+    <div hx-get="/projects/{{.Name}}/row" hx-trigger="sse:done" hx-target="#row-{{.Name}}" hx-swap="outerHTML"></div>
+    <div class="console">
+      <div class="console-header">
+        <span>Executing: {{.StreamingAction}}</span>
+        <span id="spinner-{{.Name}}-sse">
+          <svg class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:12px; height:12px;">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+        </span>
+      </div>
+      <div class="console-logs" sse-swap="message" hx-swap="beforeend"></div>
+    </div>
+    {{end}}
+
     {{if .Error}}
     <div class="error-msg">
       <svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>

@@ -44,12 +44,13 @@ Passing an alias as the first argument resolves the project via the global
 Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		ui.PrintHeader()
-
 		cwd, err := os.Getwd()
 		if err != nil {
 			ui.FailFastf("Failed to get working directory: %v", err)
 		}
+
+		_ = ui.SetLogFile(cwd)
+		ui.PrintHeader()
 
 		// If an alias was given, resolve it via the Hub and delegate to a
 		// subprocess running inside the target directory. This replaces the
