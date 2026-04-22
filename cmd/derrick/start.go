@@ -13,6 +13,7 @@ import (
 	"github.com/Salv4d/derrick/internal/state"
 	"github.com/Salv4d/derrick/internal/ui"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 // startChainEnv carries the list of project names already booting in the
@@ -148,26 +149,52 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 
 			parentDir := filepath.Dir(cwd)
 			childChain := appendStartChain(os.Getenv(startChainEnv), cfg.Name)
+
+			var g errgroup.Group
+
 			for _, dep := range cfg.Requires {
-				depPath := filepath.Join(parentDir, dep.Name)
-				ui.Infof("Booting dependency: %s", dep.Name)
-				cmdArgs := []string{"start"}
-				if profileName != "" {
-					cmdArgs = append(cmdArgs, "--profile", profileName)
-				}
-				depCmd := exec.Command(os.Args[0], cmdArgs...)
-				depCmd.Dir = depPath
-				depCmd.Stdout = os.Stdout
-				depCmd.Stderr = os.Stderr
-				depCmd.Stdin = os.Stdin
-				env := append(os.Environ(), startChainEnv+"="+childChain)
-				if dep.Connect && sharedNetwork != "" {
-					env = append(env, derrickJoinNetworkEnv+"="+sharedNetwork)
-				}
-				depCmd.Env = env
-				if err := depCmd.Run(); err != nil {
-					ui.FailFast(fmt.Errorf("dependency '%s' failed to start: %w", dep.Name, err))
-				}
+				dep := dep // shadow for goroutine
+				g.Go(func() error {
+					depPath := filepath.Join(parentDir, dep.Name)
+
+					// If missing, try to resolve and clone via Hub
+					if _, err := os.Stat(depPath); err != nil {
+						ui.Infof("Dependency '%s' is missing locally. Attempting Hub resolution...", dep.Name)
+						depPath = resolveAlias(dep.Name, cwd)
+					}
+
+					ui.Infof("Booting dependency: %s", dep.Name)
+					cmdArgs := []string{"start"}
+					if profileName != "" {
+						cmdArgs = append(cmdArgs, "--profile", profileName)
+					}
+					// Propagate common core flags
+					if startDryRun {
+						cmdArgs = append(cmdArgs, "--dry-run")
+					}
+					if startReset {
+						cmdArgs = append(cmdArgs, "--reset")
+					}
+
+					depCmd := exec.Command(os.Args[0], cmdArgs...)
+					depCmd.Dir = depPath
+					depCmd.Stdout = os.Stdout
+					depCmd.Stderr = os.Stderr
+					depCmd.Stdin = os.Stdin
+					env := append(os.Environ(), startChainEnv+"="+childChain)
+					if dep.Connect && sharedNetwork != "" {
+						env = append(env, derrickJoinNetworkEnv+"="+sharedNetwork)
+					}
+					depCmd.Env = env
+					if err := depCmd.Run(); err != nil {
+						return fmt.Errorf("dependency '%s' failed to start: %w", dep.Name, err)
+					}
+					return nil
+				})
+			}
+
+			if err := g.Wait(); err != nil {
+				ui.FailFast(err)
 			}
 		}
 

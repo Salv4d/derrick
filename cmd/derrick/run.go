@@ -39,17 +39,13 @@ Examples:
 	Run: func(cmd *cobra.Command, args []string) {
 		var packages []string
 		var execArgs []string
-		separatorFound := false
-		for _, arg := range args {
-			if arg == "--" {
-				separatorFound = true
-				continue
-			}
-			if separatorFound {
-				execArgs = append(execArgs, arg)
-			} else {
-				packages = append(packages, arg)
-			}
+
+		dashIndex := cmd.ArgsLenAtDash()
+		if dashIndex != -1 {
+			packages = args[:dashIndex]
+			execArgs = args[dashIndex:]
+		} else {
+			packages = args
 		}
 
 		if len(packages) == 0 {
@@ -101,13 +97,6 @@ Examples:
 			defer os.RemoveAll(flakeOutDir)
 		}
 
-		if workDir != cwd {
-			if err := os.Chdir(workDir); err != nil {
-				ui.FailFast(fmt.Errorf("failed to change directory to %s: %v", workDir, err))
-			}
-			defer os.Chdir(cwd)
-		}
-
 		ui.Taskf("Resolving packages: %v", packages)
 
 		var nixPkgs []config.NixPackage
@@ -148,6 +137,13 @@ Examples:
 		} else if !saveEnv {
 			ui.Warning("NOTE: This is an ephemeral environment. Nix packages will be discarded on exit.")
 			ui.Info("Use --save to persist the environment in a directory.")
+		}
+
+		if workDir != cwd {
+			if err := os.Chdir(workDir); err != nil {
+				ui.FailFast(fmt.Errorf("failed to change directory to %s: %v", workDir, err))
+			}
+			defer os.Chdir(cwd)
 		}
 
 		eng := engine.NewShellEngine()
