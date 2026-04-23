@@ -3,7 +3,10 @@ package ui
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -15,6 +18,49 @@ var DebugMode bool
 // warning) so machine-readable formats like --json remain pure. Errors
 // and FailFast still print since they are diagnostically essential.
 var Quiet bool
+
+// LogWriter is where plain-text (ANSI-stripped) logs are written.
+var LogWriter io.Writer
+
+// SetLogFile opens (or creates) .derrick/last.log in the given project
+// directory and sets it as the LogWriter.
+func SetLogFile(projectDir string) error {
+	dir := filepath.Join(projectDir, ".derrick")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(filepath.Join(dir, "last.log"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	LogWriter = f
+	return nil
+}
+
+func logmsg(msg string) {
+	if LogWriter != nil {
+		fmt.Fprintln(LogWriter, stripANSI(msg))
+	}
+}
+
+// stripANSI removes ANSI escape codes from s.
+func stripANSI(s string) string {
+	var b strings.Builder
+	i := 0
+	for i < len(s) {
+		if s[i] == '\x1b' && i+1 < len(s) && s[i+1] == '[' {
+			i += 2
+			for i < len(s) && s[i] != 'm' {
+				i++
+			}
+			i++
+			continue
+		}
+		b.WriteByte(s[i])
+		i++
+	}
+	return b.String()
+}
 
 var (
 	colorSuccess = lipgloss.Color("46")
@@ -43,6 +89,7 @@ var (
 
 // PrintHeader prints the Derrick CLI header.
 func PrintHeader() {
+	logmsg("DERRICK CLI")
 	if Quiet {
 		return
 	}
@@ -51,6 +98,7 @@ func PrintHeader() {
 
 // Section prints a section header.
 func Section(msg string) {
+	logmsg("━━ " + msg)
 	if Quiet {
 		return
 	}
@@ -64,6 +112,7 @@ func Sectionf(format string, args ...any) {
 
 // Task prints a task indicator.
 func Task(msg string) {
+	logmsg("  " + msg + "...")
 	if Quiet {
 		return
 	}
@@ -77,6 +126,7 @@ func Taskf(format string, args ...any) {
 
 // SubTask prints a subtask indicator.
 func SubTask(msg string) {
+	logmsg("    " + msg + "...")
 	if Quiet {
 		return
 	}
@@ -90,6 +140,7 @@ func SubTaskf(format string, args ...any) {
 
 // Info prints an informational message.
 func Info(msg string) {
+	logmsg("ℹ  " + msg)
 	if Quiet {
 		return
 	}
@@ -98,6 +149,7 @@ func Info(msg string) {
 
 // Success prints a success message.
 func Success(msg string) {
+	logmsg("✓  " + msg)
 	if Quiet {
 		return
 	}
@@ -106,6 +158,7 @@ func Success(msg string) {
 
 // Warning prints a warning message.
 func Warning(msg string) {
+	logmsg("⚠  " + msg)
 	if Quiet {
 		return
 	}
@@ -113,49 +166,42 @@ func Warning(msg string) {
 }
 
 // Error prints an error message.
-func Error(msg string) { fmt.Println(styleError.Render("✖  " + msg)) }
+func Error(msg string) {
+	logmsg("✖  " + msg)
+	fmt.Println(styleError.Render("✖  " + msg))
+}
 
 // Debug prints a debug message if DebugMode is enabled.
 func Debug(msg string) {
 	if DebugMode {
+		logmsg("⚙ [DEBUG] " + msg)
 		fmt.Println(styleDebug.Render("⚙ [DEBUG] " + msg))
 	}
 }
 
 // Infof prints a formatted informational message.
 func Infof(format string, args ...any) {
-	if Quiet {
-		return
-	}
-	fmt.Println(styleInfo.Render("ℹ  " + fmt.Sprintf(format, args...)))
+	Info(fmt.Sprintf(format, args...))
 }
 
 // Successf prints a formatted success message.
 func Successf(format string, args ...any) {
-	if Quiet {
-		return
-	}
-	fmt.Println(styleSuccess.Render("✓  " + fmt.Sprintf(format, args...)))
+	Success(fmt.Sprintf(format, args...))
 }
 
 // Warningf prints a formatted warning message.
 func Warningf(format string, args ...any) {
-	if Quiet {
-		return
-	}
-	fmt.Println(styleWarning.Render("⚠  " + fmt.Sprintf(format, args...)))
+	Warning(fmt.Sprintf(format, args...))
 }
 
 // Errorf prints a formatted error message.
 func Errorf(format string, args ...any) {
-	fmt.Println(styleError.Render("✖  " + fmt.Sprintf(format, args...)))
+	Error(fmt.Sprintf(format, args...))
 }
 
 // Debugf prints a formatted debug message if DebugMode is enabled.
 func Debugf(format string, args ...any) {
-	if DebugMode {
-		fmt.Println(styleDebug.Render("⚙ [DEBUG] " + fmt.Sprintf(format, args...)))
-	}
+	Debug(fmt.Sprintf(format, args...))
 }
 
 // SprintSuccess returns a formatted success message string.
@@ -180,6 +226,7 @@ func SprintInfo(format string, args ...any) string {
 
 // FailFast prints a critical error and exits.
 func FailFast(err error) {
+	logmsg("✖ CRITICAL ERROR: " + err.Error())
 	if Quiet {
 		out, _ := json.Marshal(map[string]string{"error": err.Error()})
 		fmt.Println(string(out))
@@ -193,6 +240,7 @@ func FailFast(err error) {
 // FailFastf prints a formatted critical error and exits.
 func FailFastf(format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
+	logmsg("✖ CRITICAL ERROR: " + msg)
 	if Quiet {
 		out, _ := json.Marshal(map[string]string{"error": msg})
 		fmt.Println(string(out))

@@ -27,7 +27,11 @@ services), tears down the provider, then runs after_stop hooks on the host.`,
 			ui.FailFast(err)
 		}
 
-		cwd, _ := os.Getwd()
+		cwd, err := os.Getwd()
+		if err != nil {
+			ui.FailFast(err)
+		}
+		_ = ui.SetLogFile(cwd)
 
 		// Load persisted state first so stop hooks can see the flags the user
 		// passed to `derrick start`. Without this, hooks with when: flag:<name>

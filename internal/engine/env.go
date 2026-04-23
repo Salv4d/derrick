@@ -169,7 +169,18 @@ func ValidateAndLoadEnv(projectDir string, cfg *config.ProjectConfig, useNix boo
 }
 
 func updateEnvFile(path string, vars map[string]string) error {
-	content, _ := os.ReadFile(path)
+	content, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Create new file with these variables
+			var sb strings.Builder
+			for k, v := range vars {
+				fmt.Fprintf(&sb, "%s=%q\n", k, v)
+			}
+			return os.WriteFile(path, []byte(sb.String()), 0600)
+		}
+		return fmt.Errorf("failed to read env file %s: %w", path, err)
+	}
 	lines := strings.Split(string(content), "\n")
 
 	for k, v := range vars {

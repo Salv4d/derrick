@@ -139,7 +139,16 @@ func RunAudit(cfg *config.ProjectConfig) AuditReport {
 		report.Tools = append(report.Tools, check)
 	}
 
-	canUseNixBubble := useNix && IsNixInstalled()
+	if len(cfg.Nix.Packages) == 0 && cfg.Docker.Compose == "" {
+		ui.SubTask("Checking for active provider")
+		ui.Error("NONE")
+		ui.Warning("  -> No Docker Compose or Nix packages defined. Project is empty.")
+		check := AuditCheck{Name: "provider", Error: "no active provider"}
+		report.Tools = append(report.Tools, check)
+		report.Issues++
+	}
+
+	canUseNixBubble := len(cfg.Nix.Packages) > 0 && IsNixInstalled()
 
 	var auditSandbox string
 	if canUseNixBubble {

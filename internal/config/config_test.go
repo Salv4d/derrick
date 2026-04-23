@@ -50,7 +50,7 @@ validations:
 
 		assert.Len(t, cfg.Hooks.Setup, 1)
 		assert.Equal(t, "echo 'Starting'", cfg.Hooks.Setup[0].Run)
-		assert.Equal(t, "always", cfg.Hooks.Setup[0].When)
+		assert.Equal(t, Condition{"always"}, cfg.Hooks.Setup[0].When)
 
 		assert.Len(t, cfg.Validations, 1)
 		assert.Equal(t, "Check Env", cfg.Validations[0].Name)
@@ -71,7 +71,7 @@ hooks:
 		require.NoError(t, err)
 		assert.Len(t, cfg.Hooks.Setup, 1)
 		assert.Equal(t, "echo hello", cfg.Hooks.Setup[0].Run)
-		assert.Equal(t, "always", cfg.Hooks.Setup[0].When)
+		assert.Equal(t, Condition{"always"}, cfg.Hooks.Setup[0].When)
 	})
 
 	t.Run("Custom Nix registry", func(t *testing.T) {
@@ -152,6 +152,7 @@ profiles:
 
 		assert.Len(t, cfg.Hooks.Setup, 1)
 		assert.Equal(t, "echo 'Starting advanced'", cfg.Hooks.Setup[0].Run)
+		assert.Equal(t, Condition{"always"}, cfg.Hooks.Setup[0].When)
 	})
 }
 

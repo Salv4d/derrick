@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 )
 
@@ -23,7 +24,7 @@ func (e *ShellEngine) EnterSandbox(flakeDir string, args []string) error {
 		return fmt.Errorf("nix is not installed or not in PATH.\nResolution: Install Nix via 'curl -L https://nixos.org/nix/install | sh'")
 	}
 
-	if _, err := os.Stat(flakeDir); os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(flakeDir, "flake.nix")); os.IsNotExist(err) {
 		return fmt.Errorf("sandbox not found at %s.\nResolution: Run 'derrick start' to initialize the environment first", flakeDir)
 	}
 

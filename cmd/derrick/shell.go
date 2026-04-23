@@ -32,7 +32,10 @@ session.`,
 
 		provider := engine.ResolveProvider(cfg)
 
-		cwd, _ := os.Getwd()
+		cwd, err := os.Getwd()
+		if err != nil {
+			ui.FailFast(err)
+		}
 		if len(args) > 0 {
 			ui.Infof("Executing command via %s provider at %s", provider.Name(), cwd)
 		} else {
