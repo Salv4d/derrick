@@ -185,7 +185,13 @@ func RunAudit(cfg *config.ProjectConfig) AuditReport {
 		for _, check := range cfg.Validations {
 			ui.SubTaskf("Checking %s", check.Name)
 			result := AuditCheck{Name: check.Name}
-			err := executeCommandIn(check.Command, canUseNixBubble, auditSandbox, nil)
+
+			runner := &Runner{
+				UseNix: canUseNixBubble,
+				NixDir: auditSandbox,
+				Silent: true,
+			}
+			err := runner.Run(check.Command)
 			if err == nil {
 				ui.Success("OK")
 				result.OK = true

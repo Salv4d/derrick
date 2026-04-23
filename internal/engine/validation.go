@@ -16,11 +16,15 @@ func RunValidations(checks []config.ValidationCheck, useNix bool, extraEnv []str
 	}
 
 	ui.Section("Environment Validation")
+	runner := &Runner{
+		UseNix: useNix,
+		Env:    extraEnv,
+	}
 
 	for _, check := range checks {
 		ui.SubTask("Checking " + check.Name)
 
-		err := executeCommand(check.Command, useNix, extraEnv)
+		err := runner.Run(check.Command)
 		if err == nil {
 			ui.Success("OK")
 			continue
@@ -33,12 +37,12 @@ func RunValidations(checks []config.ValidationCheck, useNix bool, extraEnv []str
 
 		ui.Warning("FAILED. Attempting auto-fix...")
 
-		if fixErr := executeCommand(check.AutoFix, useNix, extraEnv); fixErr != nil {
+		if fixErr := runner.Run(check.AutoFix); fixErr != nil {
 			return fmt.Errorf("auto-fix for '%s' failed\n  command: %s\n  error: %w", check.Name, check.AutoFix, fixErr)
 		}
 
 		ui.Task("Re-checking " + check.Name)
-		if recheckErr := executeCommand(check.Command, useNix, extraEnv); recheckErr != nil {
+		if recheckErr := runner.Run(check.Command); recheckErr != nil {
 			ui.Error("FAILED")
 			return fmt.Errorf("validation '%s' still failing after auto-fix\n  error: %w", check.Name, recheckErr)
 		}

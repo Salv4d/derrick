@@ -45,68 +45,37 @@ executes lifecycle hooks, and validates the environment.
 Passing an alias as the first argument resolves the project via the global
 Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 	Args: cobra.MaximumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		ui.PrintHeader()
-
-		cwd, err := os.Getwd()
-		if err != nil {
-			ui.FailFastf("Failed to get working directory: %v", err)
-		}
+	Run: RunDerrick(func(ctx *DerrickContext, cmd *cobra.Command, args []string) {
+		cfg := ctx.Config
+		cwd := ctx.Cwd
+		projectState := ctx.State
 
 		// If an alias was given, resolve it via the Hub and delegate to a
-		// subprocess running inside the target directory. This replaces the
-		// old os.Chdir call and keeps the parent process's working directory
-		// untouched — which matters because relative paths in derrick.yaml
-		// (compose files, env base files, etc.) are resolved against the
-		// process cwd.
+		// subprocess running inside the target directory.
 		if len(args) == 1 {
 			alias := args[0]
 			targetPath := resolveAlias(alias, cwd)
 			if targetPath != cwd {
-				childArgs := []string{"start"}
-				if profileName != "" {
-					childArgs = append(childArgs, "--profile", profileName)
-				}
+				childArgs := []string{}
 				for _, f := range startCustomFlags {
 					childArgs = append(childArgs, "--flag", f)
 				}
 				if startReset {
 					childArgs = append(childArgs, "--reset")
 				}
-				exe, err := os.Executable()
-				if err != nil {
-					exe = os.Args[0]
-				}
-				child := exec.Command(exe, childArgs...)
-				child.Dir = targetPath
-				child.Stdout = os.Stdout
-				child.Stderr = os.Stderr
-				child.Stdin = os.Stdin
-				if err := child.Run(); err != nil {
+
+				chain := engine.GetChain(startChainEnv)
+				if err := engine.ExecuteRecursive(targetPath, "start", profileName, chain, cfg.Name, childArgs, nil); err != nil {
 					ui.FailFast(fmt.Errorf("start failed for alias '%s': %w", alias, err))
 				}
 				return
 			}
 		}
 
-		// ── Configuration ──────────────────────────────────────────────────────
-		ui.Section("Configuration")
-
-		if profileName != "" {
-			ui.Taskf("Loading %s (profile: %s)", configFile, profileName)
-		} else {
-			ui.Taskf("Loading %s", configFile)
-		}
-
-		cfg, err := config.ParseConfig(configFile, profileName)
-		if err != nil {
-			ui.FailFast(err)
-		}
-
 		// ── Cycle detection (requires:) ────────────────────────────────────────
-		chain := parseStartChain(os.Getenv(startChainEnv))
-		if chain[cfg.Name] {
-			ui.FailFast(fmt.Errorf("circular dependency detected: '%s' is already booting in this chain [%s]", cfg.Name, os.Getenv(startChainEnv)))
+		chain := engine.GetChain(startChainEnv)
+		if chain.Contains(cfg.Name) {
+			ui.FailFast(fmt.Errorf("circular dependency detected: '%s' is already booting in this chain [%s]", cfg.Name, chain.Raw))
 		}
 
 		// ── Custom flags ───────────────────────────────────────────────────────
@@ -159,7 +128,6 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 			}
 
 			parentDir := filepath.Dir(cwd)
-			childChain := appendStartChain(os.Getenv(startChainEnv), cfg.Name)
 
 			var g errgroup.Group
 
@@ -175,33 +143,20 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 					}
 
 					ui.Infof("Booting dependency: %s", dep.Name)
-					cmdArgs := []string{"start"}
-					if profileName != "" {
-						cmdArgs = append(cmdArgs, "--profile", profileName)
-					}
-					// Propagate common core flags
+					extraArgs := []string{}
 					if startDryRun {
-						cmdArgs = append(cmdArgs, "--dry-run")
+						extraArgs = append(extraArgs, "--dry-run")
 					}
 					if startReset {
-						cmdArgs = append(cmdArgs, "--reset")
+						extraArgs = append(extraArgs, "--reset")
 					}
 
-					exe, err := os.Executable()
-					if err != nil {
-						exe = os.Args[0]
-					}
-					depCmd := exec.Command(exe, cmdArgs...)
-					depCmd.Dir = depPath
-					depCmd.Stdout = os.Stdout
-					depCmd.Stderr = os.Stderr
-					depCmd.Stdin = os.Stdin
-					env := append(os.Environ(), startChainEnv+"="+childChain)
+					extraEnv := []string{}
 					if dep.Connect && sharedNetwork != "" {
-						env = append(env, derrickJoinNetworkEnv+"="+sharedNetwork)
+						extraEnv = append(extraEnv, derrickJoinNetworkEnv+"="+sharedNetwork)
 					}
-					depCmd.Env = env
-					if err := depCmd.Run(); err != nil {
+
+					if err := engine.ExecuteRecursive(depPath, "start", profileName, chain, cfg.Name, extraArgs, extraEnv); err != nil {
 						return fmt.Errorf("dependency '%s' failed to start: %w", dep.Name, err)
 					}
 					return nil
@@ -227,11 +182,6 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 		ui.Successf("%s is ready", provider.Name())
 
 		// ── State ─────────────────────────────────────────────────────────────
-		projectState, err := state.Load(cwd)
-		if err != nil {
-			ui.Warningf("Could not read state file: %v", err)
-			projectState = &state.EnvironmentState{Status: state.StatusUnknown}
-		}
 		firstSetup := !projectState.FirstSetupCompleted
 
 		// useSandbox gates whether hooks that run "inside the sandbox"
@@ -346,7 +296,7 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 				}
 			}
 		}
-	},
+	}),
 }
 
 // printStartPlan describes what `derrick start` would do without
@@ -450,28 +400,6 @@ func resolveCustomFlags(cfg *config.ProjectConfig, cmd *cobra.Command, rawFlags 
 		active[name] = true
 	}
 	return active
-}
-
-// parseStartChain deserializes DERRICK_START_CHAIN into a set for membership checks.
-func parseStartChain(raw string) map[string]bool {
-	chain := make(map[string]bool)
-	if raw == "" {
-		return chain
-	}
-	for _, name := range strings.Split(raw, ",") {
-		if name = strings.TrimSpace(name); name != "" {
-			chain[name] = true
-		}
-	}
-	return chain
-}
-
-// appendStartChain returns a new chain string with the given project name appended.
-func appendStartChain(raw, name string) string {
-	if raw == "" {
-		return name
-	}
-	return raw + "," + name
 }
 
 // appendUnique appends s to slice only if it is not already present.

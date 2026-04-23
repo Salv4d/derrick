@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/engine"
 	"github.com/Salv4d/derrick/internal/ui"
 	"github.com/spf13/cobra"
@@ -22,13 +21,8 @@ health report.
 
 Exits non-zero when the audit surfaces one or more issues, so CI pipelines
 can gate on 'derrick doctor --json' without parsing output.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		ui.PrintHeader()
-
-		cfg, err := config.ParseConfig(configFile, profileName)
-		if err != nil {
-			ui.FailFast(err)
-		}
+	Run: RunDerrick(func(ctx *DerrickContext, cmd *cobra.Command, args []string) {
+		cfg := ctx.Config
 
 		ui.Infof("Loaded contract for project: %s (v%s)\n", cfg.Name, cfg.Version)
 
@@ -42,7 +36,7 @@ can gate on 'derrick doctor --json' without parsing output.`,
 		if report.Issues > 0 {
 			os.Exit(1)
 		}
-	},
+	}),
 }
 
 func init() {

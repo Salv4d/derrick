@@ -105,7 +105,7 @@ func EnsureNetworks(networks []string) error {
 		}
 		create := exec.Command("docker", "network", "create",
 			"--label", "com.derrick.managed=true", name)
-		if err := RunCommand(create); err != nil {
+		if err := NewRunner().RunCommand(create); err != nil {
 			return fmt.Errorf("failed to create shared network %q: %w", name, err)
 		}
 	}

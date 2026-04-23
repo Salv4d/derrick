@@ -41,10 +41,15 @@ func ExecuteHooks(stage string, hooks []config.Hook, opts HookOpts) error {
 
 	ui.Sectionf("Lifecycle: %s", stage)
 
+	runner := &Runner{
+		UseNix: opts.UseNix,
+		Env:    opts.Env,
+	}
+
 	for i, hook := range eligible {
 		ui.SubTaskf("Step %d/%d: %s", i+1, len(eligible), hook.Run)
 
-		if err := executeCommand(hook.Run, opts.UseNix, opts.Env); err != nil {
+		if err := runner.Run(hook.Run); err != nil {
 			ui.Error("FAILED")
 			return fmt.Errorf("hook [%s] step %d failed\n  command: %s\n  error: %w", stage, i+1, hook.Run, err)
 		}

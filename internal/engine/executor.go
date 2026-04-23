@@ -26,7 +26,119 @@ func (e *DerrickError) Error() string {
 	return e.Message
 }
 
-// known translates raw stderr patterns from wrapped tools into DerrickErrors.
+// Runner encapsulates the context for executing commands.
+type Runner struct {
+	WorkDir string
+	UseNix  bool
+	NixDir  string
+	Env     []string
+	Silent  bool
+}
+
+// NewRunner creates a new runner with default settings.
+func NewRunner() *Runner {
+	return &Runner{}
+}
+
+// Run executes a shell command within the runner's context.
+func (r *Runner) Run(command string) error {
+	var cmd *exec.Cmd
+	if r.UseNix {
+		nixArgs := WrapWithNix(command, r.NixDir)
+		ui.Debugf("Executing via Nix: %v", nixArgs)
+		cmd = exec.Command(nixArgs[0], nixArgs[1:]...)
+		cmd.Env = append(NixEnv(), r.Env...)
+	} else {
+		// Shell execution for arbitrary strings
+		if shellMetaRe.MatchString(command) {
+			ui.Debugf("Executing: /bin/sh -c %q", command)
+			cmd = exec.Command("/bin/sh", "-c", command)
+		} else {
+			args, err := shlex.Split(command)
+			if err != nil || len(args) == 0 {
+				return fmt.Errorf("invalid command string: %q: %w", command, err)
+			}
+			ui.Debugf("Executing: %s", strings.Join(args, " "))
+			cmd = exec.Command(args[0], args[1:]...)
+		}
+		cmd.Env = append(os.Environ(), r.Env...)
+	}
+
+	if r.WorkDir != "" {
+		cmd.Dir = r.WorkDir
+	}
+
+	return runCmd(cmd, r.Silent)
+}
+
+// RunCommand executes a pre-built *exec.Cmd within the runner's context.
+func (r *Runner) RunCommand(cmd *exec.Cmd) error {
+	if r.WorkDir != "" {
+		cmd.Dir = r.WorkDir
+	}
+	if len(r.Env) > 0 {
+		cmd.Env = append(cmd.Env, r.Env...)
+	}
+	return runCmd(cmd, r.Silent)
+}
+
+// Global execution helpers (legacy/simple cases)
+
+func Run(command string) error {
+	return NewRunner().Run(command)
+}
+
+func RunSilent(command string) error {
+	r := NewRunner()
+	r.Silent = true
+	return r.Run(command)
+}
+
+func RunInEnv(command string, env []string) error {
+	r := NewRunner()
+	r.Env = env
+	return r.Run(command)
+}
+
+// internal helpers
+
+var shellMetaRe = regexp.MustCompile(`[|><;&$` + "`" + `]|\|\||&&`)
+
+func runCmd(cmd *exec.Cmd, silent bool) error {
+	var stderr bytes.Buffer
+
+	switch {
+	case silent:
+		cmd.Stderr = &stderr
+	case ui.Quiet:
+		cmd.Stdout = io.Discard
+		cmd.Stderr = &stderr
+	case ui.DebugMode:
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
+	default:
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = &stderr
+	}
+
+	if err := cmd.Run(); err != nil {
+		return translateError(stderr.String(), err)
+	}
+	return nil
+}
+
+func translateError(stderr string, original error) error {
+	for _, k := range known {
+		if k.pattern.MatchString(stderr) {
+			return &DerrickError{Message: k.message, Fix: k.fix}
+		}
+	}
+	if stderr != "" {
+		return fmt.Errorf("%s", strings.TrimSpace(stderr))
+	}
+	return fmt.Errorf("command failed: %w", original)
+}
+
 var known = []struct {
 	pattern *regexp.Regexp
 	message string
@@ -62,128 +174,4 @@ var known = []struct {
 		message: "Nix is not installed on this system.",
 		fix:     `curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install`,
 	},
-}
-
-// shellMetaRe detects characters that require bash interpretation.
-// Piped commands, redirects, subshells, logical operators, and variable expansions
-// all need a real shell; plain argument lists do not.
-var shellMetaRe = regexp.MustCompile(`[|><;&$` + "`" + `]|\|\||&&`)
-
-// buildCmd converts a command string into an *exec.Cmd, choosing the safest
-// possible execution path:
-//   - No shell metacharacters → shlex split + direct exec (no injection surface)
-//   - Shell metacharacters detected  → bash -c (required for pipes, redirects, etc.)
-func buildCmd(command string) (*exec.Cmd, error) {
-	if shellMetaRe.MatchString(command) {
-		return exec.Command("/bin/sh", "-c", command), nil
-	}
-	args, err := shlex.Split(command)
-	if err != nil || len(args) == 0 {
-		return nil, fmt.Errorf("invalid command string: %q: %w", command, err)
-	}
-	return exec.Command(args[0], args[1:]...), nil
-}
-
-// translateError checks a raw stderr string against known patterns and returns a
-// DerrickError when a match is found, or falls back to a plain error.
-// It always preserves stderr content so callers never face a blind failure.
-func translateError(stderr string, original error) error {
-	for _, k := range known {
-		if k.pattern.MatchString(stderr) {
-			return &DerrickError{Message: k.message, Fix: k.fix}
-		}
-	}
-	if stderr != "" {
-		return fmt.Errorf("%s", strings.TrimSpace(stderr))
-	}
-	// Wrap so callers see the exit code rather than a raw exec.ExitError.
-	return fmt.Errorf("command failed: %w", original)
-}
-
-// Run executes a shell command, capturing stderr for error translation.
-// stdout is streamed directly to the terminal.
-func Run(command string) error {
-	cmd, err := buildCmd(command)
-	if err != nil {
-		return err
-	}
-	return runCmd(cmd, false)
-}
-
-// RunInEnv executes a command with a custom environment appended to the
-// current process environment.
-func RunInEnv(command string, env []string) error {
-	cmd, err := buildCmd(command)
-	if err != nil {
-		return err
-	}
-	cmd.Env = append(os.Environ(), env...)
-	return runCmd(cmd, false)
-}
-
-// RunSilent executes a command, discarding stdout but still translating errors.
-func RunSilent(command string) error {
-	cmd, err := buildCmd(command)
-	if err != nil {
-		return err
-	}
-	return runCmd(cmd, true)
-}
-
-// RunCommand executes a pre-built *exec.Cmd with error translation.
-func RunCommand(cmd *exec.Cmd) error {
-	return runCmd(cmd, false)
-}
-
-func runCmd(cmd *exec.Cmd, silent bool) error {
-	var stderr bytes.Buffer
-
-	switch {
-	case silent:
-		cmd.Stderr = &stderr
-	case ui.Quiet:
-		// Machine-readable callers (e.g. --json) must not see subcommand stdout.
-		cmd.Stdout = io.Discard
-		cmd.Stderr = &stderr
-	case ui.DebugMode:
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
-	default:
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = &stderr
-	}
-
-	if err := cmd.Run(); err != nil {
-		return translateError(stderr.String(), err)
-	}
-	return nil
-}
-
-// executeCommand is the internal helper for hooks and validations.
-// Hook commands come from user YAML and may contain arbitrary shell syntax,
-// so we always use a POSIX shell. When useNix is true the command runs inside
-// the project's nix develop environment instead.
-//
-// extraEnv is appended to the process environment as KEY=VALUE pairs. When
-// duplicate keys are present Go's exec package keeps the last value, so extras
-// deliberately override matching entries in os.Environ()/NixEnv().
-func executeCommand(command string, useNix bool, extraEnv []string) error {
-	return executeCommandIn(command, useNix, "", extraEnv)
-}
-
-// executeCommandIn runs a command optionally wrapped with `nix develop` from a
-// specific flake directory. An empty flakeDir defaults to ".derrick".
-func executeCommandIn(command string, useNix bool, flakeDir string, extraEnv []string) error {
-	var cmd *exec.Cmd
-	if useNix {
-		nixArgs := WrapWithNix(command, flakeDir)
-		ui.Debugf("Executing via Nix: %v", nixArgs)
-		cmd = exec.Command(nixArgs[0], nixArgs[1:]...)
-		cmd.Env = append(NixEnv(), extraEnv...)
-	} else {
-		ui.Debugf("Executing: /bin/sh -c %q", command)
-		cmd = exec.Command("/bin/sh", "-c", command)
-		cmd.Env = append(os.Environ(), extraEnv...)
-	}
-	return runCmd(cmd, false)
 }

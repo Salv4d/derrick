@@ -1,9 +1,6 @@
 package main
 
 import (
-	"os"
-
-	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/engine"
 	"github.com/Salv4d/derrick/internal/ui"
 	"github.com/spf13/cobra"
@@ -24,18 +21,12 @@ compose exec' into the configured service. Any args after the command
 name are executed as a one-shot command instead of opening an interactive
 session.`,
 	Args: cobra.ArbitraryArgs,
-	Run: func(cmd *cobra.Command, args []string) {
-		cfg, err := config.ParseConfig(configFile, profileName)
-		if err != nil {
-			ui.FailFast(err)
-		}
+	Run: RunDerrick(func(ctx *DerrickContext, cmd *cobra.Command, args []string) {
+		cfg := ctx.Config
+		cwd := ctx.Cwd
 
 		provider := engine.ResolveProvider(cfg)
 
-		cwd, err := os.Getwd()
-		if err != nil {
-			ui.FailFast(err)
-		}
 		if len(args) > 0 {
 			ui.Infof("Executing command via %s provider at %s", provider.Name(), cwd)
 		} else {
@@ -45,7 +36,7 @@ session.`,
 		if err := provider.Shell(cfg, args); err != nil {
 			ui.FailFast(err)
 		}
-	},
+	}),
 }
 
 func init() {

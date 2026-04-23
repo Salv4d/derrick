@@ -3,12 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/engine"
 	"github.com/Salv4d/derrick/internal/state"
 	"github.com/Salv4d/derrick/internal/ui"
@@ -26,24 +24,11 @@ var stopCmd = &cobra.Command{
 	Short: "Stop the local development environment",
 	Long: `Runs before_stop hooks inside the sandbox (so they can still reach live
 services), tears down the provider, then runs after_stop hooks on the host.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		ui.PrintHeader()
+	Run: RunDerrick(func(ctx *DerrickContext, cmd *cobra.Command, args []string) {
+		cfg := ctx.Config
+		cwd := ctx.Cwd
+		projectState := ctx.State
 
-		cfg, err := config.ParseConfig(configFile, profileName)
-		if err != nil {
-			ui.FailFast(err)
-		}
-
-		cwd, err := os.Getwd()
-		if err != nil {
-			ui.FailFast(err)
-		}
-		_ = ui.SetLogFile(cwd)
-
-		// Load persisted state first so stop hooks can see the flags the user
-		// passed to `derrick start`. Without this, hooks with when: flag:<name>
-		// never fire on stop.
-		projectState, _ := state.Load(cwd)
 		activeFlags := make(map[string]bool)
 		for _, f := range projectState.FlagsUsed {
 			activeFlags[f] = true
@@ -95,7 +80,7 @@ services), tears down the provider, then runs after_stop hooks on the host.`,
 		if len(cfg.Requires) > 0 {
 			ui.Section("Stopping Dependencies")
 			parentDir := filepath.Dir(cwd)
-			childChain := appendStopChain(os.Getenv(stopChainEnv), cfg.Name)
+			chain := engine.GetChain(stopChainEnv)
 
 			var g errgroup.Group
 
@@ -110,29 +95,12 @@ services), tears down the provider, then runs after_stop hooks on the host.`,
 					}
 
 					// Cycle detection
-					chain := parseStopChain(os.Getenv(stopChainEnv))
-					if chain[dep.Name] {
+					if chain.Contains(dep.Name) {
 						return nil // Already stopping in this chain
 					}
 
 					ui.Infof("Stopping dependency: %s", dep.Name)
-					cmdArgs := []string{"stop"}
-					if profileName != "" {
-						cmdArgs = append(cmdArgs, "--profile", profileName)
-					}
-
-					exe, err := os.Executable()
-					if err != nil {
-						exe = os.Args[0]
-					}
-					depCmd := exec.Command(exe, cmdArgs...)
-					depCmd.Dir = depPath
-					depCmd.Stdout = os.Stdout
-					depCmd.Stderr = os.Stderr
-					depCmd.Stdin = os.Stdin
-					depCmd.Env = append(os.Environ(), stopChainEnv+"="+childChain)
-
-					if err := depCmd.Run(); err != nil {
+					if err := engine.ExecuteRecursive(depPath, "stop", profileName, chain, cfg.Name, nil, nil); err != nil {
 						return fmt.Errorf("dependency '%s' failed to stop: %w", dep.Name, err)
 					}
 					return nil
@@ -143,29 +111,7 @@ services), tears down the provider, then runs after_stop hooks on the host.`,
 				ui.FailFast(err)
 			}
 		}
-	},
-}
-
-// parseStopChain deserializes DERRICK_STOP_CHAIN into a set for membership checks.
-func parseStopChain(raw string) map[string]bool {
-	chain := make(map[string]bool)
-	if raw == "" {
-		return chain
-	}
-	for _, name := range strings.Split(raw, ",") {
-		if name = strings.TrimSpace(name); name != "" {
-			chain[name] = true
-		}
-	}
-	return chain
-}
-
-// appendStopChain returns a new chain string with the given project name appended.
-func appendStopChain(raw, name string) string {
-	if raw == "" {
-		return name
-	}
-	return raw + "," + name
+	}),
 }
 
 func init() {

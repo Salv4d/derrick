@@ -70,10 +70,9 @@ func (d *DockerProvider) Start(cfg *config.ProjectConfig, flags Flags) error {
 
 	ui.Taskf("Starting containers from [%s]", cfg.Docker.Compose)
 	cmd := exec.Command("docker", args...)
-	// Inject resolved env so compose interpolation (${VAR}) resolves without
-	// polluting the parent process with os.Setenv.
-	cmd.Env = append(os.Environ(), flags.Env...)
-	return RunCommand(cmd)
+
+	runner := &Runner{Env: flags.Env}
+	return runner.RunCommand(cmd)
 }
 
 // Stop tears down the Docker Compose project.
@@ -96,7 +95,7 @@ func (d *DockerProvider) Stop(cfg *config.ProjectConfig) error {
 
 	ui.Task("Stopping containers")
 	cmd := exec.Command("docker", args...)
-	return RunCommand(cmd)
+	return NewRunner().RunCommand(cmd)
 }
 
 // Shell opens a shell inside the target service of the Compose project,
@@ -134,13 +133,13 @@ func (d *DockerProvider) Shell(cfg *config.ProjectConfig, cmdArgs []string) erro
 
 	cmd := exec.Command("docker", args...)
 	if len(cmdArgs) == 0 {
-		// Interactive shell: bypass RunCommand's stderr capture to keep TTY healthy.
+		// Interactive shell: bypass Runner's stderr capture to keep TTY healthy.
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		return cmd.Run()
 	}
-	return RunCommand(cmd)
+	return NewRunner().RunCommand(cmd)
 }
 
 // Status inspects running containers for the Compose project.

@@ -3,11 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
-	"github.com/Salv4d/derrick/internal/config"
 	"github.com/Salv4d/derrick/internal/engine"
-	"github.com/Salv4d/derrick/internal/state"
 	"github.com/Salv4d/derrick/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -25,17 +22,9 @@ type statusReport struct {
 var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Report whether the project's environment is running",
-	Run: func(cmd *cobra.Command, args []string) {
-		cfg, err := config.ParseConfig(configFile, profileName)
-		if err != nil {
-			ui.FailFast(err)
-		}
-
-		cwd, err := os.Getwd()
-		if err != nil {
-			ui.FailFast(err)
-		}
-		projectState, _ := state.Load(cwd)
+	Run: RunDerrick(func(ctx *DerrickContext, cmd *cobra.Command, args []string) {
+		cfg := ctx.Config
+		projectState := ctx.State
 
 		provider := engine.ResolveProvider(cfg)
 		status, err := provider.Status(cfg)
@@ -74,7 +63,7 @@ var statusCmd = &cobra.Command{
 		if report.LastKnown != "" {
 			fmt.Printf("last known: %s\n", report.LastKnown)
 		}
-	},
+	}),
 }
 
 func init() {

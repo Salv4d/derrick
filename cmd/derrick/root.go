@@ -1,9 +1,50 @@
 package main
 
 import (
+	"os"
+
+	"github.com/Salv4d/derrick/internal/config"
+	"github.com/Salv4d/derrick/internal/state"
 	"github.com/Salv4d/derrick/internal/ui"
 	"github.com/spf13/cobra"
 )
+
+// DerrickContext carries initialized project state for subcommands.
+type DerrickContext struct {
+	Config *config.ProjectConfig
+	State  *state.EnvironmentState
+	Cwd    string
+}
+
+// RunDerrick is a middleware for commands that need a loaded project.
+// It handles config parsing, path resolution, and logging setup.
+func RunDerrick(fn func(ctx *DerrickContext, cmd *cobra.Command, args []string)) func(*cobra.Command, []string) {
+	return func(cmd *cobra.Command, args []string) {
+		ui.PrintHeader()
+
+		cwd, err := os.Getwd()
+		if err != nil {
+			ui.FailFastf("Failed to get working directory: %v", err)
+		}
+
+		_ = ui.SetLogFile(cwd)
+
+		cfg, err := config.ParseConfig(configFile, profileName)
+		if err != nil {
+			ui.FailFast(err)
+		}
+
+		projectState, _ := state.Load(cwd)
+
+		ctx := &DerrickContext{
+			Config: cfg,
+			State:  projectState,
+			Cwd:    cwd,
+		}
+
+		fn(ctx, cmd, args)
+	}
+}
 
 // Root command for the Derrick CLI.
 var rootCmd = &cobra.Command{

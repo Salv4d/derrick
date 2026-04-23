@@ -33,8 +33,10 @@ func (n *NixPackage) UnmarshalYAML(value *yaml.Node) error {
 		return nil
 	}
 
-	type alias NixPackage
-	var tmp alias
+	var tmp struct {
+		Name     string `yaml:"package"`
+		Registry string `yaml:"registry,omitempty"`
+	}
 	if err := value.Decode(&tmp); err != nil {
 		return err
 	}
@@ -81,12 +83,16 @@ func (r *Requirement) UnmarshalYAML(value *yaml.Node) error {
 		r.Connect = true
 		return nil
 	}
-	type alias Requirement
-	tmp := alias{Connect: true}
+	var tmp struct {
+		Name    string `yaml:"name"`
+		Connect bool   `yaml:"connect"`
+	}
+	tmp.Connect = true // default
 	if err := value.Decode(&tmp); err != nil {
 		return err
 	}
-	*r = Requirement(tmp)
+	r.Name = tmp.Name
+	r.Connect = tmp.Connect
 	return nil
 }
 
