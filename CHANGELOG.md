@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0-beta.1] — 2026-04-23
+
+### Changed (Architectural Refactor)
+- **Unified Command Execution**: introduced the `Runner` abstraction in `internal/engine`. All providers, hooks, and validations now share identical Nix-wrapping and environment merging logic.
+- **CLI Middleware**: implemented `RunDerrick` middleware to centralize project initialization, removing ~30% of boilerplate from subcommand handlers.
+- **Centralized Recursion**: moved all dependency chain and cycle detection logic to `internal/engine/recursion.go`.
+- **Simplified YAML**: streamlined custom YAML unmarshalers by using direct decoding into temporary structs.
+
+### Added
+- Derrick Hub: manage project aliases and remote YAML indices via the new `hub` command suite.
+- Recursive Start/Stop: project dependencies are now automatically (and in parallel) handled during both boot and teardown.
+
 ## [0.5.5] — 2026-04-21
 
 ### Added
@@ -168,7 +180,8 @@ First public release.
 - `derrick shell` no longer hardcodes a service name; `docker.shell` is now configurable.
 - Hook flags are restored on stop so `first-setup` stays honest across restarts.
 
-[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.5.5...HEAD
+[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.1...HEAD
+[0.6.0-beta.1]: https://github.com/Salv4d/derrick/compare/v0.5.5...v0.6.0-beta.1
 [0.5.5]: https://github.com/Salv4d/derrick/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/Salv4d/derrick/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/Salv4d/derrick/compare/v0.5.2...v0.5.3
