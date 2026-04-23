@@ -287,11 +287,12 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 				if err != nil {
 					ui.Warningf("Could not load global hub: %v", err)
 				} else {
-					hub.Projects[cfg.Name] = url
+					absPath, _ := filepath.Abs(cwd)
+					hub.Projects[cfg.Name] = config.HubProject{URL: url, Path: absPath}
 					if err := hub.Save(); err != nil {
 						ui.Warningf("Could not save hub config: %v", err)
 					} else {
-						ui.Successf("Project '%s' registered in Hub: %s", cfg.Name, url)
+						ui.Successf("Project '%s' registered in Hub at %s", cfg.Name, absPath)
 					}
 				}
 			}
@@ -362,31 +363,64 @@ func resolveAlias(alias string, cwd string) string {
 	ui.Section("Hub Resolution")
 	ui.Taskf("Looking up alias: %s", alias)
 
-	resolver, err := engine.NewDependencyResolver()
+	hub, err := config.LoadGlobalHub()
 	if err != nil {
 		ui.FailFastf("Failed to load Derrick Hub: %v", err)
 	}
 
-	parentDir := filepath.Dir(cwd)
-	targetPath := filepath.Join(parentDir, alias)
-
-	if _, err := os.Stat(targetPath); err == nil {
-		ui.Infof("Project '%s' already exists at %s", alias, targetPath)
-		return targetPath
-	}
-
-	gitURL, err := resolver.Hub.ResolveAlias(alias)
+	proj, err := hub.ResolveAlias(alias)
 	if err != nil {
 		ui.FailFast(fmt.Errorf("alias '%s' not found in Hub.\nAdd it to ~/.derrick/config.yaml:\n\nprojects:\n  %s: <git-url>", alias, alias))
 	}
 
-	ui.Taskf("Cloning %s from %s", alias, gitURL)
-	cloneCmd := exec.Command("git", "clone", gitURL, targetPath)
+	// 1. If we have a tracked local path, prefer it.
+	if proj.Path != "" {
+		if _, err := os.Stat(proj.Path); err == nil {
+			ui.Infof("Project '%s' found at registered path: %s", alias, proj.Path)
+			return proj.Path
+		}
+		ui.Warningf("Project '%s' not found at registered path %s, falling back to workspace.", alias, proj.Path)
+	}
+
+	// 2. Check sibling directory (legacy behavior)
+	parentDir := filepath.Dir(cwd)
+	siblingPath := filepath.Join(parentDir, alias)
+	if _, err := os.Stat(siblingPath); err == nil {
+		ui.Infof("Project '%s' found as sibling: %s", alias, siblingPath)
+		return siblingPath
+	}
+
+	// 3. Use workspace
+	workspace := hub.Workspace
+	if workspace == "" {
+		// fallback if somehow empty
+		home, _ := os.UserHomeDir()
+		workspace = filepath.Join(home, "derrick-projects")
+	}
+
+	targetPath := filepath.Join(workspace, alias)
+
+	if _, err := os.Stat(targetPath); err == nil {
+		ui.Infof("Project '%s' already exists in workspace at %s", alias, targetPath)
+		return targetPath
+	}
+
+	// 4. Clone to workspace
+	ui.Taskf("Cloning %s from %s into workspace", alias, proj.URL)
+	if err := os.MkdirAll(workspace, 0755); err != nil {
+		ui.FailFastf("Failed to create workspace directory %s: %v", workspace, err)
+	}
+
+	cloneCmd := exec.Command("git", "clone", proj.URL, targetPath)
 	cloneCmd.Stdout = os.Stdout
 	cloneCmd.Stderr = os.Stderr
 	if err := cloneCmd.Run(); err != nil {
 		ui.FailFastf("Clone failed: %v", err)
 	}
+
+	// Record the local path for next time
+	hub.Projects[alias] = config.HubProject{URL: proj.URL, Path: targetPath}
+	_ = hub.Save()
 
 	ui.Successf("Cloned '%s' to %s", alias, targetPath)
 	return targetPath

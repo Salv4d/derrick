@@ -10,10 +10,36 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// HubProject represents a project registered in the Hub.
+type HubProject struct {
+	URL  string `yaml:"url"`
+	Path string `yaml:"path,omitempty"`
+}
+
+// UnmarshalYAML allows a HubProject to be defined as either a plain string (URL)
+// or a full struct.
+func (p *HubProject) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		p.URL = value.Value
+		return nil
+	}
+	var tmp struct {
+		URL  string `yaml:"url"`
+		Path string `yaml:"path"`
+	}
+	if err := value.Decode(&tmp); err != nil {
+		return err
+	}
+	p.URL = tmp.URL
+	p.Path = tmp.Path
+	return nil
+}
+
 // HubConfig stores global hub configuration for projects.
 type HubConfig struct {
-	Projects map[string]string `yaml:"projects,omitempty"`
-	Remotes  []string          `yaml:"remotes,omitempty"`
+	Workspace string                `yaml:"workspace,omitempty"`
+	Projects  map[string]HubProject `yaml:"projects,omitempty"`
+	Remotes   []string              `yaml:"remotes,omitempty"`
 }
 
 // LoadGlobalHub loads the global hub configuration from the user's home directory.
@@ -27,7 +53,7 @@ func LoadGlobalHub() (*HubConfig, error) {
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return &HubConfig{
-			Projects: make(map[string]string),
+			Projects: make(map[string]HubProject),
 		}, nil
 	}
 
@@ -42,15 +68,19 @@ func LoadGlobalHub() (*HubConfig, error) {
 	}
 
 	if hub.Projects == nil {
-		hub.Projects = make(map[string]string)
+		hub.Projects = make(map[string]HubProject)
+	}
+
+	if hub.Workspace == "" {
+		hub.Workspace = filepath.Join(homeDir, "derrick-projects")
 	}
 
 	return &hub, nil
 }
 
-func (h *HubConfig) ResolveAlias(alias string) (string, error) {
-	if url, exists := h.Projects[alias]; exists {
-		return url, nil
+func (h *HubConfig) ResolveAlias(alias string) (HubProject, error) {
+	if proj, exists := h.Projects[alias]; exists {
+		return proj, nil
 	}
 
 	// Try remotes
@@ -64,16 +94,16 @@ func (h *HubConfig) ResolveAlias(alias string) (string, error) {
 		if resp.StatusCode == 200 {
 			var remoteHub HubConfig
 			if err := yaml.NewDecoder(resp.Body).Decode(&remoteHub); err == nil {
-				if url, exists := remoteHub.Projects[alias]; exists {
+				if proj, exists := remoteHub.Projects[alias]; exists {
 					resp.Body.Close()
-					return url, nil
+					return proj, nil
 				}
 			}
 		}
 		resp.Body.Close()
 	}
 
-	return "", fmt.Errorf("project alias '%s' not found in local or remote Derrick hubs", alias)
+	return HubProject{}, fmt.Errorf("project alias '%s' not found in local or remote Derrick hubs", alias)
 }
 
 // Save writes the hub configuration back to the user's home directory.

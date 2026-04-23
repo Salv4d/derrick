@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0-beta.3] — 2026-04-23
+
+### Added
+- **Automagic Hub Workspace**: `derrick start <alias>` now works from any directory. If a project isn't found at its registered location, Derrick automatically clones it into a global workspace (default: `~/derrick-projects`).
+- **Project Path Tracking**: the Hub now remembers the absolute local path of every registered project.
+- **`hub workspace` command**: view or update the global projects directory.
+- **Hub Migration**: existing string-based Hub aliases are automatically upgraded to the new path-aware schema.
+
 ## [0.6.0-beta.2] — 2026-04-23
 
 ### Fixed
@@ -185,7 +193,8 @@ First public release.
 - `derrick shell` no longer hardcodes a service name; `docker.shell` is now configurable.
 - Hook flags are restored on stop so `first-setup` stays honest across restarts.
 
-[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.2...HEAD
+[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.3...HEAD
+[0.6.0-beta.3]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.2...v0.6.0-beta.3
 [0.6.0-beta.2]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.1...v0.6.0-beta.2
 [0.6.0-beta.1]: https://github.com/Salv4d/derrick/compare/v0.5.5...v0.6.0-beta.1
 [0.5.5]: https://github.com/Salv4d/derrick/compare/v0.5.4...v0.5.5

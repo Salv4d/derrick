@@ -36,14 +36,30 @@ func (r *DependencyResolver) ResolveAndClone(projectRoot string, requiredAliases
 			continue
 		}
 
-		gitURL, err := r.Hub.ResolveAlias(alias)
+		proj, err := r.Hub.ResolveAlias(alias)
 		if err != nil {
 			return fmt.Errorf("failed to resolve dependency '%s': %w", alias, err)
 		}
 
-		ui.Taskf("Cloning dependency '%s' from %s", alias, gitURL)
+		// Use tracked path if it exists, otherwise use workspace
+		if proj.Path != "" {
+			targetPath = proj.Path
+		} else {
+			targetPath = filepath.Join(r.Hub.Workspace, alias)
+		}
 
-		cmd := exec.Command("git", "clone", gitURL, targetPath)
+		if _, err := os.Stat(targetPath); err == nil {
+			ui.Infof("Dependency '%s' already exists at %s", alias, targetPath)
+			continue
+		}
+
+		ui.Taskf("Cloning dependency '%s' from %s", alias, proj.URL)
+
+		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+			return fmt.Errorf("failed to create directory for dependency: %w", err)
+		}
+
+		cmd := exec.Command("git", "clone", proj.URL, targetPath)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
