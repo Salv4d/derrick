@@ -118,6 +118,10 @@ func (d *DockerProvider) Shell(cfg *config.ProjectConfig, cmdArgs []string) erro
 	}
 
 	args := []string{"compose", "-p", cfg.Name, "-f", cfg.Docker.Compose, "exec"}
+	if len(cmdArgs) > 0 {
+		args = append(args, "-T")
+	}
+
 	for _, p := range cfg.Docker.Profiles {
 		args = append(args, "--profile", p)
 	}
@@ -129,6 +133,13 @@ func (d *DockerProvider) Shell(cfg *config.ProjectConfig, cmdArgs []string) erro
 	}
 
 	cmd := exec.Command("docker", args...)
+	if len(cmdArgs) == 0 {
+		// Interactive shell: bypass RunCommand's stderr capture to keep TTY healthy.
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	}
 	return RunCommand(cmd)
 }
 
