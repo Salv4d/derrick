@@ -56,7 +56,20 @@ func ExecuteHooks(stage string, hooks []config.Hook, opts HookOpts) error {
 }
 
 // shouldRun evaluates a hook's when: condition against the current execution context.
-func shouldRun(when string, opts HookOpts) bool {
+// Returns true if ANY of the conditions in the slice match.
+func shouldRun(conditions config.Condition, opts HookOpts) bool {
+	if len(conditions) == 0 {
+		return true
+	}
+	for _, when := range conditions {
+		if matchOne(when, opts) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchOne(when string, opts HookOpts) bool {
 	switch {
 	case when == "" || when == "always":
 		return true

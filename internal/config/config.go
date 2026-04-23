@@ -90,6 +90,24 @@ func (r *Requirement) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
+// Condition represents one or more execution triggers for a hook.
+type Condition []string
+
+// UnmarshalYAML lets a Condition be written as a plain string ("always")
+// or an array of strings (["first-setup", "flag:seed"]).
+func (c *Condition) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		*c = []string{value.Value}
+		return nil
+	}
+	var slice []string
+	if err := value.Decode(&slice); err != nil {
+		return err
+	}
+	*c = slice
+	return nil
+}
+
 // Hook is a lifecycle command with an optional execution condition.
 //
 // The When field controls when the hook fires:
@@ -97,26 +115,33 @@ func (r *Requirement) UnmarshalYAML(value *yaml.Node) error {
 //   - "first-setup"      — run only on the first `derrick start` (before state is persisted)
 //   - "flag:<name>"      — run only when `derrick start --<name>` is passed
 type Hook struct {
-	Run  string `yaml:"run"`
-	When string `yaml:"when,omitempty"`
+	Run  string    `yaml:"run"`
+	When Condition `yaml:"when,omitempty"`
 }
 
 // UnmarshalYAML lets a Hook be written as a plain string ("echo hi") or a
-// full struct ({ run: "echo hi", when: first-setup }).
+// full struct ({ run: "echo hi", when: ["first-setup", "flag:seed"] }).
 func (h *Hook) UnmarshalYAML(value *yaml.Node) error {
 	if value.Kind == yaml.ScalarNode {
 		h.Run = value.Value
-		h.When = "always"
+		h.When = []string{"always"}
 		return nil
 	}
 
 	type alias Hook
-	var tmp alias
+	var tmp struct {
+		Run  string    `yaml:"run"`
+		When Condition `yaml:"when"`
+	}
 	if err := value.Decode(&tmp); err != nil {
 		return err
 	}
 	h.Run = tmp.Run
-	h.When = tmp.When
+	if len(tmp.When) == 0 {
+		h.When = []string{"always"}
+	} else {
+		h.When = tmp.When
+	}
 	return nil
 }
 

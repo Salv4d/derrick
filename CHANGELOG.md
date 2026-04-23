@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] — 2026-04-21
+
+### Added
+- Multi-condition hooks: the `when:` field now accepts an array of triggers (e.g. `when: ["first-setup", "flag:seed"]`). The hook executes if any condition is met.
+
+### Fixed
+- `derrick stop` reliability: the command now explicitly includes the `.derrick/docker-compose.override.yml` during teardown, ensuring that auto-wired shared networks and labels are correctly cleaned up.
+
 ## [0.5.0] — 2026-04-21
 
 ### Added
@@ -51,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Scoped `.golangci.yml` (govet, ineffassign, staticcheck, unused, gofmt) wired into PR CI via `golangci-lint-action@v8`, plus an explicit `go vet` step in the test job.
-- `derrick completion [bash|zsh|fish|powershell]` built on cobra's native generators, with activation docs in the long help.
+- `derrick completion [bash|zsh|fish|powershell]` built on cobra's native generators, with activation programs in the long help.
 - Table-driven unit tests for `ResolveProvider`, `HybridProvider` composition, hook `when:` conditions, `GenerateNetworkOverride` service labelling, and the `state.Load` non-nil contract.
 - Dedicated docs for the Hybrid provider and multi-project behavior (state lock, per-project networks, port-conflict stance, shared `/nix/store`, cycle detection).
 
@@ -125,7 +133,8 @@ First public release.
 - `derrick shell` no longer hardcodes a service name; `docker.shell` is now configurable.
 - Hook flags are restored on stop so `first-setup` stays honest across restarts.
 
-[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/Salv4d/derrick/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/Salv4d/derrick/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Salv4d/derrick/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Salv4d/derrick/compare/v0.3.0...v0.4.0
