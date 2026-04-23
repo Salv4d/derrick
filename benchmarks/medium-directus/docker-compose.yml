@@ -1,0 +1,14 @@
+services:
+  database:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${DB_USER:-directus}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-directus}
+      POSTGRES_DB: ${DB_DATABASE:-directus}
+    ports:
+      - "5432:5432"
+
+  cache:
+    image: redis:7
+    ports:
+      - "6379:6379"

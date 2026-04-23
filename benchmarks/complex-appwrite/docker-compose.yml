@@ -1,0 +1,20 @@
+services:
+  appwrite:
+    image: appwrite/appwrite:1.5.0
+    ports:
+      - "80:80"
+    environment:
+      - _APP_ENV=${_APP_ENV:-development}
+      - _APP_OPENSSL_KEY_V1=${_APP_OPENSSL_KEY_V1}
+    depends_on:
+      - mariadb
+      - redis
+
+  mariadb:
+    image: mariadb:10.11
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=appwrite
+
+  redis:
+    image: redis:7-alpine

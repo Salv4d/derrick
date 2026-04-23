@@ -1,0 +1,20 @@
+name: simple-hugo
+version: 0.1.0
+provider: nix
+
+nix:
+  packages:
+    - hugo
+    - go
+    - git
+
+hooks:
+  setup:
+    - run: "if [ ! -f hugo.toml ]; then hugo new site . --force; fi"
+      when: first-setup
+  after_start:
+    - run: "hugo version"
+
+validations:
+  - name: Hugo Binary
+    command: "hugo version"

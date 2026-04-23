@@ -1,0 +1,24 @@
+name: complex-appwrite
+version: 1.5.0
+provider: docker
+
+docker:
+  compose: docker-compose.yml
+
+env:
+  _APP_ENV:
+    default: "development"
+  _APP_OPENSSL_KEY_V1:
+    default: "your-secret-key"
+  _APP_DB_HOST:
+    default: "mariadb"
+  _APP_REDIS_HOST:
+    default: "redis"
+
+hooks:
+  after_start:
+    - run: "docker compose ps"
+
+validations:
+  - name: Appwrite Core
+    command: "curl -f http://localhost/v1/health"

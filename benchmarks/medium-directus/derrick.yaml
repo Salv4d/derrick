@@ -1,0 +1,39 @@
+name: medium-directus
+version: 0.1.0
+provider: hybrid
+
+nix:
+  packages:
+    - nodejs_20
+    - corepack_20
+
+docker:
+  compose: docker-compose.yml
+
+env:
+  KEY:
+    default: "656e6963-6d61-6e69-636c-692062657374"
+  SECRET:
+    default: "64657272-6963-6b20-6973-2061-7765736f"
+  DB_CLIENT:
+    default: "pg"
+  DB_DATABASE:
+    default: "directus"
+  DB_USER:
+    default: "directus"
+  DB_PASSWORD:
+    default: "directus"
+
+hooks:
+  setup:
+    - run: "pnpm install"
+      when: first-setup
+  after_start:
+    - run: "npx directus bootstrap"
+      when: first-setup
+
+validations:
+  - name: Database Connection
+    command: "nc -z localhost 5432"
+  - name: Redis Connection
+    command: "nc -z localhost 6379"
