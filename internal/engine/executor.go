@@ -47,7 +47,6 @@ func (r *Runner) Run(command string) error {
 		nixArgs := WrapWithNix(command, r.NixDir)
 		ui.Debugf("Executing via Nix: %v", nixArgs)
 		cmd = exec.Command(nixArgs[0], nixArgs[1:]...)
-		cmd.Env = append(NixEnv(), r.Env...)
 	} else {
 		// Shell execution for arbitrary strings
 		if shellMetaRe.MatchString(command) {
@@ -61,9 +60,9 @@ func (r *Runner) Run(command string) error {
 			ui.Debugf("Executing: %s", strings.Join(args, " "))
 			cmd = exec.Command(args[0], args[1:]...)
 		}
-		cmd.Env = append(os.Environ(), r.Env...)
 	}
 
+	cmd.Env = r.CombinedEnv()
 	if r.WorkDir != "" {
 		cmd.Dir = r.WorkDir
 	}
@@ -76,10 +75,30 @@ func (r *Runner) RunCommand(cmd *exec.Cmd) error {
 	if r.WorkDir != "" {
 		cmd.Dir = r.WorkDir
 	}
-	if len(r.Env) > 0 {
-		cmd.Env = append(cmd.Env, r.Env...)
+
+	// Always merge env if runner has extras OR if cmd already has an env set.
+	// This ensures we never lose the host environment when setting custom vars.
+	if len(r.Env) > 0 || cmd.Env != nil {
+		base := cmd.Env
+		if base == nil {
+			base = r.baseEnv()
+		}
+		cmd.Env = append(base, r.Env...)
 	}
+
 	return runCmd(cmd, r.Silent)
+}
+
+// CombinedEnv returns the runner's environment merged with the appropriate base.
+func (r *Runner) CombinedEnv() []string {
+	return append(r.baseEnv(), r.Env...)
+}
+
+func (r *Runner) baseEnv() []string {
+	if r.UseNix {
+		return NixEnv()
+	}
+	return os.Environ()
 }
 
 // Global execution helpers (legacy/simple cases)

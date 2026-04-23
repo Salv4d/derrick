@@ -12,7 +12,7 @@ import (
 )
 
 // Version is the current version of Derrick CLI.
-var Version = "0.6.0-beta.1"
+var Version = "0.6.0-beta.2"
 
 // GithubRelease represents a GitHub API release object.
 type GithubRelease struct {
