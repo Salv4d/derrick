@@ -65,7 +65,7 @@ func TestEnsureNixEnvironment(t *testing.T) {
 	mockPackages := []config.NixPackage{{Name: "golang"}, {Name: "python3"}}
 	customRegistry := "github:NixOS/nixpkgs/nixos-22.11"
 
-	err = EnsureNixEnvironment("derrick.yaml", mockPackages, customRegistry, "")
+	_, err = EnsureNixEnvironment("derrick.yaml", mockPackages, customRegistry, "")
 	assert.NoError(t, err, "EnsureNixEnvironment should not return an error")
 
 	derrickDir := ".derrick"

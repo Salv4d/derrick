@@ -31,7 +31,10 @@ var statusCmd = &cobra.Command{
 			ui.FailFast(err)
 		}
 
-		cwd, _ := os.Getwd()
+		cwd, err := os.Getwd()
+		if err != nil {
+			ui.FailFast(err)
+		}
 		projectState, _ := state.Load(cwd)
 
 		provider := engine.ResolveProvider(cfg)
@@ -50,7 +53,10 @@ var statusCmd = &cobra.Command{
 		report.LastKnown = string(projectState.Status)
 
 		if jsonOutput {
-			out, _ := json.MarshalIndent(report, "", "  ")
+			out, err := json.MarshalIndent(report, "", "  ")
+			if err != nil {
+				ui.FailFast(err)
+			}
 			fmt.Println(string(out))
 			return
 		}
