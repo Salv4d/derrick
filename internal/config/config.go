@@ -128,7 +128,6 @@ func (h *Hook) UnmarshalYAML(value *yaml.Node) error {
 		return nil
 	}
 
-	type alias Hook
 	var tmp struct {
 		Run  string    `yaml:"run"`
 		When Condition `yaml:"when"`

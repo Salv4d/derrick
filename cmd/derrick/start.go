@@ -72,7 +72,11 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 				if startReset {
 					childArgs = append(childArgs, "--reset")
 				}
-				child := exec.Command(os.Args[0], childArgs...)
+				exe, err := os.Executable()
+				if err != nil {
+					exe = os.Args[0]
+				}
+				child := exec.Command(exe, childArgs...)
 				child.Dir = targetPath
 				child.Stdout = os.Stdout
 				child.Stderr = os.Stderr
@@ -96,6 +100,12 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 		cfg, err := config.ParseConfig(configFile, profileName)
 		if err != nil {
 			ui.FailFast(err)
+		}
+
+		// ── Cycle detection (requires:) ────────────────────────────────────────
+		chain := parseStartChain(os.Getenv(startChainEnv))
+		if chain[cfg.Name] {
+			ui.FailFast(fmt.Errorf("circular dependency detected: '%s' is already booting in this chain [%s]", cfg.Name, os.Getenv(startChainEnv)))
 		}
 
 		// ── Custom flags ───────────────────────────────────────────────────────
@@ -176,7 +186,11 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 						cmdArgs = append(cmdArgs, "--reset")
 					}
 
-					depCmd := exec.Command(os.Args[0], cmdArgs...)
+					exe, err := os.Executable()
+					if err != nil {
+						exe = os.Args[0]
+					}
+					depCmd := exec.Command(exe, cmdArgs...)
 					depCmd.Dir = depPath
 					depCmd.Stdout = os.Stdout
 					depCmd.Stderr = os.Stderr
