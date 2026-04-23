@@ -30,6 +30,7 @@ var (
 	startReset       bool
 	startCustomFlags []string
 	startDryRun      bool
+	startRegister    bool
 )
 
 // startCmd boots the local development environment defined in derrick.yaml.
@@ -321,6 +322,31 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 		} else {
 			ui.Successf("%s is ready!", cfg.Name)
 		}
+
+		// ── Register project in Hub ───────────────────────────────────────────
+		if startRegister {
+			ui.Section("Hub Registration")
+			ui.Task("Detecting Git remote URL")
+			cmd := exec.Command("git", "remote", "get-url", "origin")
+			cmd.Dir = cwd
+			out, err := cmd.Output()
+			if err != nil {
+				ui.Warning("Could not detect Git remote 'origin'. Use 'derrick hub add' to register manually.")
+			} else {
+				url := strings.TrimSpace(string(out))
+				hub, err := config.LoadGlobalHub()
+				if err != nil {
+					ui.Warningf("Could not load global hub: %v", err)
+				} else {
+					hub.Projects[cfg.Name] = url
+					if err := hub.Save(); err != nil {
+						ui.Warningf("Could not save hub config: %v", err)
+					} else {
+						ui.Successf("Project '%s' registered in Hub: %s", cfg.Name, url)
+					}
+				}
+			}
+		}
 	},
 }
 
@@ -463,5 +489,6 @@ func init() {
 	startCmd.Flags().BoolVar(&startReset, "reset", false, "Rebuild the environment from scratch")
 	startCmd.Flags().StringSliceVar(&startCustomFlags, "flag", nil, "Custom project flags (e.g. --flag seed-db)")
 	startCmd.Flags().BoolVar(&startDryRun, "dry-run", false, "Print what would happen without executing hooks or starting the provider")
+	startCmd.Flags().BoolVar(&startRegister, "register", false, "Register this project in the global Derrick Hub")
 	rootCmd.AddCommand(startCmd)
 }
