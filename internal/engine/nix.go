@@ -162,7 +162,7 @@ func EnsureNixEnvironment(configPath string, packages []config.NixPackage, custo
 	}
 
 	flakePath := filepath.Join(dir, "flake.nix")
-	
+
 	// Check if already exists and is identical
 	if existing, err := os.ReadFile(flakePath); err == nil {
 		if bytes.Equal(existing, flakeContent.Bytes()) {

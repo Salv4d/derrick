@@ -83,4 +83,3 @@ func isFullRecipe(body string) bool {
 	}
 	return false
 }
-

@@ -121,7 +121,11 @@ services), tears down the provider, then runs after_stop hooks on the host.`,
 						cmdArgs = append(cmdArgs, "--profile", profileName)
 					}
 
-					depCmd := exec.Command(os.Args[0], cmdArgs...)
+					exe, err := os.Executable()
+					if err != nil {
+						exe = os.Args[0]
+					}
+					depCmd := exec.Command(exe, cmdArgs...)
 					depCmd.Dir = depPath
 					depCmd.Stdout = os.Stdout
 					depCmd.Stderr = os.Stderr
