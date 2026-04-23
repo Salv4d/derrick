@@ -288,11 +288,24 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 					ui.Warningf("Could not load global hub: %v", err)
 				} else {
 					absPath, _ := filepath.Abs(cwd)
-					hub.Projects[cfg.Name] = config.HubProject{URL: url, Path: absPath}
+					projectData := config.HubProject{URL: url, Path: absPath}
+					
+					// Register primary name
+					hub.Projects[cfg.Name] = projectData
+					
+					// Register all additional aliases
+					for _, alias := range cfg.Aliases {
+						hub.Projects[alias] = projectData
+					}
+
 					if err := hub.Save(); err != nil {
 						ui.Warningf("Could not save hub config: %v", err)
 					} else {
-						ui.Successf("Project '%s' registered in Hub at %s", cfg.Name, absPath)
+						aliasList := ""
+						if len(cfg.Aliases) > 0 {
+							aliasList = fmt.Sprintf(" (aliases: %s)", strings.Join(cfg.Aliases, ", "))
+						}
+						ui.Successf("Project '%s'%s registered in Hub at %s", cfg.Name, aliasList, absPath)
 					}
 				}
 			}
