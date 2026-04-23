@@ -358,11 +358,11 @@ func printHookStage(label string, hooks []config.Hook) {
 	}
 	ui.Infof("%s hooks:", label)
 	for _, h := range hooks {
-		when := h.When
-		if when == "" {
-			when = "always"
+		conds := strings.Join(h.When, ", ")
+		if conds == "" {
+			conds = "always"
 		}
-		fmt.Printf("    [%s] %s\n", when, h.Run)
+		fmt.Printf("    [%s] %s\n", conds, h.Run)
 	}
 }
 

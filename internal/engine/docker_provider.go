@@ -82,7 +82,13 @@ func (d *DockerProvider) Stop(cfg *config.ProjectConfig) error {
 		return nil
 	}
 
+	overridePath := filepath.Join(".derrick", "docker-compose.override.yml")
+
 	args := []string{"compose", "-p", cfg.Name, "-f", cfg.Docker.Compose}
+	if _, err := os.Stat(overridePath); err == nil {
+		args = append(args, "-f", overridePath)
+	}
+
 	for _, p := range cfg.Docker.Profiles {
 		args = append(args, "--profile", p)
 	}
