@@ -5,6 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] — 2026-04-21
+
+### Added
+- Derrick Hub management: new `hub` command suite with `add`, `list`, and `remove` subcommands to manage project aliases and their Git URLs in `~/.derrick/config.yaml`.
+- Remote Hub Subscriptions: added `hub subscribe` and `hub unsubscribe` to point Derrick to external YAML indices. `derrick start [alias]` now automatically checks all subscribed remotes if an alias isn't found locally.
+- Automatic registration: `derrick start --register` now automatically detects the project's Git remote URL and adds it to the local Hub.
+
 ## [0.5.4] — 2026-04-21
 
 ### Added
@@ -161,10 +168,10 @@ First public release.
 - `derrick shell` no longer hardcodes a service name; `docker.shell` is now configurable.
 - Hook flags are restored on stop so `first-setup` stays honest across restarts.
 
-[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.5.4...HEAD
+[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.5.5...HEAD
+[0.5.5]: https://github.com/Salv4d/derrick/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/Salv4d/derrick/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/Salv4d/derrick/compare/v0.5.2...v0.5.3
-[0.5.2]: https://github.com/Salv4d/derrick/compare/v0.5.1...v0.5.2
 [0.5.0]: https://github.com/Salv4d/derrick/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Salv4d/derrick/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Salv4d/derrick/compare/v0.3.0...v0.4.0
