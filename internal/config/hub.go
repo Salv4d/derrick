@@ -52,3 +52,28 @@ func (h *HubConfig) ResolveAlias(alias string) (string, error) {
 
 	return "", fmt.Errorf("project alias '%s' not found in local Derrick hub", alias)
 }
+
+// Save writes the hub configuration back to the user's home directory.
+func (h *HubConfig) Save() error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get user home directory: %w", err)
+	}
+
+	configDir := filepath.Join(homeDir, ".derrick")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory %s: %w", configDir, err)
+	}
+
+	configPath := filepath.Join(configDir, "config.yaml")
+	data, err := yaml.Marshal(h)
+	if err != nil {
+		return fmt.Errorf("failed to marshal hub config: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write hub config to %s: %w", configPath, err)
+	}
+
+	return nil
+}
