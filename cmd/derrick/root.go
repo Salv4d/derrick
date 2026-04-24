@@ -31,6 +31,16 @@ func RunDerrick(fn func(ctx *DerrickContext, cmd *cobra.Command, args []string))
 
 		cfg, err := config.ParseConfig(configFile, profileName)
 		if err != nil {
+			// Special case: 'start <alias>' should work even without a local derrick.yaml
+			if cmd.Name() == "start" && len(args) == 1 {
+				ctx := &DerrickContext{
+					Config: &config.ProjectConfig{},
+					State:  &state.EnvironmentState{},
+					Cwd:    cwd,
+				}
+				fn(ctx, cmd, args)
+				return
+			}
 			ui.FailFast(err)
 		}
 

@@ -63,6 +63,12 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 				if startReset {
 					childArgs = append(childArgs, "--reset")
 				}
+				if startDryRun {
+					childArgs = append(childArgs, "--dry-run")
+				}
+				if startRegister {
+					childArgs = append(childArgs, "--register")
+				}
 
 				chain := engine.GetChain(startChainEnv)
 				if err := engine.ExecuteRecursive(targetPath, "start", profileName, chain, cfg.Name, childArgs, nil); err != nil {
@@ -398,7 +404,7 @@ func resolveAlias(alias string, cwd string) string {
 	// 2. Check sibling directory (legacy behavior)
 	parentDir := filepath.Dir(cwd)
 	siblingPath := filepath.Join(parentDir, alias)
-	if _, err := os.Stat(siblingPath); err == nil {
+	if info, err := os.Stat(siblingPath); err == nil && info.IsDir() {
 		ui.Infof("Project '%s' found as sibling: %s", alias, siblingPath)
 		return siblingPath
 	}
@@ -413,7 +419,7 @@ func resolveAlias(alias string, cwd string) string {
 
 	targetPath := filepath.Join(workspace, alias)
 
-	if _, err := os.Stat(targetPath); err == nil {
+	if info, err := os.Stat(targetPath); err == nil && info.IsDir() {
 		ui.Infof("Project '%s' already exists in workspace at %s", alias, targetPath)
 		return targetPath
 	}

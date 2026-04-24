@@ -5,6 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0-beta.5] — 2026-04-24
+
+### Fixed
+- **Hub Resolution from Anywhere**: Fixed a regression in the `RunDerrick` middleware that required a local `derrick.yaml` to be present even when starting a project via a Hub alias.
+- **Robust Alias Resolution**: The Hub now correctly ignores files with the same name as an alias (e.g., a local binary) and only resolves to valid project directories.
+- **Flag Forwarding**: Fixed a bug where command-line flags (`--dry-run`, `--reset`, `--register`) were not being forwarded to the target project when starting via an alias.
+
 ## [0.6.0-beta.4] — 2026-04-23
 
 ### Added
@@ -199,7 +206,8 @@ First public release.
 - `derrick shell` no longer hardcodes a service name; `docker.shell` is now configurable.
 - Hook flags are restored on stop so `first-setup` stays honest across restarts.
 
-[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.4...HEAD
+[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.5...HEAD
+[0.6.0-beta.5]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.4...v0.6.0-beta.5
 [0.6.0-beta.4]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.3...v0.6.0-beta.4
 [0.6.0-beta.3]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.2...v0.6.0-beta.3
 [0.6.0-beta.2]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.1...v0.6.0-beta.2
