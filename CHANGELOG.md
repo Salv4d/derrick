@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0-beta.6] — 2026-04-24
+
+### Added
+- **Stop by Alias**: the `stop` command now accepts an optional alias argument to shut down projects from any directory.
+- **Stop All**: the new `derrick stop --all` (or `-a`) flag scans the Hub and shuts down all projects currently marked as 'running'.
+
 ## [0.6.0-beta.5] — 2026-04-24
 
 ### Fixed
@@ -206,7 +212,8 @@ First public release.
 - `derrick shell` no longer hardcodes a service name; `docker.shell` is now configurable.
 - Hook flags are restored on stop so `first-setup` stays honest across restarts.
 
-[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.5...HEAD
+[Unreleased]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.6...HEAD
+[0.6.0-beta.6]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.5...v0.6.0-beta.6
 [0.6.0-beta.5]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.4...v0.6.0-beta.5
 [0.6.0-beta.4]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.3...v0.6.0-beta.4
 [0.6.0-beta.3]: https://github.com/Salv4d/derrick/compare/v0.6.0-beta.2...v0.6.0-beta.3
