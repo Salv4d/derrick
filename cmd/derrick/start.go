@@ -54,7 +54,7 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 		// subprocess running inside the target directory.
 		if len(args) == 1 {
 			alias := args[0]
-			targetPath := resolveAlias(alias, cwd)
+			targetPath := ResolveAlias(alias, cwd)
 			if targetPath != cwd {
 				childArgs := []string{}
 				for _, f := range startCustomFlags {
@@ -145,7 +145,7 @@ Derrick Hub (~/.derrick/config.yaml) and clones it if needed.`,
 					// If missing, try to resolve and clone via Hub
 					if _, err := os.Stat(depPath); err != nil {
 						ui.Infof("Dependency '%s' is missing locally. Attempting Hub resolution...", dep.Name)
-						depPath = resolveAlias(dep.Name, cwd)
+						depPath = ResolveAlias(dep.Name, cwd)
 					}
 
 					ui.Infof("Booting dependency: %s", dep.Name)
@@ -376,9 +376,9 @@ func printHookStage(label string, hooks []config.Hook) {
 	}
 }
 
-// resolveAlias looks up an alias in the Derrick Hub and returns the local path
+// ResolveAlias looks up an alias in the Derrick Hub and returns the local path
 // for the project, cloning it if necessary.
-func resolveAlias(alias string, cwd string) string {
+func ResolveAlias(alias string, cwd string) string {
 	ui.Section("Hub Resolution")
 	ui.Taskf("Looking up alias: %s", alias)
 

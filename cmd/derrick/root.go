@@ -31,8 +31,12 @@ func RunDerrick(fn func(ctx *DerrickContext, cmd *cobra.Command, args []string))
 
 		cfg, err := config.ParseConfig(configFile, profileName)
 		if err != nil {
-			// Special case: 'start <alias>' should work even without a local derrick.yaml
-			if cmd.Name() == "start" && len(args) == 1 {
+			// Special case: 'start <alias>', 'stop <alias>', or 'stop --all' should work even without a local derrick.yaml
+			isStartWithAlias := cmd.Name() == "start" && len(args) == 1
+			isStopWithAlias := cmd.Name() == "stop" && len(args) == 1
+			isStopAll, _ := cmd.Flags().GetBool("all")
+			
+			if isStartWithAlias || isStopWithAlias || (cmd.Name() == "stop" && isStopAll) {
 				ctx := &DerrickContext{
 					Config: &config.ProjectConfig{},
 					State:  &state.EnvironmentState{},
